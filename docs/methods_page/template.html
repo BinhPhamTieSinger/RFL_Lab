@@ -1,0 +1,70 @@
+<title>RFL Lab Methods</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: a lab notebook — narrow reading column, sticky contents rail on wide screens, diagrams and formulas set off as instruments */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1b2230; --muted: #5a6577; --line: #dde2ea;
+  --accent: #2a62c9; --accent-soft: #e6eefb; --warn: #9a5b00;
+  --display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11151c; --panel: #171c25; --fg: #e3e8f0; --muted: #98a3b5; --line: #2a3240;
+  --accent: #7fa8f0; --accent-soft: #1d2a40; --warn: #e0a54a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11151c; --panel: #171c25; --fg: #e3e8f0; --muted: #98a3b5; --line: #2a3240;
+  --accent: #7fa8f0; --accent-soft: #1d2a40; --warn: #e0a54a; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.65 var(--body); }
+.wrap { display: grid; grid-template-columns: 1fr; gap: 32px; max-width: 1180px; margin: 0 auto;
+  padding-block: 40px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 980px) { .wrap { grid-template-columns: 200px minmax(0, 1fr); } }
+header { grid-column: 1 / -1; display: grid; gap: 8px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 600 clamp(28px, 4vw, 40px)/1.15 var(--display); margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0; }
+nav { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; }
+@media (min-width: 980px) { nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start;
+  flex-direction: column; flex-wrap: nowrap; gap: 8px; border-left: 2px solid var(--line); padding-left: 14px; } }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover, nav a:focus-visible { color: var(--accent); }
+main { min-width: 0; display: grid; gap: 56px; }
+section { min-width: 0; display: grid; gap: 16px; scroll-margin-top: 24px; }
+h2 { font: 600 24px/1.25 var(--display); margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); text-wrap: balance; }
+h3 { font: 600 16px/1.3 var(--display); margin: 8px 0 0; }
+p, ul { margin: 0; max-width: 72ch; }
+.points { display: grid; gap: 6px; padding-left: 20px; }
+.note { color: var(--warn); font-size: 14px; border-left: 3px solid var(--warn); padding-left: 12px; }
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.diagram pre { margin: 0; text-align: center; }
+.formula { background: var(--accent-soft); border-radius: 6px; padding: 14px 18px; overflow-x: auto; font-size: 14.5px; }
+.chart { margin: 0; background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 10px; overflow-x: auto; }
+.chart img { display: block; max-width: 100%; height: auto; }
+.chart figcaption { font: 12.5px/1.4 var(--mono); color: #5a6577; padding-top: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tablebox { overflow-x: auto; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font: 500 12px/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: .92em; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">RFL Lab · robust federated learning on FedHEP</div>
+    <h1>How every method and attack works</h1>
+    <p class="lede">One round of FedHEP, Defended FedHEP and FedHEP+, the follow-up screening options, the drill-down
+    experiments, the comparison defenses and the attacks: each as a diagram with its formulas, as implemented in the code.
+    Results and decisions live in the experiment log.</p>
+  </header>
+  <nav aria-label="Contents">{{TOC}}</nav>
+  <main>{{BODY}}</main>
+</div>
+<script>
+// Wrap bare tables so wide ones scroll inside their own box.
+document.querySelectorAll("table").forEach(t => { const d = document.createElement("div"); d.className = "tablebox";
+  t.parentNode.insertBefore(d, t); d.appendChild(t); });
+window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] }, svg: { fontCache: "global" } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>

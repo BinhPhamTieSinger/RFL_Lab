@@ -4,14 +4,16 @@
 #     s = floor(n/2 + 1) - m, z = Phi^-1((n - s) / n) = 0.43 for n = 15, m = 3;
 #   Min-Max (Shejwalkar & Houmansadr 2021): mean - gamma * std of the honest updates (the paper's knowledge of
 #     benign updates), largest gamma whose distance to every update stays within the honest updates' spread.
-# 24 runs, about 3 h. Results go to outputs/, next to the runs they are compared with.
+# Undefended FedHEP is the no-defense baseline (FedAvg can't run these: they need FedHEP's upload hook).
+# 30 runs, about 4 h. Results go to outputs/, next to the runs they are compared with.
 #   caffeinate -i python scripts/sweep.py configs/sweeps/followup_attacks.yaml
 seeds: [42, 123, 7]
 common:
   data.alpha: 0.5
   run.rounds: 30
 axes:
-  - p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+  - p2__fedhep: {config: configs/cifar100_fedhep.yaml}
+    p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
     p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
               plus.regroup: true}
     p5__flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}

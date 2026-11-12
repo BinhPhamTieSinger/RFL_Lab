@@ -1,0 +1,10 @@
+flowchart TD
+  S["scores s_i = cos(signal_i, median update)"] --> M["median m, MAD over the reference clients"]
+  M --> SC["scale = max(1.4826·MAD, 0.1·|m|, mad_floor)<br/>mad_floor = 0 (old), 0.01 or 0.03 (follow-up)"]
+  SC --> Z["z_i = (s_i − m) / scale"]
+  Z --> LOG["logged every round (follow-up): s, m, MAD, scale,<br/>which term set the scale, reference size"]
+  Z --> EX{"z_i < −2.5 for exclusion_patience<br/>rounds in a row?"}
+  EX -->|yes| OUT["left out this round"]
+  Z --> EMA["E_i ← 0.7·E_i + 0.3·z_i"]
+  EMA --> ISO{"E_i < −1.5 and z_i < −1.5 for<br/>isolation_patience rounds in a row?"}
+  ISO -->|yes| PERM["isolated for good"]

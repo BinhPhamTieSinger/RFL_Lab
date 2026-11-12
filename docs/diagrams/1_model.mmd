@@ -1,0 +1,9 @@
+flowchart LR
+  X["image 32×32×3"] --> B["ResNet-9 trunk (each conv: 3×3 + BatchNorm + ReLU)<br/>prep 32 → 64 + max-pool + residual block<br/>→ 128 + max-pool → 256 + max-pool + residual block<br/>→ global average pool → 256 features"]
+  B --> R["root head fc2_root (256 → C)<br/>aggregated by Global: shared by all"]
+  B --> P["parent head fc2_parent (256 → C)<br/>aggregated within the client's group"]
+  B --> L["local head fc2_local (256 → C)<br/>never leaves the client"]
+  R --> E["ensemble: softmax-weighted mix of the 3 heads' logits<br/>+ mask of classes the client never saw"]
+  P --> E
+  L --> E
+  E --> Y["prediction"]

@@ -1,0 +1,7 @@
+flowchart TD
+  P["each parent g with ≥ 3 eligible members"] --> GZ["parent score = cos(mean of members' updates, reference)"]
+  GZ --> NULL["compare with 64 random groups of the same size<br/>→ parent z (permutation test)"]
+  NULL --> F{"parent z < −2 ?"}
+  F -->|"v1"| V1["members face a stricter cut this round (z < −1)"]
+  F -->|"v2"| V2["member check: residual r_i = signal − reference;<br/>a_i = cos(r_i, mean of the other members' residuals)<br/>vs clients outside the parent → alignment z"]
+  V2 --> E2["evidence uses min(z_i, −alignment z_i)"]

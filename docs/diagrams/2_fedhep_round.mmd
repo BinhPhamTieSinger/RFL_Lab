@@ -1,0 +1,9 @@
+flowchart LR
+  G["Global model<br/>(trunk + all heads)"] -->|"copy"| C1["client i: trunk + root head<br/>+ its parent's head + own local head"]
+  C1 -->|"5 local epochs<br/>loss = λr·L_root + λp·L_parent + λl·L_local"| U["trained model w_i"]
+  U -->|"all clients"| AG["Global = start + FedAvg(w_i − start)"]
+  U -->|"members of group g"| AP["Parent g: copy Global if members agree<br/>(mean cosine > 0.5), else average members;<br/>adaptive momentum"]
+  U -->|"kept on the client"| L["local head"]
+  AG --> G
+  AP --> PH["parent head for next round"]
+  U --> GR["grouping: k-means on random projections<br/>of the updates (regroups when groups drift)"]

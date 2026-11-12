@@ -18,12 +18,20 @@ Charts live in `docs/figures/` and are redrawn from the runs with `python script
 **Phase 5 (2026-11-12): established rules inside FedHEP, three seeds.** No rule beats FedHEP+ overall. Bulyan and FLAME stop backdoors completely (0.5%, even with 5 attackers or a 3× boost) but leave out 3–6 honest clients per round (−3.9 to −5.6 with no attack); FedHEP+'s gain grows with 5 sign flippers (+12.6) but disappears at α = 0.05. Answers to the professor's questions and the pending runs are in the last two entries.
 
 ## How the methods work (reference for every entry below)
+A visual version of this section (all diagrams, rendered formulas and key charts in one page) is `docs/methods_page/rfl_lab_methods.html`; open it in a browser. Rebuild it with `python docs/methods_page/build.py . docs/methods_page/rfl_lab_methods.html`. Diagram sources: `docs/diagrams/*.mmd`.
+
 Diagrams are Mermaid and formulas are LaTeX; both render on GitHub. Values are the ones used in every run unless an entry says otherwise.
 
 ### Setting
 15 clients, CIFAR-100 (10,000 training / 3,000 test images split across clients by a Dirichlet(α) label partition; α = 0.5 is moderately non-IID, α = 0.05 very non-IID), ResNet-9 with **three classifier heads** on one shared trunk: **root** (shared by everyone through Global), **parent** (shared within a group) and **local** (private to the client). 3 groups ("parents"), 30 rounds, 5 local epochs. Attackers: exactly 3 of 15 (D15) unless stated; the authors' rule instead makes each client an attacker with probability q.
 
+![Multi-head ResNet-9](figures/diagrams/1_model.png)
+
 ### 1 · FedHEP: one round
+![FedHEP: one round](figures/diagrams/2_fedhep_round.png)
+
+<details><summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart LR
   G["Global model<br/>(trunk + all heads)"] -->|"copy"| C1["client i: trunk + root head<br/>+ its parent's head + own local head"]
@@ -35,6 +43,7 @@ flowchart LR
   AP --> PH["parent head for next round"]
   U --> GR["grouping: k-means on random projections<br/>of the updates (regroups when groups drift)"]
 ```
+</details>
 - **Label skew** of client i: $r_i = \dfrac{e^{H(y_i)} - 1}{C - 1}$ ($H$ = label entropy, $C$ = 100): 1 for uniform labels, 0 for a single class.
 - **Head loss weights** (binomial): $\lambda_l = (1-r)^2$, $\lambda_p = 2r(1-r)$, $\lambda_r = a + (1-a)r^2$ with $a = \max(\tfrac{1}{2K}, |Y_i|/C)$. Skewed clients lean on their local head, balanced ones on the root head.
 - **Prediction**: each client mixes its three heads' logits with weights $\mathrm{softmax}\big((-H_h - \beta\,\ell_h + \log\alpha_h)/T\big)$ (confidence, recent loss, learned prior $\alpha$); near-uniform clients use the root head only; classes the client never saw are masked out.
@@ -43,6 +52,10 @@ flowchart LR
 
 ### 2 · Defended FedHEP (the authors' defense): what changes
 Every aggregation (parents and Global) is replaced by **SCCF**, soft-cosine consensus filtering, plus a trust ledger. Groups are random and fixed.
+![Defended FedHEP: aggregation](figures/diagrams/3_defended_round.png)
+
+<details><summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart LR
   U["updates Δ_i of the senders"] --> NB["norm bound: scale each Δ_i to ≤ k × lower-quartile norm<br/>(k = 2 parents, 3 Global)"]
@@ -53,10 +66,15 @@ flowchart LR
   HR --> AGG["step = Σ w_i Δ_i ; BatchNorm buffers: coordinate median"]
   W --> TL["trust ledger: score_i ← 0.85·score_i + 0.15·min(1, N·w_i)<br/>isolate for good if score_i < 0.25"]
 ```
+</details>
 If the mean unit vector is short (norm < 0.2: no consensus), everyone gets $w_i = 1/N$. Phase 2 found the ledger **never isolates anyone**: attackers keep 0.5–0.8 of an equal share, so their score never falls below 0.25.
 
 ### 3 · FedHEP+ (Phase 3): what changes from Defended FedHEP
 SCCF aggregation is kept; the trust ledger is replaced by **screening**, which decides who enters both tiers; groups are re-formed by weight-only similarity (BatchNorm buffers left out).
+![FedHEP+: one round](figures/diagrams/4_fedhep_plus_round.png)
+
+<details><summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart TD
   T["all clients train (as FedHEP)"] --> S["score s_i = cos(Δ_i, median update) on root-head rows<br/>(non-isolated clients only)"]
@@ -70,6 +88,7 @@ flowchart TD
   KEEP --> RG["regroup kept clients by weight similarity"]
   RG --> SC["parents and Global: SCCF over kept clients"]
 ```
+</details>
 **Robust z.** With $s_i$ the cosine of client i's (norm-bounded) update to the coordinate-wise median update,
 $$z_i = \frac{s_i - \operatorname{med}(s)}{\max\big(1.4826\cdot\mathrm{MAD}(s),\ 0.1\,|\operatorname{med}(s)|\big)}, \qquad \mathrm{MAD}(s) = \operatorname{med}_j\,|s_j - \operatorname{med}(s)|.$$
 - $1.4826\cdot\mathrm{MAD}$ estimates the standard deviation from the middle of the data, so a few attackers cannot inflate it (a plain standard deviation would grow with them and hide them).
@@ -82,9 +101,15 @@ $$z_i = \frac{s_i - \operatorname{med}(s)}{\max\big(1.4826\cdot\mathrm{MAD}(s),\
 - *full population*: median, MAD and reference over every client not banned, isolated ones included, so the yardstick never shrinks: $z_i = (s_i - \operatorname{med}_{\mathcal{A}} s) / \max(1.4826\,\mathrm{MAD}_{\mathcal{A}}(s),\ 0.1|\operatorname{med}_{\mathcal{A}} s|)$ with $\mathcal{A}$ = all non-banned clients. Did not reduce false isolations and let the last backdoor attacker stay in.
 - *readmission* (isolated clients come back once $E_i > -0.75$) and a *cap* (at most a third left out per round): both worse (attackers came back late in training).
 
+![Screening with the follow-up options](figures/diagrams/5_followup_screening.png)
+
 **Follow-up options (2026-11-12, defaults off):** absolute floor `plus.mad_floor` (scale $\ge$ floor), and *patience*: isolate only after $z < -1.5$ in this many consecutive rounds *and* $E_i < -1.5$.
 
 ### 4 · Drill-down (Phase 4/4b, off by default): extra steps after screening
+![Drill-down](figures/diagrams/6_drill_down.png)
+
+<details><summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart TD
   P["each parent g with ≥ 3 eligible members"] --> GZ["parent score = cos(mean of members' updates, reference)"]
@@ -94,10 +119,26 @@ flowchart TD
   F -->|"v2"| V2["member check: residual r_i = signal − reference;<br/>a_i = cos(r_i, mean of the other members' residuals)<br/>vs clients outside the parent → alignment z"]
   V2 --> E2["evidence uses min(z_i, −alignment z_i)"]
 ```
+</details>
 Neither version was adopted (D26, D28): honest members of a FedHEP parent are genuinely alike, so the member check also blames honest groups.
 
 ### 5 · Established rules in FedHEP's Global step (Phase 5)
+![Phase 5 rules](figures/diagrams/8_phase5_rules.png)
+
 Same FedHEP, Global replaced by one rule on weight updates (parents: SCCF over the clients the rule accepts): **median** and **trimmed mean** (drop 3 per side) [Yin et al. 2018]; **Bulyan** (f = 3: pick 9 by repeated Krum, then average the 3 values nearest the median per coordinate) [El Mhamdi et al. 2018]; **FLAME** (HDBSCAN on cosine distances keeps the majority cluster, clip to the median norm, add noise 0.001·S) [Nguyen et al. 2022]; **FLTrust** (trust = ReLU(cos(update, server update on 100 clean images)), rescale to the server norm) [Cao et al. 2021]. Design choices in D29.
+
+### Attacks (what an attacker uploads)
+With $w$ the round-start Global model and $\hat w_i$ the attacker's honestly trained model, $\Delta_i = \hat w_i - w$:
+- **Sign flip:** upload $w - 1.5\,\Delta_i$. **Gradient ascent:** $w - 5\,\Delta_i$. **Random noise:** $w + \mathcal{N}(0, 2^2)$ per weight.
+- **Label flip:** train on label $C - 1 - y$ instead of $y$, upload the result.
+- **Backdoor (BadNets):** stamp a 3×3 white patch in the corner of 50% of its images and relabel them as class 0; optionally scale the update (×3 = "boosted").
+- **ALIE** (Baruch et al. 2019): all attackers upload $w + \mu - z\,\sigma$, with $\mu, \sigma$ the per-weight mean and standard deviation of the attackers' own honest updates and $z = \Phi^{-1}\big((n - s)/n\big)$, $s = \lfloor n/2 + 1\rfloor - m$ ($z = 0.43$ for $n = 15$, $m = 3$): small enough to sit inside the honest spread.
+- **Min-Max** (Shejwalkar & Houmansadr 2021): upload $w + \mu - \gamma\,\sigma$ (statistics of the honest updates) with the largest $\gamma$ such that $\max_j \|\Delta_{mal} - \Delta_j\| \le \max_{j,k} \|\Delta_j - \Delta_k\|$: as far as possible while never looking further from anyone than two honest clients do from each other.
+
+### Comparison methods
+- **No defense:** FedAvg (one ResNet-9, weighted average of all uploads) and undefended FedHEP (above).
+- **Multi-Krum** (Blanchard et al. 2017, authors' setting): score each update by the summed squared distance to its $n - f - 2$ nearest others, average the $m = 3$ best.
+- **Phase 5 rules** inside FedHEP (section 5).
 
 ### Detection metrics
 Per round, flagged set $F$ (left out or isolated), attackers $A$, honest clients $H$: precision $= |F\cap A|/|F|$, recall $= |F\cap A|/|A|$, **false-isolation rate** $= |F\cap H|/|H|$; parent level the same with "malicious parent" = attacker majority. AUROC from each method's trust scores.
@@ -626,3 +667,34 @@ It does drop: **sign flipping costs Defended FedHEP 10.3 points** (48.4 → 38.1
 4. `followup_holdout.yaml`: held-out setting (10 runs).
 
 `followup_generalization.yaml` (108 runs) is superseded by 2 and 3: about 30 of its runs repeat existing ones.
+
+## 2026-11-12 · Finding · Why honest z-scores get extreme mid-training
+The professor asked why the MAD shrinks and z goes down in FedHEP+. Raw scores were not logged in the historical runs, but two things that were logged identify the mechanism (all 15 FedHEP+ runs: 5 settings × 3 seeds):
+- **Which term set z's denominator.** Without the floor, the MAD of a round's z-scores is exactly $1/1.4826 = 0.674$ (using torch's median, as screening does). A smaller value means the floor $0.1\,|\operatorname{med} s|$ was larger than $1.4826\cdot\mathrm{MAD}$ and set the scale that round.
+- **The spread of cosines.** SCCF's logged weights are $w_i = \mathrm{softmax}(c_i/T)$, so $T\ln w_i$ recovers each client's cosine $c_i$ up to a constant ($T \approx 0.5$; reference = mean direction rather than median, same root-head signal). Their spread is a proxy for the spread of the screening scores.
+
+![Why z grows](figures/why_z_grows.png)
+
+![Mechanism](figures/diagrams/7_why_z_grows.png)
+
+**What the data shows: the MAD does not shrink. The consensus does.**
+1. In rounds 1–13, the floor sets the scale in 85–100% of runs: honest updates agree strongly, so $0.1\,|\operatorname{med} s|$ exceeds $1.4826\cdot\mathrm{MAD}$, and z stays small.
+2. As training goes on, each client's update follows its own data. The spread of cosines **doubles** (0.055 → 0.085 by round 12, 0.12 by round 28), and the median cosine falls.
+3. Between rounds 14 and 18 the floor stops binding in every run, so z is divided by the raw MAD from then on.
+4. **False isolations peak in exactly those rounds** (7 new honest isolations in round 14; none before round 7). The clients that cross the cut are the persistently atypical ones, which at α = 0.5 are the more skewed ones (skew chart).
+5. By rounds 27–30 there is no consensus left: SCCF falls back to equal weights in 80–87% of runs.
+
+So "the MAD shrinks" is not what happens. What changes is that the protection from the relative floor disappears when the median cosine falls. That points to a fix: a floor that does not fall with the median (the absolute `plus.mad_floor`, queued), or a cut that adapts to how much consensus is left. Caveat: step 2 relies on the SCCF proxy; the queued `followup_diagnostics` runs log the real median, MAD and scale every round.
+
+## 2026-11-12 · Professor's requests: no-defense baselines, larger experiments (code done, runs need your Mac)
+- **No-defense baselines** added to the queued sweeps: undefended FedHEP in `followup_attacks` (FedAvg can't run ALIE/Min-Max: those need FedHEP's upload hook) and FedAvg + undefended FedHEP in `followup_q`. The main Phase 2 settings already have both (`p2__fedavg`, `p2__fedhep`).
+- **Larger experiments:** `followup_scale.yaml`, 30 clients with 6 / 9 / 12 attackers (20 / 30 / 40%), sign flip and backdoor, for FedAvg, undefended FedHEP, Defended FedHEP, FedHEP+ and FLAME (105 runs). A toy check at 12 of 30 shows FedHEP+'s first-round margin is thin at 40% (attackers' z ≈ −3 against the −2.5 cut, 8 of 12 left out in round 1); all 12 were isolated in round 2.
+
+### Run plan for your Mac (about 37 h in total, in this order; each sweep can be stopped and resumed)
+| Sweep | Runs | About | Question it answers |
+|---|---|---|---|
+| `followup_diagnostics.yaml` | 36 | 5 h | real MAD per round; absolute floor 0.01 / 0.03; patience 3 |
+| `followup_attacks.yaml` | 30 | 4 h | ALIE and Min-Max vs no defense, Defended FedHEP, FedHEP+, FLAME, Bulyan |
+| `followup_q.yaml` | 72 | 9 h | q = 0.1 / 0.3 / 0.4 (authors' rule), with no-defense baselines |
+| `followup_holdout.yaml` | 10 | 1.5 h | held-out setting: α = 0.2, 20 clients, 4 attackers, seed 2026 |
+| `followup_scale.yaml` | 105 | 14 h | 30 clients, 20–40% attackers, with no-defense baselines |

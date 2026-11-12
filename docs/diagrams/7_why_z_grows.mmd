@@ -1,0 +1,9 @@
+flowchart TD
+  A["early rounds: honest updates agree<br/>median cosine high"] --> B["floor 0.1·|median cos| > 1.4826·MAD<br/>→ the floor sets z's scale (85–100% of runs, rounds 1–13)"]
+  B --> C["z stays small: few false isolations"]
+  A --> D["training goes on: each client's update follows its own data<br/>(non-IID drift), cosine spread doubles 0.055 → 0.12"]
+  D --> E["median cosine falls → the relative floor falls with it"]
+  E --> F["rounds 14–18: 1.4826·MAD takes over as the scale"]
+  F --> G["persistently atypical honest clients (more skewed labels)<br/>reach z < −2.5 / E < −1.5 → false isolations peak (7 at round 14)"]
+  G --> H["each removal changes the kept population<br/>and the next round's median and MAD"]
+  D --> I["rounds 27–30: no consensus left<br/>(SCCF falls back to equal weights in 80–87% of runs)"]

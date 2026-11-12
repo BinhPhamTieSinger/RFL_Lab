@@ -1,0 +1,8 @@
+flowchart LR
+  U["updates Δ_i of the senders"] --> NB["norm bound: scale each Δ_i to ≤ k × lower-quartile norm<br/>(k = 2 parents, 3 Global)"]
+  NB --> RH["signal = root-head rows of the classes i holds"]
+  RH --> REF["reference = mean of unit vectors"]
+  REF --> W["trust w_i = softmax(cos(Δ_i, ref) / T)<br/>T = 0.5 (×0.9 if cosines vary, ×1.05 otherwise)"]
+  W --> HR["Global only: w_i = 0 if cos < −0.1"]
+  HR --> AGG["step = Σ w_i Δ_i ; BatchNorm buffers: coordinate median"]
+  W --> TL["trust ledger: score_i ← 0.85·score_i + 0.15·min(1, N·w_i)<br/>isolate for good if score_i < 0.25"]

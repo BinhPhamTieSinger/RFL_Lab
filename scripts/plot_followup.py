@@ -229,6 +229,66 @@ def main() -> None:
     fig_honest_vs_malicious(runs)
     fig_drop(runs)
     fig_skew()
+    fig_why_z_grows(runs)
+
+
+
+def _lower_median(v: list[float]) -> float:
+    v = sorted(v)
+    return v[(len(v) - 1) // 2]  # torch.median's convention, as screening uses
+
+
+def fig_why_z_grows(runs: dict) -> None:
+    """Why honest clients' z gets more extreme mid-training, read from FedHEP+'s logs (no raw scores were logged):
+    MAD(z) < 0.674 means the relative floor 0.1|median cosine| set the scale that round; = 0.674 means the raw MAD
+    did. SCCF's logged weights are softmax(cos / T), so T ln w recovers cosines up to a constant (T ~ 0.5): their
+    spread, and whether SCCF fell back to equal weights (no consensus)."""
+    import math
+    names = [f"p3__zmr__{s}" for s, _ in SETTINGS]
+    ms = [m for n in names for m in _runs(runs, n)]
+    if not ms:
+        return print("skip why z grows")
+    rounds = range(1, 31)
+    floor_binds, spread, fallback, new_iso = ({r: [] for r in rounds} for _ in range(4))
+    for m in ms:
+        att, seen = set(m["attackers"]), set()
+        for d in m["diagnostics"]:
+            r, ref = d["round"], list(d["z"].values())
+            if len(ref) >= 5:
+                med = _lower_median(ref)
+                floor_binds[r].append(_lower_median([abs(v - med) for v in ref]) < 0.6745 - 1e-3)
+            w = [v for v in d["global_trust"].values() if v > 0]
+            if len(w) >= 3:
+                uniform = max(w) - min(w) < 1e-6
+                fallback[r].append(uniform)
+                if not uniform:
+                    c = [0.5 * math.log(v) for v in w]
+                    cm = statistics.median(c)
+                    spread[r].append(1.4826 * statistics.median([abs(x - cm) for x in c]))
+            iso = set(d["isolated"]) - att
+            new_iso[r].append(len(iso - seen))
+            seen |= iso
+    fig, axes = plt.subplots(1, 3, figsize=(16, 3.9))
+    axes[0].plot(rounds, [100 * statistics.fmean(floor_binds[r]) for r in rounds], color=pr.SLOT[0], marker="o",
+                 markersize=3, label="floor 0.1·|median cos| sets the scale")
+    axes[0].plot(rounds, [100 * statistics.fmean(fallback[r]) if fallback[r] else 0 for r in rounds],
+                 color=pr.SLOT[1], marker="s", markersize=3, label="SCCF: no consensus (equal weights)")
+    axes[0].set_ylabel("% of the 15 FedHEP+ runs")
+    axes[0].set_title("What sets z's denominator")
+    axes[0].legend(fontsize=7.5)
+    axes[1].plot(rounds, [statistics.median(spread[r]) if spread[r] else float("nan") for r in rounds],
+                 color=pr.SLOT[2], marker="o", markersize=3)
+    axes[1].set_ylabel("spread of cosines (1.4826·MAD, proxy)")
+    axes[1].set_title("Honest disagreement grows")
+    axes[2].bar(list(rounds), [sum(new_iso[r]) for r in rounds], color=pr.SLOT[3])
+    axes[2].set_ylabel("honest clients newly isolated (15 runs)")
+    axes[2].set_title("When false isolations happen")
+    for ax in axes:
+        ax.set_xlabel("round")
+    fig.suptitle("Why honest z-scores get extreme mid-training (FedHEP+, 5 settings × 3 seeds)", x=0.01, ha="left",
+                 fontweight="bold", fontsize=11)
+    fig.tight_layout()
+    pr.save(fig, "why_z_grows.png")
 
 
 if __name__ == "__main__":

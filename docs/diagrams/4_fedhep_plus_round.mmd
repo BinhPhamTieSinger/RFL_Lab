@@ -1,0 +1,11 @@
+flowchart TD
+  T["all clients train (as FedHEP)"] --> S["score s_i = cos(Δ_i, median update) on root-head rows<br/>(non-isolated clients only)"]
+  S --> Z["robust z_i (formula below)"]
+  Z --> LO{"z_i < −2.5 ?"}
+  LO -->|yes| OUT["left out this round"]
+  Z --> EV["evidence E_i ← 0.7·E_i + 0.3·z_i"]
+  EV --> ISO{"E_i < −1.5 ?"}
+  ISO -->|yes| PERM["isolated for good"]
+  LO -->|no| KEEP["kept"]
+  KEEP --> RG["regroup kept clients by weight similarity"]
+  RG --> SC["parents and Global: SCCF over kept clients"]

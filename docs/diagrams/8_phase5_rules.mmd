@@ -1,0 +1,14 @@
+flowchart LR
+  U["weight updates Δ_1..Δ_n<br/>(BatchNorm buffers: coordinate median)"] --> MED["Median: per coordinate median"]
+  U --> TM["Trimmed mean: per coordinate,<br/>drop 3 largest + 3 smallest, average"]
+  U --> BU["Bulyan (f = 3): repeated Krum picks 9,<br/>then per coordinate average 3 nearest the median"]
+  U --> FL["FLAME: HDBSCAN on cosine distances of models<br/>keep majority cluster → clip to median norm S<br/>→ average + N(0, (0.001·S)²)"]
+  U --> FT["FLTrust: server trains on 100 clean images → g0<br/>trust = ReLU(cos(Δ_i, g0)), rescale to |g0|,<br/>trust-weighted average"]
+  MED --> G["new Global"]
+  TM --> G
+  BU --> G
+  FL --> G
+  FT --> G
+  BU -. "accepted clients" .-> PAR["parents: SCCF over accepted members"]
+  FL -. "accepted clients" .-> PAR
+  FT -. "accepted clients" .-> PAR
