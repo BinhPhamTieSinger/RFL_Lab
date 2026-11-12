@@ -1,0 +1,12 @@
+# FedHEP on CIFAR-100, Table 2 setup (the authors' "topo" method). Everything not listed uses the defaults in
+# src/rfl/experiment/config.py. Regime: set data.alpha to null (IID), 1.0, 0.5, 0.1 or 0.05.
+name: cifar100_fedhep
+method: fedhep
+model: resnet9_multihead
+data:
+  root: ../Paper_Reproduction/data   # reuses the CIFAR-100 copy already downloaded
+  alpha: null
+train:
+  local_epochs: 5                    # authors' total_local_steps for FedHEP (FedAvg uses 3)
+fedhep:
+  num_groups: 3

@@ -1,0 +1,17 @@
+# Phase 5 confirm: the two rules that block the backdoor on seed 42 (Bulyan, FLAME on models), on seeds 123 and 7.
+# Seed-42 runs already exist and are skipped. Baselines p2__defended and p3__zmr exist for all three seeds.
+# 20 runs, about 2.5-3 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase5_confirm.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_robust
+axes:
+  - p5__bulyan: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: bulyan}
+    p5__flame: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: flame}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

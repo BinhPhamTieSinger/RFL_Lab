@@ -1,0 +1,15 @@
+# Defended FedHEP on CIFAR-100, attack-table setup (the authors' "topo_defended" method; their Table 3 rows are
+# alpha = 0.5, 30 rounds). Everything not listed uses the defaults in src/rfl/experiment/config.py.
+# Attack: --set attack.kind=sign_flip attack.rate=0.2   (label_flip, sign_flip, gradient_ascent, random_noise)
+name: cifar100_fedhep_defended
+method: fedhep_defended
+model: resnet9_multihead
+data:
+  root: ../Paper_Reproduction/data   # reuses the CIFAR-100 copy already downloaded
+  alpha: 0.5
+train:
+  local_epochs: 5                    # authors' total_local_steps for FedHEP
+run:
+  rounds: 30
+fedhep:
+  num_groups: 3

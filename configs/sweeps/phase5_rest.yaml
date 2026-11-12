@@ -1,0 +1,18 @@
+# Phase 5 rest: the remaining rules on seeds 123 and 7, so the final Phase 5 table has three seeds for every rule.
+# Seed-42 runs exist and are skipped. 40 runs, about 5 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase5_rest.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_robust
+axes:
+  - p5__fltrust: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: fltrust}
+    p5__flame_upd: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: flame, robust.flame_on: updates}
+    p5__median: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: median}
+    p5__trimmed_mean: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: trimmed_mean}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

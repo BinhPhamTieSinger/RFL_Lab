@@ -1,0 +1,15 @@
+# caches and generated files
+__pycache__/
+*.egg-info/
+.hypothesis/
+.import_linter_cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+graphify-out/
+# transfer folders between machines
+outputs_export/
+outputs_smoke/
+# model checkpoints or anything large in run folders (only metrics.json and config.yaml are tracked)
+outputs*/**/*.pt

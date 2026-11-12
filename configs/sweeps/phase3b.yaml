@@ -1,0 +1,26 @@
+# Phase 3b: fix the false-isolation cascade seen in the screening runs, and confirm on three seeds.
+# All variants: screening with the median reference (Phase 3 "zm"), with
+#   zmr          ... + regrouping by weight similarity (best on seed 42; adds seeds 123 and 7 here)
+#   zmr_ra       ... + readmission (isolated clients keep being scored and come back when they recover)
+#   zm_ra_cap    median + readmission + at most 1/3 of clients left out per round, random groups
+#   zmr_ra_cap   all of it
+# Ordered so the most likely winner runs first. 55 runs (zmr seed 42 already done), about 7.5 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase3b.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - p3b__zmr_ra_cap: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                      plus.regroup: true, plus.readmit: true, plus.max_excluded: 0.34}
+    p3b__zmr_ra: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                  plus.regroup: true, plus.readmit: true}
+    p3b__zm_ra_cap: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                     plus.readmit: true, plus.max_excluded: 0.34}
+    p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

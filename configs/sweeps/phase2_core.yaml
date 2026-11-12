@@ -1,0 +1,21 @@
+# Phase 2 core benchmark: four methods x six attack settings, 3 seeds, the attack-table setup (alpha = 0.5,
+# 30 rounds). Exactly 3 of 15 clients attack (20%), chosen per seed, so every method faces the same attackers.
+# backdoor_x3 boosts the backdoor upload 3x (model replacement), in case the plain backdoor is washed out.
+# 72 runs, roughly 8-9 h on the M5 GPU. Resumable: rerun the same command after an interruption.
+#   python scripts/sweep.py configs/sweeps/phase2_core.yaml
+#   python scripts/summarize.py outputs --filter p2__
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - p2__fedavg: {config: configs/cifar100_fedavg.yaml}
+    p2__multikrum: {config: configs/cifar100_fedavg.yaml, method: multikrum}
+    p2__fedhep: {config: configs/cifar100_fedhep.yaml}
+    p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}
+    backdoor_x3: {attack.kind: backdoor, attack.count: 3, attack.scale: 3.0}

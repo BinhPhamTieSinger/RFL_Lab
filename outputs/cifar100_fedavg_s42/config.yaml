@@ -1,0 +1,24 @@
+name: cifar100_fedavg
+method: fedavg
+model: resnet9
+data:
+  dataset: cifar100
+  root: ../Paper_Reproduction/data
+  train_subset: 10000
+  test_subset: 3000
+  num_clients: 15
+  alpha: null
+train:
+  local_epochs: 3
+  batch_size: 32
+  lr: 0.05
+  min_lr: 0.001
+  momentum: 0.9
+  nesterov: true
+  weight_decay: 0.0001
+run:
+  rounds: 25
+  eval_every: 5
+  seed: 42
+  device: auto
+  output_dir: outputs

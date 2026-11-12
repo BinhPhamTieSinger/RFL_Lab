@@ -1,0 +1,19 @@
+# Phase 5 extra (queued while the weekly limit runs out; analyse after reset): FedHEP+ vs Defended FedHEP vs FLAME
+# under harder settings: a 3x-boosted backdoor, 5 of 15 attackers (33%), and strong non-IID (alpha = 0.05).
+# Names reuse the existing method prefixes, so existing runs (e.g. p2__defended__backdoor_x3) are skipped.
+# Bulyan is left out: it needs n >= 4f + 3, which fails with 5 attackers. 45 runs minus existing, about 6 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase5_extra.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true}
+    p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    p5__flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}
+  - backdoor_x3: {attack.kind: backdoor, attack.count: 3, attack.scale: 3.0}
+    sign_flip_5: {attack.kind: sign_flip, attack.count: 5}
+    backdoor_5: {attack.kind: backdoor, attack.count: 5}
+    a005_clean: {data.alpha: 0.05}
+    a005_sign_flip: {data.alpha: 0.05, attack.kind: sign_flip, attack.count: 3}

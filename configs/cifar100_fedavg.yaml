@@ -1,0 +1,7 @@
+# FedAvg on CIFAR-100, Table 2 setup. Everything not listed uses the defaults in src/rfl/experiment/config.py.
+# Regime: set data.alpha to null (IID), 1.0, 0.5, 0.1 or 0.05, e.g.  --set data.alpha=0.05
+name: cifar100_fedavg
+method: fedavg
+data:
+  root: ../Paper_Reproduction/data   # reuses the CIFAR-100 copy already downloaded
+  alpha: null

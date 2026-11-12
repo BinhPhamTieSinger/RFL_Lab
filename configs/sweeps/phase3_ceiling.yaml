@@ -1,0 +1,12 @@
+# Phase 3, accuracy ceiling (no attack, seed 42). How much can FedHEP's clean accuracy itself rise?
+#   fedhep_w        FedHEP grouping on weights only (BatchNorm counters left out), alpha = 0.5
+#   fedhep_w_a005   the same at alpha = 0.05 (Table 2 regime; FedHEP got 65.5 there)
+#   defended_50r    Defended FedHEP trained for 50 rounds instead of 30 (is 30 rounds the limit?)
+# 3 runs, about 35 min.
+seeds: [42]
+axes:
+  - p3__fedhep_w__clean: {config: configs/cifar100_fedhep.yaml, data.alpha: 0.5, run.rounds: 30,
+                          fedhep.similarity_on: weights}
+    p3__fedhep_w_a005__clean: {config: configs/cifar100_fedhep.yaml, data.alpha: 0.05,
+                               fedhep.similarity_on: weights}
+    p3__defended_50r__clean: {config: configs/cifar100_fedhep_defended.yaml, run.rounds: 50}

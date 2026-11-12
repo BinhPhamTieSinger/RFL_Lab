@@ -1,0 +1,24 @@
+# Phase 5 screen (seed 42): established robust rules in FedHEP's Global step (method fedhep_robust), everything
+# else as Defended FedHEP (random groups, SCCF parents over the clients the rule accepts).
+#   median, trimmed_mean (3 per side), bulyan (f = 3), flame (cosine on local models, as in the paper's
+#   equations), flame_upd (cosine on updates, the other reading of its wording), fltrust (100 root images)
+# Baselines already on your Mac, same seed and attackers: p2__defended__* (Defended FedHEP) and p3__zmr__*
+# (FedHEP+). Same five settings as Phase 2/3b. 30 runs, about 4 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase5_screen.yaml
+seeds: [42]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_robust
+axes:
+  - p5__median: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: median}
+    p5__trimmed_mean: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: trimmed_mean}
+    p5__bulyan: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: bulyan}
+    p5__flame: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: flame}
+    p5__flame_upd: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: flame, robust.flame_on: updates}
+    p5__fltrust: {config: configs/cifar100_fedhep_defended.yaml, robust.rule: fltrust}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

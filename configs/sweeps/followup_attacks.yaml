@@ -1,0 +1,20 @@
+# Follow-up (2026-11-12): adaptive attacks against the four strongest defenses, 3 of 15 attackers, alpha = 0.5.
+# With followup_q.yaml it replaces followup_generalization.yaml (108 runs, ~30 of them repeats of existing runs).
+#   ALIE (Baruch et al. 2019): mean - z * std of the colluders' own clean updates, z from the paper's formula
+#     s = floor(n/2 + 1) - m, z = Phi^-1((n - s) / n) = 0.43 for n = 15, m = 3;
+#   Min-Max (Shejwalkar & Houmansadr 2021): mean - gamma * std of the honest updates (the paper's knowledge of
+#     benign updates), largest gamma whose distance to every update stays within the honest updates' spread.
+# 24 runs, about 3 h. Results go to outputs/, next to the runs they are compared with.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/followup_attacks.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true}
+    p5__flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}
+    p5__bulyan: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: bulyan}
+  - alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

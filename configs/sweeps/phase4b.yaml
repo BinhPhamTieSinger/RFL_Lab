@@ -1,0 +1,26 @@
+# Phase 4b: drill-down v2. A flagged parent no longer removes anyone for a round. Instead, each member's update is
+# compared with the other members' shared deviation (leave-one-out) against clients outside the parent; members
+# that line up get that as evidence (min(z, -alignment z)), and the usual permanent-isolation rule decides.
+# Parents need at least 3 eligible members to be checked.
+#   p4b__v2:     parents checked only when flagged (parent z < -2, as in v1)
+#   p4b__v2_all: every parent checked (does the parent flag help, or is the member check enough on its own?)
+# Baseline = the Phase 4 runs p4__base__* (same config and seeds; already on your Mac, not rerun).
+# Sign flipping is left out: like label flipping, screening removes those attackers in round 1.
+# 24 runs on three seeds, about 3 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase4b.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_plus
+  plus.reference: median
+  plus.drill_down: true
+  plus.drill_mode: evidence
+  plus.min_group: 3
+axes:
+  - p4b__v2: {config: configs/cifar100_fedhep_defended.yaml}
+    p4b__v2_all: {config: configs/cifar100_fedhep_defended.yaml, plus.group_cut: -1.0e+9}  # YAML needs the + to read this as a number
+  - clean: {}
+    label_flip_conc: {attack.kind: label_flip, attack.count: 3, attack.placement: concentrated}
+    backdoor_conc: {attack.kind: backdoor, attack.count: 3, attack.placement: concentrated}
+    backdoor_spread: {attack.kind: backdoor, attack.count: 3, attack.placement: spread}

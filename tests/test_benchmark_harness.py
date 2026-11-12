@@ -1,0 +1,148 @@
+"""Phase 2 testbench: detection metrics, attacker choice and placement, the backdoor attack and its success rate,
+and end-to-end runs that record them."""
+import pytest
+import torch
+from hypothesis import given
+from hypothesis import strategies as st
+
+from rfl.attacks.backdoor import BackdoorAttack, stamp_trigger
+from rfl.attacks.byzantine import select_attackers_fixed
+from rfl.core.types import ClientData, DetectionResult, RoundReport
+from rfl.evaluation.backdoor import attack_success_rate
+from rfl.evaluation.detection import auroc, detection_metrics, malicious_groups, prf
+from rfl.experiment.config import load_config
+from rfl.experiment.runner import run_experiment
+from rfl.grouping.similarity import concentrate, random_assignment, spread
+
+# ----------------------------------------------------------------------------- detection metrics
+
+
+def test_prf_cases():
+    assert prf({1, 2}, {2, 3}) == {"precision": 0.5, "recall": 0.5, "f1": 0.5}
+    assert prf(set(), {1}) == {"precision": None, "recall": 0.0, "f1": 0.0}  # flagged nothing, missed everyone
+    assert prf({1}, set()) == {"precision": 0.0, "recall": None, "f1": None}  # no attackers: recall undefined
+    assert prf({1, 2}, {1, 2}) == {"precision": 1.0, "recall": 1.0, "f1": 1.0}
+
+
+def test_auroc_cases():
+    assert auroc({0: 1.0, 1: 0.9, 2: 0.1}, {2}) == 1.0     # attacker trusted least
+    assert auroc({0: 0.1, 1: 0.2, 2: 0.9}, {2}) == 0.0     # attacker trusted most
+    assert auroc({0: 0.5, 1: 0.5}, {1}) == 0.5             # tie
+    assert auroc({0: 0.5, 1: 0.5}, set()) is None          # one class only
+
+
+def test_parent_is_malicious_only_with_attacker_majority():
+    groups = {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2}
+    assert malicious_groups(groups, {0, 1, 3}) == {0}  # 2 of 3 in parent 0; 1 of 2 in parent 1 is no majority
+    assert malicious_groups(groups, {3, 4, 5}) == {1}
+
+
+def test_detection_metrics_with_parent_check():
+    report = RoundReport(DetectionResult({0: 1.0, 1: 0.2, 2: 0.1}, frozenset({2})), groups={0: 0, 1: 1, 2: 1},
+                         flagged_groups=frozenset({1}))
+    m = detection_metrics(report, {1, 2})
+    assert m["recall"] == 0.5 and m["precision"] == 1.0 and m["auroc"] == 1.0
+    assert m["malicious_groups"] == [1] and m["group"]["f1"] == 1.0
+
+
+# ----------------------------------------------------------------------------- attacker choice and placement
+
+
+@given(st.integers(0, 15), st.integers(0, 10_000))
+def test_fixed_count_is_exact_and_repeatable(count, seed):
+    chosen = select_attackers_fixed(15, count, seed)
+    assert len(chosen) == count and chosen == select_attackers_fixed(15, count, seed)
+
+
+@given(st.integers(0, 10_000), st.integers(2, 5), st.sets(st.integers(0, 14), max_size=8))
+def test_concentrate_puts_attackers_in_one_parent(seed, k, chosen):
+    before = random_assignment(15, k, seed)
+    after = concentrate(before, chosen, k)
+    cap = max(len(chosen), -(-15 // k))
+    assert all(after[c] == 0 for c in chosen)
+    assert sum(g == 0 for g in after.values()) <= cap
+    assert all(after[c] == before[c] for c in after if before[c] != 0 and c not in chosen)  # others stay put
+
+
+# ----------------------------------------------------------------------------- backdoor
+
+
+def test_trigger_changes_only_the_corner_patch():
+    x = torch.zeros(2, 3, 32, 32)
+    out = stamp_trigger(x)
+    assert (out[:, :, :-3, :] == 0).all() and (out[:, :, :, :-3] == 0).all() and (out[:, :, -3:, -3:] > 0).all()
+    assert (x == 0).all()  # input untouched
+
+
+def test_backdoor_poisons_a_fixed_fraction_once():
+    data = ClientData(torch.zeros(40, 3, 32, 32), torch.full((40,), 7), torch.zeros(1, 3, 32, 32), torch.zeros(1))
+    attack = BackdoorAttack(target=2, fraction=0.25, seed=1)
+    poisoned = attack.poison_data(5, data)
+    assert int((poisoned.y_train == 2).sum()) == 10
+    assert attack.poison_data(5, data) is poisoned  # same poisoned set every round
+    start, trained = torch.zeros(4), torch.ones(4)
+    assert torch.equal(BackdoorAttack(scale=5.0).poison_upload(trained, start), torch.full((4,), 5.0))
+
+
+def test_attack_success_rate_counts_non_target_images_of_scored_clients():
+    clients = [ClientData(torch.zeros(1), torch.zeros(1), torch.zeros(4, 3, 32, 32), torch.tensor([0, 1, 1, 2]))
+               for _ in range(2)]
+    always_target = lambda cid, x: torch.nn.functional.one_hot(torch.zeros(len(x), dtype=torch.long), 3).float()  # noqa: E731
+    never = lambda cid, x: torch.nn.functional.one_hot(torch.ones(len(x), dtype=torch.long), 3).float()  # noqa: E731
+    assert attack_success_rate(always_target, clients, stamp_trigger, 0) == 100.0
+    assert attack_success_rate(never, clients, stamp_trigger, 0) == 0.0
+    assert attack_success_rate(always_target, clients, stamp_trigger, 0, exclude=frozenset({0, 1})) is None
+
+
+# ----------------------------------------------------------------------------- end to end
+
+
+def _cfg(tmp_path, method, **attack):
+    over = {"name": f"h_{method}", "method": method, "data.dataset": "synthetic", "data.num_clients": 6,
+            "data.train_subset": 600, "data.test_subset": 300, "data.alpha": 0.5, "train.local_epochs": 1,
+            "run.rounds": 2, "run.eval_every": 2, "run.device": "cpu", "run.output_dir": str(tmp_path),
+            "model": "resnet9_multihead" if method.startswith("fedhep") else "resnet9"}
+    over.update({f"attack.{k}": v for k, v in attack.items()})
+    return load_config(overrides=over)
+
+
+@pytest.mark.parametrize("method", ["fedavg", "multikrum", "fedhep", "fedhep_defended"])
+def test_backdoor_run_records_asr_and_detection_every_round(tmp_path, method):
+    result = run_experiment(_cfg(tmp_path, method, kind="backdoor", count=2))
+    assert len(result["attackers"]) == 2
+    assert result["history"][-1]["asr"] is not None
+    assert [d["round"] for d in result["detection"]] == [1, 2]
+    if method == "multikrum":
+        assert len(result["detection"][-1]["flagged"]) == 6 - 3  # keeps m = 3
+        assert result["detection"][-1]["auroc"] is not None
+
+
+def test_concentrated_placement_makes_parent_zero_malicious(tmp_path):
+    result = run_experiment(_cfg(tmp_path, "fedhep_defended", kind="sign_flip", count=2, placement="concentrated"))
+    assert result["detection"][0]["malicious_groups"] == [0]
+
+
+def test_sweep_runs_every_combination_once_and_summary_aggregates_seeds(tmp_path):
+    from rfl.experiment.summary import summarize, to_markdown
+    from rfl.experiment.sweep import expand, run_sweep
+
+    spec = {"seeds": [1, 2],
+            "common": {"data.dataset": "synthetic", "data.num_clients": 4, "data.train_subset": 200,
+                       "data.test_subset": 100, "train.local_epochs": 1, "run.rounds": 1, "run.device": "cpu",
+                       "run.output_dir": str(tmp_path)},
+            "axes": [{"avg": {"method": "fedavg"}, "krum": {"method": "multikrum"}},
+                     {"clean": {}, "sign": {"attack.kind": "sign_flip", "attack.count": 1}}]}
+    assert [n for n, _ in expand(spec)] == ["avg__clean", "avg__sign", "krum__clean", "krum__sign"]
+    assert len(run_sweep(spec)) == 8
+    assert run_sweep(spec) == []  # everything already done
+    rows = {r["name"]: r for r in summarize(tmp_path)}
+    assert rows["krum__sign"]["seeds"] == [1, 2] and rows["krum__sign"]["attackers"] == [1, 1]
+    assert rows["krum__sign"]["auroc"] is not None and rows["avg__clean"]["recall"] is None
+    assert "krum__sign" in to_markdown(list(rows.values()))
+
+
+@given(st.integers(0, 10_000), st.integers(2, 5), st.sets(st.integers(0, 14), max_size=8))
+def test_spread_caps_attackers_per_parent(seed, k, chosen):
+    after = spread(random_assignment(15, k, seed), chosen, k)
+    per_group = [sum(after[c] == g for c in chosen) for g in range(k)]
+    assert max(per_group) <= -(-len(chosen) // k) if chosen else True

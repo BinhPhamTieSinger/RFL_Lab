@@ -1,0 +1,23 @@
+# Phase 4: the drill-down defense. Global checks each parent's mean update against random groups of the same
+# size; members of a flagged parent then face a stricter cut (z < -1 instead of -2.5) that round.
+# Base = FedHEP+ with the median reference and random groups (regrouping off, so attacker placement holds).
+#   placement concentrated: all 3 attackers start in parent 0 (3 attackers + 2 honest: a malicious parent)
+#   placement spread:       one attacker per parent (no malicious parent: the drill-down should add nothing)
+# 42 runs on three seeds, about 5.5 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase4.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_plus
+  plus.reference: median
+axes:
+  - p4__base: {config: configs/cifar100_fedhep_defended.yaml}
+    p4__drill: {config: configs/cifar100_fedhep_defended.yaml, plus.drill_down: true}
+  - clean: {}
+    sign_flip_conc: {attack.kind: sign_flip, attack.count: 3, attack.placement: concentrated}
+    label_flip_conc: {attack.kind: label_flip, attack.count: 3, attack.placement: concentrated}
+    backdoor_conc: {attack.kind: backdoor, attack.count: 3, attack.placement: concentrated}
+    sign_flip_spread: {attack.kind: sign_flip, attack.count: 3, attack.placement: spread}
+    label_flip_spread: {attack.kind: label_flip, attack.count: 3, attack.placement: spread}
+    backdoor_spread: {attack.kind: backdoor, attack.count: 3, attack.placement: spread}

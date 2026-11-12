@@ -1,0 +1,17 @@
+# Phase 2 placement check: the same 3 attackers as phase2_core.yaml (where the random grouping places them), now
+# all in parent 0 ("concentrated") or one per parent ("spread"). Compare with the matching phase2_core rows.
+# For FedHEP the placement only holds until its first similarity regrouping (round 2); Defended FedHEP never
+# regroups. 24 runs, about 3.5 h.
+#   python scripts/sweep.py configs/sweeps/phase2_placement.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  attack.count: 3
+axes:
+  - p2__fedhep: {config: configs/cifar100_fedhep.yaml}
+    p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+  - sign_flip: {attack.kind: sign_flip}
+    backdoor: {attack.kind: backdoor}
+  - concentrated: {attack.placement: concentrated}
+    spread: {attack.placement: spread}

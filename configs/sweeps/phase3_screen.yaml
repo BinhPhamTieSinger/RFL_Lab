@@ -1,0 +1,26 @@
+# Phase 3 screening: which of the fixes for Defended FedHEP's failure points help, one seed first (42, whose
+# Phase 2 rows are the baseline: same attackers 0, 9, 11). The best variants then get seeds 123 and 7.
+# Each variant is Defended FedHEP with its trust ledger replaced by screening (rfl/defense/screening.py):
+#   z      robust z on SCCF's own signal (root-head rows) against SCCF's own reference (mean direction)
+#   zm     ... against the coordinate-wise median update instead
+#   zw     ... on the whole weight update (not just the root head) against the median
+#   zmr    zm, plus regrouping clients by weight-update similarity instead of random groups
+# 20 runs, about 2.5-3 h.
+#   python scripts/sweep.py configs/sweeps/phase3_screen.yaml
+#   python scripts/summarize.py outputs --filter p3__
+seeds: [42]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - p3__z: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus}
+    p3__zm: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median}
+    p3__zw: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+             plus.signal: weights}
+    p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

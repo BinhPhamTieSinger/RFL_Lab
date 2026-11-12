@@ -1,0 +1,725 @@
+{
+  "name": "p2__multikrum__clean",
+  "method": "multikrum",
+  "seed": 42,
+  "alpha": 0.5,
+  "final": {
+    "pooled": 23.266666666666666,
+    "mean_client": 22.854365372398142,
+    "bottom10": 16.906375115491223,
+    "per_client": {
+      "0": 23.046875,
+      "1": 21.951219512195124,
+      "2": 30.19607843137255,
+      "3": 24.267782426778243,
+      "4": 20.60810810810811,
+      "5": 32.44444444444444,
+      "6": 21.363636363636363,
+      "7": 20.0,
+      "8": 34.57446808510638,
+      "9": 21.98581560283688,
+      "10": 16.75392670157068,
+      "11": 19.858156028368793,
+      "12": 17.218543046357617,
+      "13": 17.058823529411764,
+      "14": 21.487603305785125
+    }
+  },
+  "history": [
+    {
+      "round": 5,
+      "pooled_acc": 7.5,
+      "mean_client_acc": 7.153020215581137,
+      "bottom10": 3.759804612277488,
+      "elapsed_s": 57.500924825668335
+    },
+    {
+      "round": 10,
+      "pooled_acc": 14.233333333333333,
+      "mean_client_acc": 13.793716814663965,
+      "bottom10": 7.519609224554976,
+      "elapsed_s": 114.81312584877014
+    },
+    {
+      "round": 15,
+      "pooled_acc": 17.2,
+      "mean_client_acc": 16.849622400235674,
+      "bottom10": 10.256690930983527,
+      "elapsed_s": 172.18548679351807
+    },
+    {
+      "round": 20,
+      "pooled_acc": 21.9,
+      "mean_client_acc": 21.426734271037397,
+      "bottom10": 14.423934996007702,
+      "elapsed_s": 229.64276766777039
+    },
+    {
+      "round": 25,
+      "pooled_acc": 23.0,
+      "mean_client_acc": 22.49578533587884,
+      "bottom10": 16.62582154394564,
+      "elapsed_s": 286.95829486846924
+    },
+    {
+      "round": 30,
+      "pooled_acc": 23.266666666666666,
+      "mean_client_acc": 22.854365372398142,
+      "bottom10": 16.906375115491223,
+      "elapsed_s": 344.3459949493408
+    }
+  ],
+  "device": "mps",
+  "client_train_sizes": [
+    705,
+    693,
+    700,
+    667,
+    873,
+    695,
+    837,
+    588,
+    702,
+    552,
+    716,
+    540,
+    605,
+    657,
+    470
+  ],
+  "attackers": [],
+  "detection": [
+    {
+      "round": 1,
+      "flagged": [
+        0,
+        1,
+        2,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 2,
+      "flagged": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 3,
+      "flagged": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 4,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 5,
+      "flagged": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 6,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 7,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 8,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 9,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 10,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 11,
+      "flagged": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 12,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 13,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 14,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 15,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 16,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 17,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 18,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 19,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 20,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 21,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 22,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 23,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 24,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 25,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 26,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 27,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 28,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 29,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    },
+    {
+      "round": 30,
+      "flagged": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null
+    }
+  ],
+  "model_floats": 1671500,
+  "diagnostics": null
+}

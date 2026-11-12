@@ -1,0 +1,23 @@
+# SUPERSEDED (2026-11-12) by followup_attacks.yaml and followup_q.yaml: about 30 of these runs repeat existing ones.
+# Freeze candidate before running this matrix. All comparisons use identical seeds and exact attacker counts.
+# alpha=0.2 with 20 clients, seed=2026 is a newly reserved setting; do not tune on its results.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  run.output_dir: outputs_followup_generalization
+  plus.reference: median
+  plus.regroup: true
+axes:
+  - generalize__defended: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_defended}
+    generalize__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus}
+  - a005: {data.alpha: 0.05}
+    a05: {data.alpha: 0.5}
+  - clean: {}
+    sign1: {attack.kind: sign_flip, attack.count: 1}
+    sign3: {attack.kind: sign_flip, attack.count: 3}
+    sign5: {attack.kind: sign_flip, attack.count: 5}
+    backdoor1: {attack.kind: backdoor, attack.count: 1}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}
+    backdoor5: {attack.kind: backdoor, attack.count: 5}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 1.0}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

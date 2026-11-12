@@ -1,0 +1,25 @@
+# Phase 3c: stop the false-isolation cascade by never shrinking the yardstick. The z-score's median and spread
+# (and the median reference) are taken over every client, isolated ones included (plus.population: all);
+# isolation stays permanent (readmission brought attackers back in 3b).
+#   zmp      median reference, full population, evidence cut 1.5, random groups (regrouping made no clear
+#            difference in 3b, so the simpler form is tested first)
+#   zmp2     ... with a stricter evidence cut of 2.0 (fewer honest clients removed, maybe fewer backdoor catches)
+#   zmrp     ... cut 1.5 with regrouping, for a direct comparison with the 3b winner (z + median + regroup)
+# 45 runs, about 6 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/phase3c.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_plus
+  plus.reference: median
+  plus.population: all
+axes:
+  - p3c__zmp: {config: configs/cifar100_fedhep_defended.yaml}
+    p3c__zmp2: {config: configs/cifar100_fedhep_defended.yaml, plus.evidence_cut: 2.0}
+    p3c__zmrp: {config: configs/cifar100_fedhep_defended.yaml, plus.regroup: true}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    label_flip: {attack.kind: label_flip, attack.count: 3}
+    noise: {attack.kind: random_noise, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}

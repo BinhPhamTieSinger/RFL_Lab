@@ -1,0 +1,17 @@
+# Paired, single-factor ablations. No changes to historical output folders.
+seeds: [42, 123, 7]
+common:
+  method: fedhep_plus
+  data.alpha: 0.5
+  run.rounds: 30
+  run.output_dir: outputs_followup_full
+  plus.reference: median
+  plus.regroup: true
+axes:
+  - followup__baseline: {config: configs/cifar100_fedhep_defended.yaml}
+    followup__floor001: {config: configs/cifar100_fedhep_defended.yaml, plus.mad_floor: 0.01}
+    followup__floor003: {config: configs/cifar100_fedhep_defended.yaml, plus.mad_floor: 0.03}
+    followup__patience3: {config: configs/cifar100_fedhep_defended.yaml, plus.isolation_patience: 3, plus.exclusion_patience: 3}
+  - clean: {}
+    sign3: {attack.kind: sign_flip, attack.count: 3}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}

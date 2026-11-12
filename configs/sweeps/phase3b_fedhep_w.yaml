@@ -1,0 +1,6 @@
+# Phase 3b: does grouping on weights only (BatchNorm counters left out) really lift FedHEP's clean accuracy?
+# Seed 42 gave 48.8 vs 47.6; this adds seeds 123 and 7. 2 runs, about 25 min.
+seeds: [42, 123, 7]
+axes:
+  - p3__fedhep_w__clean: {config: configs/cifar100_fedhep.yaml, data.alpha: 0.5, run.rounds: 30,
+                          fedhep.similarity_on: weights}

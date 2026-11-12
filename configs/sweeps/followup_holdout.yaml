@@ -1,0 +1,17 @@
+# Newly reserved configuration, not a claim of an independent dataset validation.
+seeds: [2026]
+common:
+  data.alpha: 0.2
+  data.num_clients: 20
+  run.rounds: 30
+  run.output_dir: outputs_followup_holdout
+  plus.reference: median
+  plus.regroup: true
+axes:
+  - holdout__defended: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_defended}
+    holdout__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus}
+  - clean: {}
+    sign4: {attack.kind: sign_flip, attack.count: 4}
+    backdoor4: {attack.kind: backdoor, attack.count: 4}
+    alie4: {attack.kind: alie, attack.count: 4, attack.knowledge: colluders, attack.alie_z: 0.39}  # paper's z for n=20, m=4
+    minmax4: {attack.kind: min_max, attack.count: 4, attack.knowledge: omniscient}
