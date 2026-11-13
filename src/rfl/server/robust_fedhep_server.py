@@ -58,7 +58,8 @@ class RobustFedHEPServer(DefendedFedHEPServer):
         device = self.root.x_train.device
         cpu_state = torch.get_rng_state()
         dev_state = (torch.mps.get_rng_state() if device.type == "mps" else
-                     torch.cuda.get_rng_state(device) if device.type == "cuda" else None)
+                     torch.cuda.get_rng_state(device) if device.type == "cuda" else
+                     torch.xpu.get_rng_state(device) if device.type == "xpu" else None)
         self._load(start)
         if self.root_memory.local_head is not None:
             self.model.fc2_local.load_state_dict(self.root_memory.local_head)
@@ -66,6 +67,8 @@ class RobustFedHEPServer(DefendedFedHEPServer):
         torch.set_rng_state(cpu_state)
         if dev_state is not None and device.type == "mps":
             torch.mps.set_rng_state(dev_state)
+        elif dev_state is not None and device.type == "xpu":
+            torch.xpu.set_rng_state(dev_state, device)
         elif dev_state is not None:
             torch.cuda.set_rng_state(dev_state, device)
         return flatten(self.model.state_dict()) - start

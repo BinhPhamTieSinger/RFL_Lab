@@ -29,7 +29,7 @@ class RunConfig:
     rounds: int = 25                     # authors' recorded Table 2 runs (their runner's default is 20)
     eval_every: int = 5                  # authors' eval_interval; the last round is always evaluated
     seed: int = 42
-    device: str = "auto"                 # auto: cuda, then mps, then cpu
+    device: str = "auto"                 # auto: cuda, then xpu, then mps, then cpu
     output_dir: str = "outputs"
 
 

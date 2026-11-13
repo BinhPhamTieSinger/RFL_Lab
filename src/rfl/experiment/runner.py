@@ -28,6 +28,8 @@ def pick_device(name: str) -> torch.device:
         return torch.device(name)
     if torch.cuda.is_available():
         return torch.device("cuda")
+    if hasattr(torch, "xpu") and torch.xpu.is_available():  # Intel GPUs (e.g. the Acer's Arc 130V)
+        return torch.device("xpu")
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")

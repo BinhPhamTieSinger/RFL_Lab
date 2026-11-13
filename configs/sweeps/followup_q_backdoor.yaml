@@ -1,9 +1,9 @@
-# Follow-up (2026-11-12): different q, the authors' attacker rule (each client attacks with probability q), so the
+# Follow-up (2026-11-13): different q, the authors' attacker rule (each client attacks with probability q), so the
 # number of attackers varies by seed: q = 0.1 -> 1 / 0 / 2 attackers (seeds 42 / 123 / 7), q = 0.3 -> 6 / 3 / 5,
 # q = 0.4 -> 10 / 6 / 6. Seed 42 at q = 0.4 is an attacker MAJORITY (10 of 15): a stress test no majority-based
-# defense is expected to pass. No-defense baselines (FedAvg, undefended FedHEP) vs Defended FedHEP vs FedHEP+,
-# sign flip and backdoor, alpha = 0.5. 72 runs, about 9 h.
-#   caffeinate -i python scripts/sweep.py configs/sweeps/followup_q.yaml
+# defense is expected to pass. No-defense baselines (FedAvg, undefended FedHEP) vs Defended FedHEP vs FedHEP+.
+# Backdoor only. 36 runs, about 6 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/followup_q_backdoor.yaml
 seeds: [42, 123, 7]
 common:
   data.alpha: 0.5
@@ -14,9 +14,6 @@ axes:
     p2__defended: {config: configs/cifar100_fedhep_defended.yaml}
     p3__zmr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
               plus.regroup: true}
-  - q10_sign: {attack.kind: sign_flip, attack.rate: 0.1}
-    q30_sign: {attack.kind: sign_flip, attack.rate: 0.3}
-    q40_sign: {attack.kind: sign_flip, attack.rate: 0.4}
-    q10_backdoor: {attack.kind: backdoor, attack.rate: 0.1}
+  - q10_backdoor: {attack.kind: backdoor, attack.rate: 0.1}
     q30_backdoor: {attack.kind: backdoor, attack.rate: 0.3}
     q40_backdoor: {attack.kind: backdoor, attack.rate: 0.4}

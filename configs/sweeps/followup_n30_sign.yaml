@@ -1,0 +1,21 @@
+# Follow-up (2026-11-13, professor's request): 30 clients (same 10,000 training images), 3 parents, alpha = 0.5,
+# 6 / 9 / 12 attackers of 30 (20% / 30% / 40%), sign flip (plus no attack). No-defense baselines (FedAvg, undefended
+# FedHEP) vs Defended FedHEP vs FedHEP+ vs FLAME. Bulyan is left out: it needs n >= 4f + 3.
+# 60 runs, about 11 h.
+#   caffeinate -i python scripts/sweep.py configs/sweeps/followup_n30_sign.yaml
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  data.num_clients: 30
+  run.rounds: 30
+axes:
+  - n30__fedavg: {config: configs/cifar100_fedavg.yaml}
+    n30__fedhep: {config: configs/cifar100_fedhep.yaml}
+    n30__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    n30__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true}
+    n30__flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}
+  - clean: {}
+    sign6: {attack.kind: sign_flip, attack.count: 6}
+    sign9: {attack.kind: sign_flip, attack.count: 9}
+    sign12: {attack.kind: sign_flip, attack.count: 12}

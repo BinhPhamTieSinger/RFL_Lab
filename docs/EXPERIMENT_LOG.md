@@ -660,7 +660,7 @@ It does drop: **sign flipping costs Defended FedHEP 10.3 points** (48.4 → 38.1
 
 **Weights-only grouping vs the defense.** Agreed: weights-only grouping changed clean accuracy by +0.3 over three seeds, while the defense changed sign-flip accuracy by +8.3 (+12.6 with 5 attackers) and backdoor success by −58 points. The defense is the more promising direction.
 
-### Run plan for your Mac (⏳, about 14 h in total, in this order)
+### Run plan for your Mac (superseded by the 2026-11-13 run plan below)
 1. `followup_diagnostics.yaml`: MAD per round at full scale, absolute floor 0.01 / 0.03, patience 3 (36 runs).
 2. `followup_attacks.yaml`: ALIE and Min-Max vs Defended FedHEP, FedHEP+, FLAME, Bulyan (24 runs).
 3. `followup_q.yaml`: q = 0.1 / 0.3 / 0.4 (36 runs).
@@ -690,11 +690,27 @@ So "the MAD shrinks" is not what happens. What changes is that the protection fr
 - **No-defense baselines** added to the queued sweeps: undefended FedHEP in `followup_attacks` (FedAvg can't run ALIE/Min-Max: those need FedHEP's upload hook) and FedAvg + undefended FedHEP in `followup_q`. The main Phase 2 settings already have both (`p2__fedavg`, `p2__fedhep`).
 - **Larger experiments:** `followup_scale.yaml`, 30 clients with 6 / 9 / 12 attackers (20 / 30 / 40%), sign flip and backdoor, for FedAvg, undefended FedHEP, Defended FedHEP, FedHEP+ and FLAME (105 runs). A toy check at 12 of 30 shows FedHEP+'s first-round margin is thin at 40% (attackers' z ≈ −3 against the −2.5 cut, 8 of 12 left out in round 1); all 12 were isolated in round 2.
 
-### Run plan for your Mac (about 37 h in total, in this order; each sweep can be stopped and resumed)
-| Sweep | Runs | About | Question it answers |
-|---|---|---|---|
-| `followup_diagnostics.yaml` | 36 | 5 h | real MAD per round; absolute floor 0.01 / 0.03; patience 3 |
-| `followup_attacks.yaml` | 30 | 4 h | ALIE and Min-Max vs no defense, Defended FedHEP, FedHEP+, FLAME, Bulyan |
-| `followup_q.yaml` | 72 | 9 h | q = 0.1 / 0.3 / 0.4 (authors' rule), with no-defense baselines |
-| `followup_holdout.yaml` | 10 | 1.5 h | held-out setting: α = 0.2, 20 clients, 4 attackers, seed 2026 |
-| `followup_scale.yaml` | 105 | 14 h | 30 clients, 20–40% attackers, with no-defense baselines |
+### Run plan (2026-11-13: split into self-contained chunks)
+Measured on your Mac: about 11–14 minutes per run (the earlier estimate of 8 was too low), so the full queue is about 2 days of GPU time. Each file below contains its own baselines (no-defense FedAvg and undefended FedHEP where they apply), so every file can run on either machine without mixing devices inside one comparison. Run them in priority order; each can be stopped and resumed.
+
+| Priority | Sweep | Runs | About | Question it answers |
+|---|---|---|---|---|
+| 1 | `followup_diagnostics.yaml` (running; 9 of 36 done) | 36 | 5 h left | real MAD per round; absolute floor 0.01 / 0.03; patience 3 |
+| 2 | `followup_attacks.yaml` | 30 | 6 h | ALIE and Min-Max vs no defense, Defended FedHEP, FedHEP+, FLAME, Bulyan |
+| 3 | `followup_n20_sign.yaml` | 45 | 8 h | 20 clients, 5 / 7 sign flippers (25 / 35%), plus no attack |
+| 4 | `followup_n20_backdoor.yaml` | 30 | 6 h | 20 clients, 5 / 7 backdoor attackers |
+| 5 | `followup_holdout.yaml` | 10 | 2 h | held-out setting: α = 0.2, 20 clients, 4 attackers, seed 2026 |
+| 6 | `followup_q_sign.yaml` | 36 | 6 h | q = 0.1 / 0.3 / 0.4, sign flip |
+| 7 | `followup_q_backdoor.yaml` | 36 | 6 h | q = 0.1 / 0.3 / 0.4, backdoor |
+| 8 | `followup_n30_sign.yaml` | 60 | 11 h | 30 clients, 6 / 9 / 12 sign flippers (20–40%), plus no attack |
+| 9 | `followup_n30_backdoor.yaml` | 45 | 8 h | 30 clients, 6 / 9 / 12 backdoor attackers |
+
+`followup_generalization.yaml` is superseded (kept for the record; do not run).
+
+**Two machines.** The Mac runs priorities 1–4 in order. If the Acer's Intel GPU turns out to be usable (one 2-round benchmark decides, below), it takes files from the bottom of the list (9, 8, 7, …) and the two meet in the middle. A file is never split between machines: results for the same seed differ slightly between Apple and Intel GPUs, so all methods in one comparison must run on the same device. Each run records its device in `metrics.json`.
+
+**Setting up the Acer as a second runner** (Ubuntu, Core Ultra 5 226V, Intel Arc 130V, 16 GB). Its integrated GPU is reached through PyTorch's `xpu` device, which RFL Lab now picks automatically (`run.device: auto` tries cuda, then xpu, then mps, then cpu).
+1. Install Intel's GPU driver packages for Ubuntu (Intel's "client GPU" instructions), then PyTorch with XPU support: `pip install torch torchvision --index-url https://download.pytorch.org/whl/xpu`. Check with `python -c "import torch; print(torch.xpu.is_available())"`.
+2. `git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git` into `/srv/projects`, install with `pip install -e ".[dev]"`, and copy CIFAR-100 from the Mac (`Paper_Reproduction/data/cifar-100-python`, 178 MB) to the matching `../Paper_Reproduction/data` path.
+3. Benchmark 2 rounds: `time python scripts/run.py configs/cifar100_fedhep_defended.yaml --set run.rounds=2 run.eval_every=2 name=bench run.output_dir=outputs_bench`. One round on the Mac takes about 25 s (12 min / 30 rounds). The Acer is worth using if its round takes under about 1 minute; on CPU alone it will be far slower.
+4. Run sweeps from the bottom of the list, then copy their run folders back into the Mac's `outputs/` (`scp -r`). Every run folder holds only `metrics.json` and `config.yaml`.

@@ -55,12 +55,12 @@ def fig_three_seeds(runs: dict) -> None:
     ax.set_xticks(range(len(SETTINGS)), [t for _, t in SETTINGS])
     ax.set_ylim(30, 52)
     ax.set_ylabel("Accuracy, honest clients (%)")
-    ax.set_title("Accuracy (mean ± sd, 3 seeds, 3 of 15 attackers, α = 0.5)", pad=26)
-    ax.legend(ncols=8, fontsize=8, loc="lower left", bbox_to_anchor=(0, 1.07), frameon=False)
+    ax.set_title("Accuracy (mean ± sd, 3 seeds, 3 of 15 attackers, α = 0.5)")
     ax2.set_xticks(range(len(METHODS)), [lab for _, lab, _ in METHODS], rotation=55, ha="right", fontsize=8)
     ax2.set_ylabel("Backdoor success (%)")
     ax2.set_title("Backdoor success · lower is better")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.07, 1, 1))  # leave a band at the bottom for the legend, clear of every title
+    fig.legend(*ax.get_legend_handles_labels(), ncols=8, fontsize=8.5, loc="lower center", frameon=False)
     pr.save(fig, "phase5_three_seeds.png")
 
 
@@ -121,14 +121,14 @@ def fig_detection(runs: dict) -> None:
         ax.set_xticks(range(len(attacks)), [t for _, t in attacks], fontsize=8)
         ax.set_ylim(0, 1.05)
         ax.set_title(title, fontsize=10)
-    fig.legend(*axes[0].get_legend_handles_labels(), fontsize=8, ncols=8, loc="lower center",
-               bbox_to_anchor=(0.5, -0.06), frameon=False)
+    legend = axes[0].get_legend_handles_labels()
     axes[2].set_xticks(range(len(METHODS)), [lab for _, lab, _ in METHODS], rotation=55, ha="right", fontsize=8)
     axes[2].set_ylabel("% of honest clients flagged per round")
     axes[2].set_title("False-isolation rate (all 5 settings)", fontsize=10)
     fig.suptitle("Detection, reported separately (mean over rounds and 3 seeds)", x=0.01, ha="left",
                  fontweight="bold", fontsize=11)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.legend(*legend, fontsize=8.5, ncols=8, loc="lower center", frameon=False)
     pr.save(fig, "detection_breakdown.png")
 
 
