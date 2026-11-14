@@ -91,6 +91,7 @@ Weight $\omega_i \propto T_i$. A client whose trust falls below $\theta_{\text{o
 | H5 | Parent discounting helps when a parent has an attacker majority | placement attack: attackers concentrated in one group | no gain over Global view alone |
 | H6 | Sketching keeps detection while cutting cost | k ∈ {512, 2048, 8192, full} | detection F1 drops > 0.02 at k = 2048, or no measurable time saving |
 | H7 | The full method stays within 0.5 points of FedHEP with no attack | every setting | clean accuracy cost > 0.5 points |
+| H8 | A backdoor implanted before detection can be removed after it (added 2026-11-14, D32) | two variants of the published recovery idea (FedEraser, IWQoS 2021; FedRecover, commonly cited as IEEE S&P 2023): (a) rewind the shared layers to the stored Global model from before the isolated clients' first suspicious round and continue training without them; (b) also replay the stored honest updates since then. The model has 1.72 M floats (6.9 MB), so keeping every Global model costs about 0.2 GB per 30-round run, while keeping every client update for replay costs about 4 GB at 20 clients. Compare both to doing nothing | success not reduced by at least half, or accuracy cost > 1 point |
 
 ## 4. Experiment stages
 
@@ -168,7 +169,12 @@ Efficiency results will be reported per device (Apple M5 MPS, Intel Arc XPU), ne
 - **Compute**: Stage 3 may need cloud GPU time if laptops are too slow at 100 clients; decided after Stage 1.
 - **FedHEP citation**: the review could not find the FedHEP paper in any public index; the paper must cite the team's own copy.
 
-## 7. Immediate next steps
+## 7. Progress
+
+- **2026-11-14:** L0 is implemented (`robust.rule: arc_nnm_tm`, `robust.momentum`, decision D31) and queued as rung R5 ahead of the screening rungs: `phase6_l0.yaml` (D1) and `phase6_l0_a02.yaml` (D2). Stage 1 is partly done: every run now records per-round time and peak memory. Per-phase timing (training vs defense) is still to do. New evidence: on 20 clients a backdoor keeps growing after all its attackers are isolated, which adds H8.
+- Reversible trust (H3) must be tested against the failure recorded in D22: readmission brought attackers back late in training.
+
+## 8. Next steps
 1. Finish Stage 0 sweeps on both machines; sync the Acer with `bash scripts/sync_acer.sh`.
 2. Implement Stage 1 instrumentation and re-run one setting per method for cost numbers.
 3. Implement L0 (momentum, NNM, ARC, trimmed mean) and the bimodality gate first: they address the two failures we have measured (adaptive attackers missed, honest clients isolated).

@@ -77,8 +77,8 @@ Design, hypotheses H1–H7 and stage gates: `docs/RESEARCH_PLAN.md`. Evidence: `
 | Stage | Status | Exit criterion |
 |---|---|---|
 | 0 · Finish follow-up sweeps | Running (Mac and Acer) | all nine follow-up files plus `followup_two_sided` and `followup_alpha02` logged |
-| 1 · Instrumentation (time per phase, peak memory, bytes) | Not started | cost columns filled for every existing method on one setting |
-| 2 · Ablation ladder R1–R8 on D1 and D2 | Not started | each rung kept or dropped by the gate; negative results logged |
+| 1 · Instrumentation (time per phase, peak memory, bytes) | Partly done (2026-11-14): per-round time and peak memory in every run | cost columns filled for every existing method on one setting |
+| 2 · Ablation ladder R1–R8 on D1 and D2 | L0 (R5) implemented and queued first: `phase6_l0`, `phase6_l0_a02` | each rung kept or dropped by the gate; negative results logged |
 | 3 · Protocol at the 2026 bar | Not started | grid sized from Stage 1 timings |
 | 4 · Held-out validation (seeds 2027–2029, α = 0.1 / 50 clients, FEMNIST) | Reserved, untouched | improvement holds on settings never used for tuning |
 | 5 · Paper | Not started | |

@@ -1,0 +1,21 @@
+# Phase 6, rung R5 run first (2026-11-14): layer L0 of docs/RESEARCH_PLAN.md alone in FedHEP's Global step:
+# ARC (Allouah et al., ICLR 2025) -> NNM (Allouah et al., AISTATS 2023) -> coordinate trimmed mean, f = assumed
+# attackers, with and without worker momentum (beta 0.5 over rounds). Run first because it addresses both measured
+# failures without any screening: Min-Max/ALIE damage (bounded, not detected) and false isolation (nobody is
+# isolated). Development setting D1 (alpha 0.5, 15 clients, 3 attackers); baselines p2__*, p3__zmr__*, p5__* are
+# Mac runs, so run on the Mac. 30 runs, about 6 h. D2 follows in phase6_l0_a02.yaml.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  method: fedhep_robust
+  robust.rule: arc_nnm_tm
+  robust.assumed_attackers: 3
+axes:
+  - p6__l0: {config: configs/cifar100_fedhep_defended.yaml}
+    p6__l0m: {config: configs/cifar100_fedhep_defended.yaml, robust.momentum: 0.5}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

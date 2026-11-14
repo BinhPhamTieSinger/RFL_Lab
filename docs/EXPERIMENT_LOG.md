@@ -790,3 +790,34 @@ The Mac ran `followup_diagnostics`, `followup_attacks` and `followup_holdout` (n
 | Acer | `followup_n20_backdoor` → `followup_q_sign` → `followup_n30_sign` (skip `followup_attacks`: done on the Mac) | 30 + 36 + 60 | 6.5 + 7.5 + 12.5 h |
 
 Bring the Acer's runs to the Mac with `bash scripts/sync_acer.sh` (rsync; never overwrites a Mac run), then commit and push from the Mac.
+
+## 2026-11-14 (later) · First Acer results: 20-client backdoor; partial q and α = 0.2
+New since the morning entry: `followup_n20_backdoor` (30 runs, Acer, XPU), the FedAvg part of `followup_q_sign` (9 runs, Acer) and the undefended-FedHEP part of `followup_alpha02` (6 runs, Mac). `followup_two_sided` has not run yet (the Mac went to `followup_alpha02` first). Every comparison below is within one device.
+
+### 20 clients, α = 0.5, backdoor with 5 or 7 attackers (25%, 35%), 3 seeds, Acer
+
+| Method | Acc, 5 attackers | Success, 5 | Acc, 7 attackers | Success, 7 | Attackers isolated | Honest isolated |
+|---|---|---|---|---|---|---|
+| FedAvg | 33.83 ± 0.18 | 90.0% | 32.51 ± 0.36 | 91.9% | – | – |
+| FedHEP, no defense | 46.69 ± 0.59 | 79.9% | 46.25 ± 1.40 | 80.0% | – | – |
+| Defended FedHEP | 46.97 ± 0.34 | 79.7% | 46.08 ± 0.94 | 79.6% | – | – |
+| FedHEP+ | 46.81 ± 0.81 | 47.4% | 45.39 ± 0.61 | 71.6% | 15 of 15; 15 of 21 | 7; 6 |
+| FLAME | 40.88 ± 0.79 | 0.6% | 41.94 ± 0.28 | 0.6% | – | – |
+
+The no-attack runs for 20 clients are in `followup_n20_sign` (not yet run), so accuracy cost against a clean baseline is not available yet.
+
+- **Defended FedHEP gives no backdoor protection at 20 clients** (79.7% vs 79.9% undefended).
+- **FLAME stops the backdoor at both attacker counts** (0.6%), again at a large accuracy cost (4.3 to 5.8 points below undefended FedHEP under the same attack).
+- **FedHEP+ halves success at 5 attackers but not at 7**, and isolates 13 honest client-runs.
+- **The backdoor outlives the attackers.** FedHEP+ isolated all 5 attackers by rounds 11–15 in every seed, yet success, measured only on honest clients' models, kept rising: seed 42 from 19% at round 15 to 52% at round 30, seed 7 from 19% to 66%. Across the five runs in which every attacker was isolated, success rose by 17 to 47 points after the last isolation. Detection that arrives after round 10 does not undo the backdoor; the shared layers keep it. This becomes hypothesis H8 (recovery after isolation) in the research plan, decision D32.
+
+### Attack rate q (the authors' rule), FedAvg only so far, Acer
+q = 0.1 gives 1 / 0 / 2 attackers for seeds 42 / 123 / 7: FedAvg reaches 32.7 / 38.3 / 25.2 (no-attack FedAvg: 38.1). At q = 0.3 (6 / 3 / 5 attackers) it collapses to 1.0% in two seeds and 21.0% in the third; at q = 0.4 it collapses in all three. FedHEP and the defenses follow in the same sweep.
+
+### α = 0.2, 20 clients, undefended FedHEP, Mac
+No attack 55.59 ± 1.34; sign flip with 4 attackers 42.51 ± 0.99 (−13.1). Accuracy is higher than at α = 0.5 because stronger label skew makes each client's own task easier for the personalized heads. The defenses follow in the same sweep.
+
+### Code added (Phase 6 start)
+- **Layer L0** of the research plan as a Global-step rule `robust.rule: arc_nnm_tm` (ARC, then NNM, then trimmed mean) with optional worker momentum `robust.momentum` (D31). Unit and property tests: ARC clips exactly the k largest rows to the next norm and keeps their direction; NNM averages the n − f nearest rows; a huge minority moves the aggregate by a bounded amount; the rule is permutation invariant.
+- **Resource measurement** in every run (`metrics.json → resources`): total and per-round wall time (GPU synchronized), peak process memory, peak device memory (exact peak on CUDA and XPU; sampled per round on MPS).
+- Sweeps `phase6_l0.yaml` (D1, 30 runs) and `phase6_l0_a02.yaml` (D2, 24 runs), both for the Mac because their baselines are Mac runs.

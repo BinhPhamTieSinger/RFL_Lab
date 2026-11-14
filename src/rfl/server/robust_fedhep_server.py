@@ -22,6 +22,7 @@ from rfl.core.state import flatten
 from rfl.core.types import ClientData, DetectionResult, RoundReport
 from rfl.defense.classic import (
     RuleResult,
+    arc_nnm_trimmed_mean_rule,
     bulyan_rule,
     flame_rule,
     fltrust_rule,
@@ -33,14 +34,15 @@ from rfl.grouping.similarity import SimilarityGrouping
 from rfl.models.resnet9 import MultiHeadResNet9
 from rfl.server.defended_fedhep_server import DefendedFedHEPServer
 
-RULES = ("median", "trimmed_mean", "bulyan", "flame", "fltrust")
+RULES = ("median", "trimmed_mean", "bulyan", "flame", "fltrust", "arc_nnm_tm")
 
 
 class RobustFedHEPServer(DefendedFedHEPServer):
     def __init__(self, model: MultiHeadResNet9, clients: Sequence[ClientData], trainer: FedHEPTrainer,
                  grouping: SimilarityGrouping, rule: str, assumed_attackers: int = 3, flame_lambda: float = 0.001,
                  flame_on: str = "models", root: ClientData | None = None, seed: int = 0,
-                 attack: Attack | None = None, attackers: frozenset[int] = frozenset()) -> None:
+                 attack: Attack | None = None, attackers: frozenset[int] = frozenset(),
+                 momentum: float = 0.0) -> None:
         super().__init__(model, clients, trainer, grouping, attack=attack, attackers=attackers)
         if rule not in RULES:
             raise ValueError(f"Unknown rule {rule!r}; choose from {RULES}")
@@ -52,6 +54,10 @@ class RobustFedHEPServer(DefendedFedHEPServer):
         self.root, self.root_memory, self.seed = root, HeadMemory(), seed
         self.weights = ~self.global_defense.layout.buffer_mask.to(self.global_vec.device)
         self.banned: set[int] = set()
+        if not 0.0 <= momentum < 1.0:
+            raise ValueError(f"momentum must be in [0, 1), got {momentum}")
+        self.momentum = momentum
+        self.client_momentum: dict[int, torch.Tensor] = {}   # worker momentum m_i, kept by the server
 
     def _server_update(self, start: torch.Tensor, round_idx: int) -> torch.Tensor:
         assert self.root is not None
@@ -81,6 +87,8 @@ class RobustFedHEPServer(DefendedFedHEPServer):
             return trimmed_mean_rule(w, self.f)
         if self.rule == "bulyan":
             return bulyan_rule(w, self.f)
+        if self.rule == "arc_nnm_tm":
+            return arc_nnm_trimmed_mean_rule(w, self.f)
         if self.rule == "flame":
             gen = torch.Generator().manual_seed(self.seed * 1000 + round_idx)
             return flame_rule(w, start[self.weights], self.flame_lambda, gen, on=self.flame_on)
@@ -99,6 +107,12 @@ class RobustFedHEPServer(DefendedFedHEPServer):
         accepted = senders
         if senders:
             stack = torch.stack([to_global[c] - start for c in senders])
+            if self.momentum > 0:   # m_i <- beta m_i + (1 - beta) delta_i; rules see m_i (Karimireddy et al. 2021)
+                for i, c in enumerate(senders):
+                    prev = self.client_momentum.get(c)
+                    m = stack[i] if prev is None else self.momentum * prev + (1 - self.momentum) * stack[i]
+                    self.client_momentum[c] = m
+                stack = torch.stack([self.client_momentum[c] for c in senders])
             result = self._apply(stack, start, round_idx)
             step = torch.empty_like(start)
             step[self.weights] = result.update.to(step.dtype)

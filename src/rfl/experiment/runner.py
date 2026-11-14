@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import random
+import resource
+import sys
 import time
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -21,6 +23,34 @@ from rfl.evaluation.backdoor import attack_success_rate
 from rfl.evaluation.detection import detection_metrics
 from rfl.experiment.config import ExperimentConfig, to_dict
 from rfl.experiment.registry import METHODS, MODELS
+
+
+def _sync(device: torch.device) -> None:
+    """Wait for queued GPU work, so per-round wall time is not cut short by asynchronous kernels."""
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    elif device.type == "xpu":
+        torch.xpu.synchronize(device)
+    elif device.type == "mps":
+        torch.mps.synchronize()
+
+
+def _device_bytes(device: torch.device) -> int:
+    """Device memory in use (peak since start on CUDA and XPU; current driver allocation on MPS, sampled once per
+    round, so an MPS peak inside a round can be missed)."""
+    if device.type == "cuda":
+        return int(torch.cuda.max_memory_allocated(device))
+    if device.type == "xpu":
+        return int(torch.xpu.max_memory_allocated(device))
+    if device.type == "mps":
+        return int(torch.mps.driver_allocated_memory())
+    return 0
+
+
+def _peak_rss_mb() -> float:
+    """Peak resident memory of this process (ru_maxrss is bytes on macOS, kilobytes on Linux)."""
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return peak / 2**20 if sys.platform == "darwin" else peak / 2**10
 
 
 def pick_device(name: str) -> torch.device:
@@ -86,8 +116,14 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
     history: list[dict[str, Any]] = []
     detection: list[dict[str, Any]] = []
     t0 = time.time()
+    round_seconds: list[float] = []
+    peak_device = 0
     for r in range(1, cfg.run.rounds + 1):
+        tr = time.time()
         server.run_round(r)
+        _sync(device)
+        round_seconds.append(time.time() - tr)
+        peak_device = max(peak_device, _device_bytes(device))
         report = getattr(server, "report", None)
         if report is not None:
             det = {"round": r, **detection_metrics(report, attackers, len(clients))}
@@ -119,6 +155,8 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
               "client_train_sizes": [c.num_train for c in clients],
               "attackers": sorted(attackers), "detection": detection,
               "model_floats": sum(v.numel() for v in model.state_dict().values()),
+              "resources": {"seconds_total": time.time() - t0, "seconds_per_round": round_seconds,
+                            "peak_process_mb": _peak_rss_mb(), "peak_device_mb": peak_device / 2**20},
               "diagnostics": getattr(server, "diagnostics", None)}
     (out / "metrics.json").write_text(json.dumps(result, indent=2))
     return result

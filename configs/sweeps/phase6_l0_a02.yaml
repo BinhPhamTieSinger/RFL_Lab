@@ -1,0 +1,18 @@
+# Phase 6, layer L0 on development setting D2 (alpha 0.2, 20 clients, 4 attackers), the setting where FedHEP+
+# isolated half the honest clients. Same attacks as followup_alpha02 (its a02__* runs are the baselines, Mac runs:
+# run on the Mac). f = 4. 24 runs, about 5 h.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.2
+  data.num_clients: 20
+  run.rounds: 30
+  method: fedhep_robust
+  robust.rule: arc_nnm_tm
+  robust.assumed_attackers: 4
+axes:
+  - a02__l0: {config: configs/cifar100_fedhep_defended.yaml}
+    a02__l0m: {config: configs/cifar100_fedhep_defended.yaml, robust.momentum: 0.5}
+  - clean: {}
+    sign4: {attack.kind: sign_flip, attack.count: 4}
+    backdoor4: {attack.kind: backdoor, attack.count: 4}
+    minmax4: {attack.kind: min_max, attack.count: 4, attack.knowledge: omniscient}

@@ -1,8 +1,19 @@
 """Phase 5: established robust rules (rfl.defense.classic) and FedHEP with each one in its Global step."""
 import pytest
 import torch
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
-from rfl.defense.classic import bulyan_rule, flame_rule, fltrust_rule, median_rule, trimmed_mean_rule
+from rfl.defense.classic import (
+    arc_clip,
+    arc_nnm_trimmed_mean_rule,
+    bulyan_rule,
+    flame_rule,
+    fltrust_rule,
+    median_rule,
+    nnm,
+    trimmed_mean_rule,
+)
 from rfl.experiment.config import load_config
 from rfl.experiment.runner import run_experiment
 
@@ -78,7 +89,7 @@ def _cfg(tmp_path, rule, **over):
     return load_config(overrides=base)
 
 
-@pytest.mark.parametrize("rule", ["median", "trimmed_mean", "bulyan", "flame", "fltrust"])
+@pytest.mark.parametrize("rule", ["median", "trimmed_mean", "bulyan", "flame", "fltrust", "arc_nnm_tm"])
 def test_each_rule_runs_inside_fedhep_and_reports_detection(tmp_path, rule):
     result = run_experiment(_cfg(tmp_path, rule))
     attackers = set(result["attackers"])
@@ -108,3 +119,46 @@ def test_fltrust_server_training_leaves_client_randomness_untouched(tmp_path):
         server.run_round(1)
         uploads[rule] = torch.stack(server.trained)
     assert torch.equal(uploads["median"], uploads["fltrust"])
+
+
+def test_arc_clips_exactly_the_k_largest_rows_to_the_next_norm():
+    # n = 15, f = 3: k = floor(2 * 3/15 * 12) = 4
+    norms = torch.arange(1.0, 16.0)
+    stack = torch.randn(15, 10)
+    stack = stack / stack.norm(dim=1, keepdim=True) * norms.unsqueeze(1)
+    out = arc_clip(stack, 3)
+    assert torch.allclose(out.norm(dim=1)[:11], norms[:11])            # untouched
+    assert torch.allclose(out.norm(dim=1)[11:], torch.full((4,), 11.0))  # clipped to the 5th largest norm
+    assert torch.allclose(_cos(out[11:], stack[11:]), torch.ones(4))   # direction kept
+    assert torch.equal(arc_clip(stack, 0), stack)
+
+
+def _cos(a, b):
+    return torch.nn.functional.cosine_similarity(a, b, dim=1)
+
+
+def test_nnm_mixes_with_the_n_minus_f_nearest_rows():
+    stack = torch.tensor([[0.0], [1.0], [2.0], [100.0]])
+    # f = 1: each row averages its 3 nearest rows, itself included
+    assert torch.allclose(nnm(stack, 1).squeeze(), torch.tensor([1.0, 1.0, 1.0, 34.333334]))
+    assert torch.allclose(nnm(stack, 0), stack.mean(dim=0).expand(4, 1))
+
+
+@settings(max_examples=30, deadline=None)
+@given(st.integers(0, 10_000), st.floats(10.0, 1e4))
+def test_arc_nnm_tm_bounds_a_huge_minority(seed, scale):
+    """Three attackers sending scale x the honest direction move the aggregate by a bounded amount, unlike the
+    mean, and the rule is permutation invariant."""
+    stack, base = _honest_and_attackers(seed, scale=scale)
+    honest_mean = stack[:12].mean(dim=0)
+    out = arc_nnm_trimmed_mean_rule(stack, 3).update
+    assert (out - honest_mean).norm() <= 2.0 * stack[:12].std(dim=0).norm()
+    perm = torch.randperm(15, generator=torch.Generator().manual_seed(seed))
+    assert torch.allclose(arc_nnm_trimmed_mean_rule(stack[perm], 3).update, out, atol=1e-4)
+
+
+def test_momentum_is_applied_before_the_rule(tmp_path):
+    result = run_experiment(_cfg(tmp_path, "arc_nnm_tm", **{"robust.momentum": 0.5, "name": "r_mom"}))
+    assert result["history"][-1]["pooled_acc"] > 0
+    with pytest.raises(ValueError):
+        run_experiment(_cfg(tmp_path, "arc_nnm_tm", **{"robust.momentum": 1.0, "name": "r_bad"}))

@@ -13,7 +13,12 @@ which rows it accepted (None for rules that keep everyone), and one score per ro
     (min cluster size n/2 + 1, so the admitted cluster is the majority), clip each admitted update to the median
     distance S of all local models from the global model, average, add N(0, (lambda S)^2) noise;
   * FLTrust (Cao et al., NDSS 2021): the server trains on a small clean root set; trust = ReLU(cos(update,
-    server update)); each update is rescaled to the server update's norm; trust-weighted average."""
+    server update)); each update is rescaled to the server update's norm; trust-weighted average;
+  * ARC + NNM + trimmed mean (Phase 6, layer L0 of docs/RESEARCH_PLAN.md): adaptive robust clipping (Allouah et
+    al., ICLR 2025) clips the k = floor(2 (f/n) (n - f)) largest rows to the norm of the (k+1)-th largest;
+    nearest-neighbour mixing (Allouah et al., AISTATS 2023) replaces each row by the mean of its n - f nearest
+    rows, itself included; then coordinate trimmed mean. The ARC paper does not fix ARC's place relative to
+    NNM; clipping first keeps one large row from entering its neighbours' averages (DECISIONS.md, D31)."""
 from __future__ import annotations
 
 import warnings
@@ -116,3 +121,36 @@ def fltrust_rule(stack: torch.Tensor, server_update: torch.Tensor) -> RuleResult
     scaled = stack * (server_update.norm() / stack.norm(dim=1).clamp(min=1e-12)).unsqueeze(1)
     agg = (trust.unsqueeze(1) * scaled).sum(dim=0) / trust.sum()
     return RuleResult(agg, accepted, trust)
+
+
+def arc_clip(stack: torch.Tensor, f: int) -> torch.Tensor:
+    """Adaptive robust clipping: the k = floor(2 (f/n) (n - f)) largest-norm rows are scaled down to the norm of
+    the (k+1)-th largest; the others are unchanged. Ties are broken by row order."""
+    n = stack.shape[0]
+    k = int(2 * f * (n - f) // n) if n else 0
+    if k == 0 or k >= n:
+        return stack
+    norms = stack.norm(dim=1)
+    order = torch.argsort(norms, descending=True, stable=True)
+    bound = norms[order[k]]
+    scale = torch.ones_like(norms)
+    big = order[:k]
+    scale[big] = torch.where(norms[big] > 0, bound / norms[big], torch.ones_like(norms[big]))
+    return stack * scale.unsqueeze(1)
+
+
+def nnm(stack: torch.Tensor, f: int) -> torch.Tensor:
+    """Nearest-neighbour mixing: each row becomes the mean of its n - f nearest rows (Euclidean), itself
+    included."""
+    n = stack.shape[0]
+    if f == 0:
+        return stack.mean(dim=0, keepdim=True).expand_as(stack).clone()
+    near = torch.argsort(_sq_dists(stack), dim=1, stable=True)[:, :n - f].to(stack.device)
+    return stack[near].mean(dim=1)
+
+
+def arc_nnm_trimmed_mean_rule(stack: torch.Tensor, f: int) -> RuleResult:
+    """L0 influence bound: ARC, then NNM, then coordinate trimmed mean dropping f per side."""
+    mixed = nnm(arc_clip(stack, f), f)
+    agg = trimmed_mean_rule(mixed, f).update
+    return RuleResult(agg, None, _cos_to(stack, agg))

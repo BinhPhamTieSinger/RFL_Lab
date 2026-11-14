@@ -160,7 +160,8 @@ def build_fedhep_robust(cfg: ExperimentConfig, model: torch.nn.Module, clients: 
     r = cfg.robust
     root = _root_set(cfg, clients) if r.rule == "fltrust" else None
     return RobustFedHEPServer(hep, clients, trainer, grouping, r.rule, r.assumed_attackers, r.flame_lambda,
-                              r.flame_on, root, cfg.run.seed, attack=attack, attackers=attackers)
+                              r.flame_on, root, cfg.run.seed, attack=attack, attackers=attackers,
+                              momentum=r.momentum)
 
 
 METHODS: dict[str, Callable[[ExperimentConfig, torch.nn.Module, Sequence[ClientData]], FederatedServer]] = {

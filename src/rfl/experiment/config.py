@@ -82,11 +82,12 @@ class PlusConfig:
 @dataclass(frozen=True)
 class RobustConfig:
     """Phase 5: an established rule in FedHEP's Global step; see rfl.server.robust_fedhep_server."""
-    rule: str = "median"                 # "median" | "trimmed_mean" | "bulyan" | "flame" | "fltrust"
+    rule: str = "median"                # "median" | "trimmed_mean" | "bulyan" | "flame" | "fltrust" | "arc_nnm_tm"
     assumed_attackers: int = 3           # f for trimmed mean (trimmed per side) and Bulyan
     flame_lambda: float = 0.001          # FLAME's noise factor for image classification
     flame_on: str = "models"             # FLAME's cosine distances on "models" (paper's equations) or "updates"
     root_size: int = 100                 # FLTrust's root set (paper default)
+    momentum: float = 0.0                # worker momentum beta over rounds, applied before the rule (0 = off)
 
 
 @dataclass(frozen=True)
