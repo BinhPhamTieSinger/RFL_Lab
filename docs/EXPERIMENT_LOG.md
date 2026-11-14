@@ -872,3 +872,13 @@ Each client attacks with probability q, so the attacker count differs by seed: 1
 - **`attack.stop_round`** (FedHEP family): attackers train honestly on clean data after this round, the standard durability test. Test: label-flip attackers poison in round 1 only when `stop_round = 1`, and non-FedHEP methods refuse the option. Isolated clients were confirmed to be excluded from both parent and Global aggregation in FedHEP+, so the backdoor growth after isolation is not an aggregation leak; its cause is open.
 - **`followup_backdoor_stop.yaml`** (6 runs, Acer, about 1.3 h): undefended FedHEP, 20 clients, 5 backdoor attackers who stop at round 10 or 15. If success still grows, the backdoor sustains itself in the shared layers. Durability work reports the opposite once poisoning stops: Chameleon (ICML 2023) measures backdoors fading, with lifespans of about 900 rounds for a pixel pattern on CIFAR-10.
 - **`docs/PAPER_PLAN.md`**: claims C1–C9 with their status, the closest published work (Errami and Bergou, IJCAI 2024; Ajibuwa and Odeyomi, IPCCC 2025; HadAGG, IEEE TNSE 2026; FedCAP), the outline with figures mapped to runs, and the minimum experiments before submission.
+
+### Run plan update (2026-11-14, evening)
+Rebalanced so that every comparison stays on one machine and the decisive runs come first.
+
+| Machine | In order | Runs | About |
+|---|---|---|---|
+| Mac | `followup_alpha02` (rest) → `phase6_l0` → `phase6_l0_a02` → `followup_two_sided` → `followup_q_backdoor` | ~20 + 30 + 24 + 15 + 36 | 4 + 6 + 5 + 3 + 7.5 h |
+| Acer | `followup_backdoor_stop` → `followup_n30_sign` (resumes) → `followup_n20_sign` → `followup_n30_backdoor` | 6 + 60 + 45 + 45 | 1.3 + 12.5 + 9.5 + 9.5 h |
+
+`followup_n20_sign` moved to the Acer because its no-attack runs are the clean baseline for the Acer's `followup_n20_backdoor`.
