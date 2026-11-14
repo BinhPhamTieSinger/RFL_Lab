@@ -110,6 +110,10 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
 
     model = MODELS[cfg.model](3, num_classes).to(device)
     server = METHODS[cfg.method](cfg, model, clients)
+    if cfg.attack.stop_round:
+        if not hasattr(server, "attack_stop"):
+            raise ValueError(f"attack.stop_round is only supported by FedHEP-family methods, not {cfg.method}")
+        server.attack_stop = cfg.attack.stop_round
     attackers = frozenset(getattr(server, "attackers", frozenset()))
     attack = getattr(server, "attack", None)
     trigger = getattr(attack, "trigger", None)

@@ -44,6 +44,7 @@ class FedHEPServer:
         self.aggregator = FedAvg()
         self.attack = attack
         self.attackers = attackers if attack is not None else frozenset()
+        self.attack_stop = 0  # attackers train honestly after this round (0 = never); set by the runner
         self.unscored = self.attackers  # attackers are not evaluated, as in the authors' evaluate_ensemble
         self.template = {k: v.detach().clone() for k, v in model.state_dict().items()}
         self.global_vec = flatten(self.template)
@@ -82,14 +83,15 @@ class FedHEPServer:
             self.model.fc2_parent.load_state_dict(parent_heads[self.grouping.assignment[cid]])
             if mem.local_head is not None:
                 self.model.fc2_local.load_state_dict(mem.local_head)
-            bad = self.attack if cid in self.attackers else None
+            attacking = self.attack_stop == 0 or round_idx <= self.attack_stop
+            bad = self.attack if cid in self.attackers and attacking else None
             data = bad.poison_data(cid, data) if bad else data
             targets = bad.poison_labels(data.y_train, self.trainer.num_classes) if bad else None
             self.trainer.train(self.model, data, round_idx, mem, targets)
             self.trained[cid] = flatten(self.model.state_dict())
             to_global[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
             to_parent[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
-        if isinstance(self.attack, CoordinatedAttack):
+        if isinstance(self.attack, CoordinatedAttack) and (self.attack_stop == 0 or round_idx <= self.attack_stop):
             mask = ~flat_layout(self.template, {k for k, _ in self.model.named_parameters()}).buffer_mask
             to_global = self.attack.poison_batch(to_global, start, self.attackers, mask)
             to_parent = self.attack.poison_batch(to_parent, start, self.attackers, mask)

@@ -144,6 +144,7 @@ We reviewed 170 papers and sources (saved in [`LITERATURE_REVIEW.md`](LITERATURE
 - Very few defenses isolate clients permanently; most let trust recover.
 - No published defense is designed for a hierarchical, personalized model like FedHEP. That is our opening for a new paper.
 - No defense paper reports how much memory it uses, so measuring cost carefully is a contribution in itself.
+- Two recent papers already show that robust defenses penalise honest clients with unusual data (Errami and Bergou, IJCAI 2024; Ajibuwa and Odeyomi, IPCCC 2025), and a 2026 method, HadAGG, tries to separate "unusual but honest" from "malicious". Our finding agrees with them, so the paper cannot claim that problem as new; what it can add is measuring it inside a hierarchical, personalized model and a defense built for that setting. The paper plan ([`PAPER_PLAN.md`](PAPER_PLAN.md)) lists what we can already claim and what still needs experiments.
 
 ## Step 8 · What comes next: FedHEP-Guard (Phase 6, started)
 

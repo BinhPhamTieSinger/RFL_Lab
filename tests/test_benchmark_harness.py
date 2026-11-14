@@ -1,5 +1,7 @@
 """Phase 2 testbench: detection metrics, attacker choice and placement, the backdoor attack and its success rate,
 and end-to-end runs that record them."""
+import dataclasses
+
 import pytest
 import torch
 from hypothesis import given
@@ -146,3 +148,24 @@ def test_spread_caps_attackers_per_parent(seed, k, chosen):
     after = spread(random_assignment(15, k, seed), chosen, k)
     per_group = [sum(after[c] == g for c in chosen) for g in range(k)]
     assert max(per_group) <= -(-len(chosen) // k) if chosen else True
+
+
+def test_stop_round_switches_attackers_to_honest_training(tmp_path, monkeypatch):
+    """Label-flip attackers train on flipped labels up to stop_round and on their true labels after it; methods
+    outside the FedHEP family refuse the option."""
+    from rfl.client.fedhep import FedHEPTrainer
+
+    poisoned: list[int] = []
+    train = FedHEPTrainer.train
+
+    def spy(self, model, data, round_idx, mem, targets=None):
+        if targets is not None:
+            poisoned.append(round_idx)
+        return train(self, model, data, round_idx, mem, targets)
+
+    monkeypatch.setattr(FedHEPTrainer, "train", spy)
+    cfg = _cfg(tmp_path, "fedhep", kind="label_flip", count=2, stop_round=1)
+    run_experiment(dataclasses.replace(cfg, run=dataclasses.replace(cfg.run, rounds=3, eval_every=3)))
+    assert poisoned == [1, 1]  # two attackers, round 1 only
+    with pytest.raises(ValueError):
+        run_experiment(_cfg(tmp_path / "avg", "fedavg", kind="sign_flip", count=2, stop_round=1))

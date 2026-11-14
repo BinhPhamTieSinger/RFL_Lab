@@ -41,6 +41,7 @@ class AttackConfig:
     alie_z: float = 1.0
     rate: float = 0.0                    # each client is an attacker with this probability (authors' rule)
     count: int | None = None             # exactly this many attackers instead (overrides rate)
+    stop_round: int = 0                  # FedHEP family: attackers train honestly after this round (0 = never)
     placement: str = "random"            # grouped methods' initial groups: "random" (as drawn), "concentrated"
                                          # (all attackers in parent 0) or "spread" (attackers dealt round-robin)
     backdoor_target: int = 0

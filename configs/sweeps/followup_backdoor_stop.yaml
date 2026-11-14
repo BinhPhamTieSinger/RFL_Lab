@@ -1,0 +1,15 @@
+# Does a backdoor keep growing once nobody poisons any more? (2026-11-14, hypothesis H8 / D32)
+# Under FedHEP+ the backdoor kept growing after all 5 attackers were isolated (rounds 11-15). Here undefended FedHEP
+# runs the same setting, but the 5 attackers switch to honest training after round 10 or 15 (attack.stop_round).
+# If success still grows, the backdoor sustains itself in the shared layers; if it fades, the growth under FedHEP+
+# needs another explanation. Baselines n20__fedhep__backdoor5 (no stop) are Acer runs: run on the Acer.
+# 6 runs, about 1.3 h.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  data.num_clients: 20
+  run.rounds: 30
+axes:
+  - n20__fedhep: {config: configs/cifar100_fedhep.yaml}
+  - backdoor5_stop10: {attack.kind: backdoor, attack.count: 5, attack.stop_round: 10}
+    backdoor5_stop15: {attack.kind: backdoor, attack.count: 5, attack.stop_round: 15}

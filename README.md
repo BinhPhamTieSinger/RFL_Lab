@@ -34,6 +34,7 @@ FedHEP+ gives identical results under sign flip and label flip because it leaves
 | Document | Contents |
 |---|---|
 | [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | Plain-language account of every stage so far, with the key charts. Start here. |
+| [`docs/PAPER_PLAN.md`](docs/PAPER_PLAN.md) | Claims and their status, closest published work, paper outline with figures mapped to runs, experiments needed before submission. |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Literature review: aggregation rules, attacks, backdoor and distillation defenses, personalized and hierarchical FL, efficiency, privacy, evaluation standards, open gaps. |
 | [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) | Proposed method, hypotheses, experiment stages and efficiency plan for the next paper. |
 | [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) | Every experiment: setting, results, charts, interpretation. Starts with diagrams and formulas for each method. |
