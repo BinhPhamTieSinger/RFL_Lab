@@ -1,0 +1,16 @@
+flowchart LR
+  subgraph P1["parent p (members i, j, k)"]
+    PS["parent view T_i^(p):<br/>signals computed against same-parent peers"]
+  end
+  subgraph G["Global"]
+    GS["Global view T_i^(G):<br/>signals computed against all clients"]
+    PT["trust in parent T_p:<br/>parent aggregate vs other parents"]
+  end
+  PS --> F["T_i = (w_G·T_i^(G) + w_P·T_p·T_i^(p)) / (w_G + w_P·T_p)"]
+  GS --> F
+  PT -->|"discounts a parent that may have an attacker majority"| F
+  F --> R["Beta reputation: α_i ← λα_i + (1 − b_i), β_i ← λβ_i + κ·b_i"]
+  R --> H{"T_i below θ_out ?"}
+  H -->|yes| Q["quarantined: keeps its own heads,<br/>contributes nothing to root and parent"]
+  H -->|no| W["weighted contribution ω_i ∝ T_i"]
+  Q -->|"T_i recovers above θ_in > θ_out"| W

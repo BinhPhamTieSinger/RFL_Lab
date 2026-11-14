@@ -777,7 +777,7 @@ The configuration reserved on 2026-11-12 and not used for any tuning: α = 0.2, 
 - It still won under sign flip (+1.2), where all 4 attackers were isolated in round 1.
 - Again the same honest clients recur: clients 0–4 and 12 were isolated with no attack, under the backdoor and under ALIE.
 
-**Conclusion.** FedHEP+'s Phase 3 improvement was measured at α = 0.5 with 15 clients. At α = 0.2 with 20 clients, its one-sided, permanent screen mistakes honest clients with unusual data for attackers early in training, and that costs more than the protection it gives. Together with section 2 this names the problem the next method has to solve: **tell honest-but-different clients from attackers, on both sides of the consensus**, without a scale that collapses. The literature review in progress covers prior work on this problem.
+**Conclusion.** FedHEP+'s Phase 3 improvement was measured at α = 0.5 with 15 clients. At α = 0.2 with 20 clients, its one-sided, permanent screen mistakes honest clients with unusual data for attackers early in training, and that costs more than the protection it gives. Together with section 2 this names the problem the next method has to solve: **tell honest-but-different clients from attackers, on both sides of the consensus**, without a scale that collapses. The literature review (`docs/LITERATURE_REVIEW.md`) reaches the same conclusion from prior work, and `docs/RESEARCH_PLAN.md` sets out the method and experiments that follow from it.
 
 **Held-out discipline.** Seed 2026 has now been used once and must not be used to tune. `followup_alpha02` reproduces the setting on the development seeds (42, 123, 7) so fixes can be tuned there; a new held-out seed will be reserved for the final check.
 

@@ -14,7 +14,7 @@ All results, including negative ones, are recorded in [`docs/EXPERIMENT_LOG.md`]
 | 4. Drill-down defense | Parent-level detection works; member-level attribution does not. Not adopted. |
 | 5. Established rules inside FedHEP | Median, trimmed mean, Bulyan, FLAME and FLTrust in FedHEP's Global step. None beats FedHEP+ overall; Bulyan and FLAME stop backdoors (0.5% success) but cost 3.9 to 5.6 points with no attack. |
 | Follow-up (partly done) | Screening diagnostics: the MAD grows rather than shrinks; patience 3 cuts false isolations by 42%. Adaptive attacks (ALIE, Min-Max): no defense isolates an attacker, because their z-scores sit above the consensus. Held-out setting (α = 0.2, 20 clients): FedHEP+ isolates 10 of 20 honest clients with no attack and loses to Defended FedHEP in four of five settings. Running: two-sided screening, α = 0.2 on three seeds, 20 and 30 clients. |
-| Next | Literature review and research plan for the new method (in progress). |
+| Next | Literature review of 170 sources and the research plan for a new defense: [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md), [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md). |
 
 Phase 5 results (CIFAR-100, Dirichlet α = 0.5, 15 clients, 3 attackers, 30 rounds, mean ± sd over 3 seeds). The held-out follow-up shows FedHEP+'s advantage does not yet carry over to stronger heterogeneity; see the experiment log.
 
@@ -33,6 +33,8 @@ FedHEP+ gives identical results under sign flip and label flip because it leaves
 
 | Document | Contents |
 |---|---|
+| [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Literature review: aggregation rules, attacks, backdoor and distillation defenses, personalized and hierarchical FL, efficiency, privacy, evaluation standards, open gaps. |
+| [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) | Proposed method, hypotheses, experiment stages and efficiency plan for the next paper. |
 | [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) | Every experiment: setting, results, charts, interpretation. Starts with diagrams and formulas for each method. |
 | [`docs/methods_page/rfl_lab_methods.html`](docs/methods_page/rfl_lab_methods.html) | Self-contained page with the method diagrams and rendered formulas. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Package layers, interfaces and the import rule. |

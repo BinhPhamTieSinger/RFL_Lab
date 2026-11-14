@@ -1,0 +1,12 @@
+flowchart TD
+  S0["Stage 0 · finish follow-up sweeps<br/>(running on the Mac and the Acer)"] --> S1
+  S1["Stage 1 · instrumentation<br/>time per phase, peak RAM, device memory, bytes per round"] --> S2
+  S2["Stage 2 · ablation ladder on two development settings<br/>α 0.5 / 15 clients and α 0.2 / 20 clients, seeds 42, 123, 7"] --> G2{"each step: helps both settings,<br/>costs under 0.5 points with no attack?"}
+  G2 -->|no| DROP["drop the step, log the negative result"]
+  G2 -->|yes| KEEP["keep the step"]
+  KEEP --> S3
+  DROP --> S3
+  S3["Stage 3 · protocol at the 2026 bar<br/>100 rounds, partial participation, 50+ clients, 3 datasets,<br/>full attack suite incl. a defense-aware adaptive attack"] --> S4
+  S4["Stage 4 · held-out validation<br/>settings and seeds reserved before Stage 2 starts"] --> G4{"improvement holds?"}
+  G4 -->|yes| S5["Stage 5 · paper"]
+  G4 -->|no| S2

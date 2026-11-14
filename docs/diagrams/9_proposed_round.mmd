@@ -1,0 +1,27 @@
+flowchart TD
+  subgraph C["Clients (unchanged FedHEP local training)"]
+    T["train trunk + root, parent, local heads<br/>upload Δ_i (local head stays on the client)"]
+  end
+  T --> M["L0 · worker momentum<br/>m_i ← β·m_i + (1−β)·Δ_i"]
+  M --> SK["sketch shared trunk + root head, per layer group<br/>ũ_i = S·m_i (k ≈ 2,048, JL projection)"]
+  subgraph L1["L1 · multi-signal screen (on sketches)"]
+    SK --> D["consensus distance<br/>two-sided robust z of cos(ũ_i, r)"]
+    SK --> CO["colluder similarity<br/>robust z of max_j cos(ũ_i, ũ_j)"]
+    SK --> TE["temporal consistency<br/>robust z of cos(Δ_i, Δ_i previous)"]
+    D --> BI{"round bimodal?<br/>(gap test)"}
+    CO --> BI
+    TE --> BI
+  end
+  BI -->|no| NB["no bad evidence this round"]
+  BI -->|yes| AN["anomaly mass b_i ∈ [0, 1]"]
+  subgraph L2["L2 · two-vantage trust (reversible)"]
+    AN --> PV["parent view: same signals within the group"]
+    AN --> GV["Global view: signals over all clients"]
+    NB --> GV
+    PV --> FU["fuse: parent view discounted by Global's trust in that parent"]
+    GV --> FU
+    FU --> BR["Beta reputation with forgetting<br/>trust T_i ∈ [0, 1]"]
+  end
+  BR --> SQ["L3 · soft quarantine<br/>weight ω_i ∝ T_i; hysteresis instead of permanent isolation"]
+  SQ --> AG["L0 · influence-bounded aggregation<br/>NNM, then ARC clipping, then trimmed mean with weights ω_i"]
+  AG --> PH["parents and Global updated; regroup on trusted clients only"]
