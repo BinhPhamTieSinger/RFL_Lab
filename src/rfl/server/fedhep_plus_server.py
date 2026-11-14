@@ -25,6 +25,7 @@ from rfl.defense.screening import (
     apply_cap,
     group_z,
     member_alignment,
+    one_sided,
     robust_z,
     screening_scores,
 )
@@ -64,6 +65,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         score_stats: dict[str, object] = {}
         raw_scores: dict[int, float] = {}
         z: dict[int, float] = {}
+        z_logged: dict[int, float] = {}
         parent_z: dict[int, float] = {}
         flagged_groups: set[int] = set()
         align_z: dict[int, float] = {}
@@ -84,7 +86,8 @@ class FedHEPPlusServer(DefendedFedHEPServer):
             raw_scores = dict(zip(scored, scores.tolist(), strict=True))
             zs = robust_z(scores, floor=self.screen.relative_floor, reference=ref_scores,
                           absolute_floor=self.screen.mad_floor)
-            z = {c: float(v) for c, v in zip(scored, zs.tolist(), strict=True)}
+            z_logged = {c: float(v) for c, v in zip(scored, zs.tolist(), strict=True)}
+            z = one_sided(z_logged, self.screen.two_sided)
             z_evidence = dict(z)
             if self.screen.drill_down:
                 parent_z = self._group_z(updates, scored, isolated, in_ref, round_idx)
@@ -133,7 +136,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         self.report = RoundReport(DetectionResult(trust, frozenset(excluded)),
                                   groups=dict(self.grouping.assignment),
                                   flagged_groups=frozenset(flagged_groups) if self.screen.drill_down else None)
-        self.diagnostics.append({"round": round_idx, "attackers": sorted(self.attackers), "z": z,
+        self.diagnostics.append({"round": round_idx, "attackers": sorted(self.attackers), "z": z_logged,
                                  "scores": raw_scores, "score_stats": score_stats,
                                  "left_out": sorted(left_out), "isolated": sorted(isolated),
                                  "excluded": sorted(excluded), "group_z": parent_z,

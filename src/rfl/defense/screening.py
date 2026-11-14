@@ -56,6 +56,7 @@ class ScreenOptions:
     relative_floor: float = 0.1
     isolation_patience: int = 1        # consecutive z < -evidence_cut, also requiring EMA below cut
     exclusion_patience: int = 1        # consecutive z < -z_cut before temporary exclusion
+    two_sided: bool = False            # also act on z far above the others (colluders too close to the reference)
 
 
     def __post_init__(self) -> None:
@@ -178,6 +179,11 @@ def robust_z(scores: torch.Tensor, floor: float = 0.1, reference: torch.Tensor |
     scale = torch.maximum((ref - med).abs().median() * 1.4826, floor * med.abs()).clamp_min(absolute_floor)
     no_spread = scale <= 1e-9 * ref.abs().max()  # relative, so the cutoff itself does not depend on scale
     return torch.zeros_like(scores) if no_spread else (scores - med) / scale
+
+
+def one_sided(z: Mapping[int, float], two_sided: bool) -> dict[int, float]:
+    """The z the cuts act on. Two-sided screening folds z onto its negative side: -|z|."""
+    return {c: -abs(v) if two_sided else v for c, v in z.items()}
 
 
 class EvidenceTracker:

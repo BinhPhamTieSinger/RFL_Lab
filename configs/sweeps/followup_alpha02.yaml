@@ -1,0 +1,24 @@
+# Stronger heterogeneity (2026-11-14). In the held-out setting (alpha 0.2, 20 clients, seed 2026) FedHEP+
+# isolated 10 of 20 honest clients with no attack, from round 4 on, and under the backdoor isolated 8 honest
+# clients before any attacker. This file reproduces that setting on the development seeds so fixes can be
+# tuned here, leaving a fresh held-out seed for the final check. Self-contained (own baselines).
+# 60 runs, about 12.5 h.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.2
+  data.num_clients: 20
+  run.rounds: 30
+axes:
+  - a02__fedhep: {config: configs/cifar100_fedhep.yaml}
+    a02__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    a02__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                plus.regroup: true}
+    a02__plus_p3: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                   plus.regroup: true, plus.isolation_patience: 3, plus.exclusion_patience: 3}
+    a02__plus_p3_two: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                       plus.regroup: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                       plus.two_sided: true}
+  - clean: {}
+    sign4: {attack.kind: sign_flip, attack.count: 4}
+    backdoor4: {attack.kind: backdoor, attack.count: 4}
+    minmax4: {attack.kind: min_max, attack.count: 4, attack.knowledge: omniscient}

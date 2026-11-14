@@ -4,7 +4,7 @@ import torch
 
 from rfl.attacks.adaptive import CoordinatedAttack, crafted_update
 from rfl.core.types import DetectionResult, RoundReport
-from rfl.defense.screening import EvidenceTracker, robust_z
+from rfl.defense.screening import EvidenceTracker, one_sided, robust_z
 from rfl.evaluation.detection import detection_metrics
 
 
@@ -51,3 +51,9 @@ def test_coordinated_attack_preserves_buffers_and_honest_uploads(kind):
     assert torch.equal(out[1], uploads[1])
     assert torch.equal(out[2], uploads[2])
     assert torch.equal(attack.poison_labels(torch.arange(3), 3), torch.arange(3))
+
+
+def test_two_sided_screening_acts_on_clients_far_above_the_others():
+    z = {0: 5.0, 1: -3.0, 2: 0.4}
+    assert one_sided(z, two_sided=False) == z
+    assert one_sided(z, two_sided=True) == {0: -5.0, 1: -3.0, 2: -0.4}

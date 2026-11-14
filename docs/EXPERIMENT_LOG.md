@@ -17,6 +17,8 @@ Charts live in `docs/figures/` and are redrawn from the runs with `python script
 
 **Phase 5 (2026-11-12): established rules inside FedHEP, three seeds.** No rule beats FedHEP+ overall. Bulyan and FLAME stop backdoors completely (0.5%, even with 5 attackers or a 3× boost) but leave out 3–6 honest clients per round (−3.9 to −5.6 with no attack); FedHEP+'s gain grows with 5 sign flippers (+12.6) but disappears at α = 0.05. Answers to the professor's questions and the pending runs are in the last two entries.
 
+**Follow-up (2026-11-14): the improvement does not generalize yet.** At α = 0.5 with 15 clients, the measured MAD does not shrink (it grows sixfold after round 14), patience 3 cuts false isolations by 42%, and no defense isolates ALIE or Min-Max attackers because their z is far *above* the others (two-sided screening now implemented and queued). In the held-out setting (α = 0.2, 20 clients) FedHEP+ isolated 10 of 20 honest clients with no attack and lost to Defended FedHEP in four of five settings. Telling honest-but-different clients from attackers is the problem the next method must solve.
+
 ## How the methods work (reference for every entry below)
 A visual version of this section (all diagrams, rendered formulas and key charts in one page) is `docs/methods_page/rfl_lab_methods.html`; open it in a browser. Rebuild it with `python docs/methods_page/build.py . docs/methods_page/rfl_lab_methods.html`. Diagram sources: `docs/diagrams/*.mmd`.
 
@@ -626,23 +628,23 @@ Charts will compare each rule with Defended FedHEP and FedHEP+ once the runs exi
 **Direction:** FedHEP+'s weak spot (backdoor, worse with more colluders) is FLAME/Bulyan's strength, and their weak spot (honest clients left out) is FedHEP+'s strength. A hybrid that uses a FLAME-style cluster check only as *evidence* in FedHEP+'s screening is the natural next candidate.
 
 ## 2026-11-12 · Answers to the professor's questions
-Partly from a follow-up session on your Mac (`docs/FOLLOWUP_REVIEW.md`, code and tests verified here: all 81 tests pass), partly new. Full-scale runs still pending are marked ⏳.
+Partly from a follow-up session on your Mac (`docs/FOLLOWUP_REVIEW.md`, code and tests verified here: all 81 tests pass), partly new. Full-scale runs still pending are marked "Pending:".
 
 **1. False-isolation cascade: is it the MAD shrinking?** *Plausible, not yet proven.* The historical runs logged z but not the raw scores or the MAD, so the denominator cannot be recovered. What the logs do show:
 ![Honest vs malicious z](figures/honest_vs_malicious_z.png)
 - The spread of honest clients' z widens from about round 20 (the blue band), which is what a shrinking MAD would produce.
 - But the first false isolations are not all MAD effects: in the no-attack seed-123 run, client 6 scored z ≈ −1.5 every round from round 1 and was isolated in round 7 with all 15 clients present, a persistently atypical honest client.
-- A floor already exists ($0.1\,|\operatorname{med}\,s|$), but it is relative, so it shrinks with the scores. The follow-up added an absolute floor (`plus.mad_floor`) and per-round logging of median, MAD and effective denominator. ⏳ `followup_diagnostics.yaml` (36 runs) measures the MAD per round at full scale and tests floors 0.01 and 0.03.
+- A floor already exists ($0.1\,|\operatorname{med}\,s|$), but it is relative, so it shrinks with the scores. The follow-up added an absolute floor (`plus.mad_floor`) and per-round logging of median, MAD and effective denominator. Pending: `followup_diagnostics.yaml` (36 runs) measures the MAD per round at full scale and tests floors 0.01 and 0.03.
 
-**2. Temporal rule / gradual down-weighting.** The evidence average is already temporal, but one extreme round can still isolate. The follow-up added *patience* (isolate only after k consecutive low rounds and low evidence); ⏳ tested with k = 3 in the same sweep. Gradual down-weighting is partly there already (SCCF weights kept clients continuously); a soft weight such as $\sigma(z_i)$ instead of removal is not implemented yet.
+**2. Temporal rule / gradual down-weighting.** The evidence average is already temporal, but one extreme round can still isolate. The follow-up added *patience* (isolate only after k consecutive low rounds and low evidence); Pending: tested with k = 3 in the same sweep. Gradual down-weighting is partly there already (SCCF weights kept clients continuously); a soft weight such as $\sigma(z_i)$ instead of removal is not implemented yet.
 
 **3. Which honest clients get isolated?**
 ![Skew vs isolation](figures/skew_vs_isolation.png)
 At α = 0.5 the isolated honest clients are **more skewed** (median R_skew 0.46 vs 0.55 for those kept). At α = 0.05 there is no difference. Caveats: the same clients appear in several runs (same seed, same partition), so these are not independent observations; R_skew here is computed offline from the true labels. As you note, a client's own R_skew is self-reported and forgeable, so a skew-aware threshold would need a server-side estimate (for example a small trusted validation set, as FLTrust uses). Not enabled.
 
-**4. Adaptive attacks (ALIE, Min-Max).** Not in any earlier run. Implemented in the follow-up and checked here: attackers train honestly, then upload mean − z·std (ALIE, with the paper's z = 0.43 for 15 clients and 3 attackers; the follow-up had used 1.0) or the Min-Max point at the edge of the honest updates' spread. On the toy task, ALIE already slips past FLAME and Bulyan unflagged. ⏳ `followup_attacks.yaml` (24 runs) on CIFAR-100 against Defended FedHEP, FedHEP+, FLAME and Bulyan.
+**4. Adaptive attacks (ALIE, Min-Max).** Not in any earlier run. Implemented in the follow-up and checked here: attackers train honestly, then upload mean − z·std (ALIE, with the paper's z = 0.43 for 15 clients and 3 attackers; the follow-up had used 1.0) or the Min-Max point at the edge of the honest updates' spread. On the toy task, ALIE already slips past FLAME and Bulyan unflagged. Pending: `followup_attacks.yaml` (24 runs) on CIFAR-100 against Defended FedHEP, FedHEP+, FLAME and Bulyan.
 
-**5. Other settings.** See the harder-settings table: the sign-flip gain holds and grows at 5 attackers; backdoor protection weakens at 5 attackers; the gain disappears at α = 0.05. ⏳ `followup_q.yaml` (36 runs) uses the authors' rule with q = 0.1 / 0.3 / 0.4 (1–10 attackers depending on the seed; q = 0.4 gives an attacker majority on seed 42). ⏳ `followup_holdout.yaml` (10 runs) is a setting never used in development: α = 0.2, 20 clients, 4 attackers, seed 2026.
+**5. Other settings.** See the harder-settings table: the sign-flip gain holds and grows at 5 attackers; backdoor protection weakens at 5 attackers; the gain disappears at α = 0.05. Pending: `followup_q.yaml` (36 runs) uses the authors' rule with q = 0.1 / 0.3 / 0.4 (1–10 attackers depending on the seed; q = 0.4 gives an attacker majority on seed 42). Pending: `followup_holdout.yaml` (10 runs) is a setting never used in development: α = 0.2, 20 clients, 4 attackers, seed 2026.
 
 **6. Reporting.** Yes, accuracy includes the honest clients that were wrongly isolated; they keep training their own heads and are scored on their own test images. Precision, recall and false-isolation rate separately:
 ![Detection breakdown](figures/detection_breakdown.png)
@@ -707,10 +709,84 @@ Measured on your Mac: about 11–14 minutes per run (the earlier estimate of 8 w
 
 `followup_generalization.yaml` is superseded (kept for the record; do not run).
 
-**Two machines.** The Mac runs priorities 1–4 in order. If the Acer's Intel GPU turns out to be usable (one 2-round benchmark decides, below), it takes files from the bottom of the list (9, 8, 7, …) and the two meet in the middle. A file is never split between machines: results for the same seed differ slightly between Apple and Intel GPUs, so all methods in one comparison must run on the same device. Each run records its device in `metrics.json`.
+**Two machines (decided 2026-11-13).** The Acer benchmark took 53 s for 2 rounds including start-up, data loading and evaluation (device `xpu`), so one round takes about 25 s or less: the same speed as the Mac. The files are therefore shared alternately down the priority list.
+
+| Machine | Sweeps, in order | About |
+|---|---|---|
+| Mac (MPS) | `followup_diagnostics` → `followup_n20_sign` → `followup_holdout` → `followup_q_backdoor` → `followup_n30_backdoor` | 27 h |
+| Acer (XPU) | `followup_attacks` → `followup_n20_backdoor` → `followup_q_sign` → `followup_n30_sign` | 29 h |
+
+A file is never split between machines: results for the same seed differ slightly between Apple and Intel GPUs, so all methods in one comparison must run on the same device. Each run records its device in `metrics.json`. The Acer benchmark covers 2 rounds only; if full runs there take well over 15 minutes (heat throttling on a thin laptop), the split should be revisited.
 
 **Setting up the Acer as a second runner** (Ubuntu, Core Ultra 5 226V, Intel Arc 130V, 16 GB). Its integrated GPU is reached through PyTorch's `xpu` device, which RFL Lab now picks automatically (`run.device: auto` tries cuda, then xpu, then mps, then cpu).
 1. Install Intel's GPU driver packages for Ubuntu (Intel's "client GPU" instructions), then PyTorch with XPU support: `pip install torch torchvision --index-url https://download.pytorch.org/whl/xpu`. Check with `python -c "import torch; print(torch.xpu.is_available())"`.
 2. `git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git` into `/srv/projects`, install with `pip install -e ".[dev]"`, and copy CIFAR-100 from the Mac (`Paper_Reproduction/data/cifar-100-python`, 178 MB) to the matching `../Paper_Reproduction/data` path.
-3. Benchmark 2 rounds: `time python scripts/run.py configs/cifar100_fedhep_defended.yaml --set run.rounds=2 run.eval_every=2 name=bench run.output_dir=outputs_bench`. One round on the Mac takes about 25 s (12 min / 30 rounds). The Acer is worth using if its round takes under about 1 minute; on CPU alone it will be far slower.
+3. Benchmark 2 rounds: `time python scripts/run.py configs/cifar100_fedhep_defended.yaml --set run.rounds=2 run.eval_every=2 name=bench run.output_dir=outputs_bench`. One round on the Mac takes about 25 s (12 min / 30 rounds). The Acer is worth using if its round takes under about 1 minute; on CPU alone it will be far slower. Result (2026-11-13): 53 s for the 2-round benchmark.
 4. Run sweeps from the bottom of the list, then copy their run folders back into the Mac's `outputs/` (`scp -r`). Every run folder holds only `metrics.json` and `config.yaml`.
+
+## 2026-11-14 · Follow-up results: screening diagnostics, adaptive attacks, held-out setting (your Mac, MPS)
+91 runs: `followup_diagnostics` (36, `outputs_followup_full/`), `followup_attacks` (30, `outputs/`), `followup_holdout` (10, single seed 2026, `outputs_followup_holdout/`), plus the matching earlier runs. Re-running FedHEP+ inside `followup_diagnostics` reproduced the Phase 5 numbers to two decimals (47.92 ± 0.60, 46.34 ± 0.87, 46.26 ± 0.56, backdoor success 20.8%), so runs on the Mac are deterministic. Charts: `python scripts/plot_adaptive.py outputs outputs_followup_full`.
+
+### 1. Screening diagnostics: the MAD does not shrink; patience helps, floors do not
+CIFAR-100, α = 0.5, 15 clients, 3 attackers, 3 seeds. FI = honest clients isolated, summed over the 3 seeds (45 honest client-runs with no attack, 36 with attack).
+
+| FedHEP+ variant | No attack | Sign flip | Backdoor | Backdoor success |
+|---|---|---|---|---|
+| as in Phase 5 | 47.92 ± 0.60 (FI 9) | 46.34 ± 0.87 (FI 5) | 46.26 ± 0.56 (FI 10) | 20.8% |
+| absolute floor 0.01 | identical to the row above | identical | identical | 20.8% |
+| absolute floor 0.03 | 48.02 ± 0.80 (FI 11) | 46.16 ± 0.78 (FI 5) | 46.37 ± 0.43 (FI 7) | 23.4% |
+| patience 3 | 48.21 ± 0.33 (FI 7) | 46.01 ± 1.34 (FI 3) | 46.72 ± 0.88 (FI 4) | 28.0% |
+
+![Screening diagnostics](figures/followup_diagnostics.png)
+
+- **The measured MAD does not shrink.** Taking the median over the 9 runs, $1.4826\cdot\mathrm{MAD}$ stays near 0.01–0.03 for rounds 1–14 and then grows six- to eightfold (to 0.12–0.15 by rounds 24–28). The relative floor $0.1\,|\operatorname{med} s|$ falls steadily from 0.04 to 0.005 as the median cosine falls. The two cross at rounds 14–15. This confirms, with directly logged values, the 2026-11-12 reading that came from the SCCF proxy.
+- **Where false isolations come from.** All 24 honest isolations (seeds 123 and 7; seed 42 had none) happen in rounds 7–30. They are of two kinds. (a) Rounds 7–20: the scale is 0.02–0.07, and a client whose cosine is 0.05–0.30 below the median gets z between −2.1 and −5.1. (b) Rounds 24–30: the median cosine is near zero (−0.02 to 0.03), so the relative floor is gone, and z reaches −11.4. Because the evidence average puts weight 0.3 on the new z, a client whose evidence was near 0 is isolated for good by a single round with z ≤ −5.
+- **The absolute floor 0.01 never set the scale** (identical runs). Floor 0.03 binds in 3–8 rounds per run, mostly late, but barely changed false isolations (23 vs 24).
+- **Patience 3** (three consecutive bad rounds before exclusion or isolation) cut false isolations from 24 to 14 and gave the best no-attack accuracy (48.21 ± 0.33). Its cost: sign-flip attackers are isolated in round 3 instead of round 1, and backdoor success rose from 20.8% to 28.0% with a very wide spread (39, 42 and 2.7%).
+- **The same honest clients are isolated across attacks.** In seed 123, clients 6, 8 and 14 are isolated with no attack, under sign flip and under backdoor; in seed 7, clients 9 and 11 in all three. Their behaviour is a property of their data, not of the attack.
+
+### 2. Adaptive attacks: no defense isolated a single attacker
+ALIE (z = 0.43, colluders' own statistics) and Min-Max (omniscient), 3 of 15 attackers, α = 0.5, 3 seeds.
+
+| Method | No attack | ALIE | Min-Max |
+|---|---|---|---|
+| FedHEP, no defense | 47.78 ± 0.39 | 47.76 ± 0.07 | 45.08 ± 1.18 |
+| Defended FedHEP | 48.39 ± 0.72 | 47.49 ± 1.53 | 45.19 ± 0.79 |
+| FedHEP+ | 47.92 ± 0.60 | 47.55 ± 1.22 | 44.87 ± 1.42 |
+| Bulyan | 44.52 ± 0.28 | 42.26 ± 1.15 | 37.47 ± 2.74 |
+| FLAME | 42.81 ± 1.49 | 40.80 ± 0.80 | 42.72 ± 2.50 |
+
+![Adaptive attacks](figures/followup_adaptive.png)
+
+- **ALIE barely hurts FedHEP** (47.76 vs 47.78 undefended). With z = 0.43 the crafted update is close to the honest mean, and FedHEP's local and parent heads absorb what is left. **Min-Max costs about 3 points** whatever the defense, except FLAME (−0.1, but FLAME starts 5 points lower).
+- **Bulyan is the worst rule under Min-Max** (−7.1 against its own no-attack accuracy), as Shejwalkar and Houmansadr (2021) designed the attack to do against such rules.
+- **No method isolated any attacker** in any of the 30 runs. FedHEP+ instead isolated honest clients: 6 under ALIE and 3 under Min-Max (seeds 123 and 7).
+- **Why FedHEP+ misses them: their z is too high, not too low.** Over all rounds, attackers' z has median +5.2 under ALIE and +2.9 under Min-Max; honest clients' median is −0.2 and −0.4. The screen only cuts below −2.5. A two-sided cut at 2.5 would have flagged 84% (ALIE) and 61% (Min-Max) of attacker-rounds, against 0.2% and 0% of honest-rounds under those attacks, 0.3% with no attack and 2.3% under sign flip. **Two-sided screening is now implemented** (`plus.two_sided`, acting on $-|z|$; logged z is unchanged) with a unit test, and queued as `followup_two_sided` together with patience 3.
+
+### 3. Held-out setting: FedHEP+'s advantage does not carry over
+The configuration reserved on 2026-11-12 and not used for any tuning: α = 0.2, 20 clients, 4 attackers, seed 2026 (one seed, so read differences under about 1.5 points as noise).
+
+| Method | No attack | Sign flip | Backdoor (success) | ALIE | Min-Max |
+|---|---|---|---|---|---|
+| Defended FedHEP | **52.27** | 48.79 | **50.02** (56%) | **51.17** | **49.46** |
+| FedHEP+ | 50.27 | **49.94** | 46.00 (58%) | 50.30 | 48.03 |
+| FedHEP+ honest clients isolated (of 20 / 16) | 10 | 4 | 8 | 6 | 5 |
+
+- With no attack, FedHEP+ isolated **10 of 20 honest clients**, the first in round 4.
+- Under the backdoor it isolated 8 honest clients (rounds 4–19) before any attacker, and the 4 attackers only in rounds 20–29, after the backdoor had taken hold (success 15% at round 20, 58% at round 30). It gave no protection: Defended FedHEP's success was 56%.
+- It still won under sign flip (+1.2), where all 4 attackers were isolated in round 1.
+- Again the same honest clients recur: clients 0–4 and 12 were isolated with no attack, under the backdoor and under ALIE.
+
+**Conclusion.** FedHEP+'s Phase 3 improvement was measured at α = 0.5 with 15 clients. At α = 0.2 with 20 clients, its one-sided, permanent screen mistakes honest clients with unusual data for attackers early in training, and that costs more than the protection it gives. Together with section 2 this names the problem the next method has to solve: **tell honest-but-different clients from attackers, on both sides of the consensus**, without a scale that collapses. The literature review in progress covers prior work on this problem.
+
+**Held-out discipline.** Seed 2026 has now been used once and must not be used to tune. `followup_alpha02` reproduces the setting on the development seeds (42, 123, 7) so fixes can be tuned there; a new held-out seed will be reserved for the final check.
+
+### Run plan update (2026-11-14)
+The Mac ran `followup_diagnostics`, `followup_attacks` and `followup_holdout` (not the split planned on 2026-11-13), then stopped. New order:
+
+| Machine | Next, in order | Runs | About |
+|---|---|---|---|
+| Mac | `followup_two_sided` (must be on the Mac: its baselines are Mac runs) → `followup_alpha02` → `followup_n20_sign` → `followup_q_backdoor` → `followup_n30_backdoor` | 15 + 60 + 45 + 36 + 45 | 3 + 12.5 + 9.5 + 7.5 + 9.5 h |
+| Acer | `followup_n20_backdoor` → `followup_q_sign` → `followup_n30_sign` (skip `followup_attacks`: done on the Mac) | 30 + 36 + 60 | 6.5 + 7.5 + 12.5 h |
+
+Bring the Acer's runs to the Mac with `bash scripts/sync_acer.sh` (rsync; never overwrites a Mac run), then commit and push from the Mac.

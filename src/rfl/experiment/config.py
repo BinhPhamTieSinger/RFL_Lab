@@ -75,6 +75,7 @@ class PlusConfig:
     relative_floor: float = 0.1
     isolation_patience: int = 1        # consecutive z < -evidence_cut, also requiring EMA below cut
     exclusion_patience: int = 1        # consecutive z < -z_cut before temporary exclusion
+    two_sided: bool = False            # also act on z far above the others (colluders too close to the reference)
 
 
 

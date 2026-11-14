@@ -1,0 +1,20 @@
+# Two-sided screening (2026-11-14). Under ALIE and Min-Max the attackers' z sits far ABOVE the others
+# (median +5.2 and +2.9; honest median -0.2 and -0.4), so the one-sided cut never sees them.
+# Two-sided screening acts on -|z|; patience 3 is added because it cut false isolations by 42% in
+# followup_diagnostics. Same seeds and attackers as followup_attacks; baselines p3__zmr__* are on the Mac,
+# so this file must run on the Mac (same device as its baselines). 15 runs, about 3 h.
+seeds: [42, 123, 7]
+common:
+  method: fedhep_plus
+  data.alpha: 0.5
+  run.rounds: 30
+  plus.reference: median
+  plus.regroup: true
+axes:
+  - ts__two_p3: {config: configs/cifar100_fedhep_defended.yaml, plus.two_sided: true, plus.isolation_patience: 3,
+                 plus.exclusion_patience: 3}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}
