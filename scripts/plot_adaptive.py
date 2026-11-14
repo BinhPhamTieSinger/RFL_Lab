@@ -143,11 +143,57 @@ def fig_backdoor_persists(runs: dict) -> None:
     pr.save(fig, "followup_backdoor_persists.png")
 
 
+def fig_alpha02(runs: dict) -> None:
+    attacks = [("clean", "No attack"), ("sign4", "Sign flip"), ("backdoor4", "Backdoor"), ("minmax4", "Min-Max")]
+    methods = [("a02__fedhep", "FedHEP (no defense)", "#b0b0b0"), ("a02__defended", "Defended FedHEP", "#6e6e6e"),
+               ("a02__plus", "FedHEP+", pr.SLOT[0])]
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(14, 4.2), gridspec_kw={"width_ratios": [2.2, 1]})
+    for j, (prefix, label, color) in enumerate(methods):
+        for i, (a, _) in enumerate(attacks):
+            ms = _runs(runs, f"{prefix}__{a}")
+            mu, sd = pr.mean_sd([m["final"]["pooled"] for m in ms])
+            pr.bar_labels(ax, ax.bar(i + (j - 1) * 0.27, mu, 0.25, yerr=sd, color=color, capsize=2,
+                                     label=label if i == 0 else None), size=7.5, errors=[sd])
+    ax.set_xticks(range(len(attacks)), [label for _, label in attacks])
+    ax.set_ylim(35, 60)
+    ax.set_ylabel("accuracy (%)")
+    ax.set_title("α = 0.2, 20 clients, 4 attackers (mean ± sd, 3 seeds)")
+    honest = [sum(_false_isolations(m) for m in _runs(runs, f"a02__plus__{a}")) for a, _ in attacks]
+    pr.bar_labels(ax2, ax2.bar(range(len(attacks)), honest, 0.6, color=pr.SLOT[1]), fmt="{:.0f}", size=8)
+    ax2.set_xticks(range(len(attacks)), [label for _, label in attacks], fontsize=8)
+    ax2.set_ylabel("honest clients isolated (sum of 3 seeds)")
+    ax2.set_title("FedHEP+ false isolations (of 48–60)")
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(*ax.get_legend_handles_labels(), ncols=3, fontsize=8.5, loc="lower center", frameon=False)
+    pr.save(fig, "followup_alpha02.png")
+
+
+def fig_attack_rate(runs: dict) -> None:
+    """The authors' attack rate q gives each seed a different attacker count, so plot against the count."""
+    methods = [("p2__fedavg", "FedAvg", "#b0b0b0", "s"), ("p2__fedhep", "FedHEP (no defense)", "#8a8a8a", "v"),
+               ("p2__defended", "Defended FedHEP", "#4a4a4a", "D"), ("p3__zmr", "FedHEP+", pr.SLOT[0], "o")]
+    fig, ax = plt.subplots(figsize=(9, 4.3))
+    for k, (prefix, label, color, marker) in enumerate(methods):
+        pts = sorted((len(m["attackers"]), m["final"]["pooled"]) for q in ("q10", "q30", "q40")
+                     for m in _runs(runs, f"{prefix}__{q}_sign"))
+        ax.scatter([x + (k - 1.5) * 0.12 for x, _ in pts], [y for _, y in pts], color=color, marker=marker, s=34,
+                   label=label, zorder=3)
+    ax.set_xlabel("sign-flip attackers among 15 clients (from q = 0.1, 0.3, 0.4 over 3 seeds)")
+    ax.set_ylabel("accuracy (%)")
+    ax.set_xticks(range(0, 11))
+    ax.set_title("Accuracy against the number of attackers (one point per run)")
+    ax.legend(fontsize=8.5, loc="upper right")
+    fig.tight_layout()
+    pr.save(fig, "followup_attack_rate.png")
+
+
 def main() -> None:
     pr.style()
     runs = pr.load(Path(sys.argv[1]))
     fig_adaptive(runs)
     fig_backdoor_persists(runs)
+    fig_alpha02(runs)
+    fig_attack_rate(runs)
     fig_diagnostics(pr.load(Path(sys.argv[2])))
     fig_holdout(pr.load(Path(sys.argv[3])))
 

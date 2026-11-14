@@ -17,7 +17,7 @@ Charts live in `docs/figures/` and are redrawn from the runs with `python script
 
 **Phase 5 (2026-11-12): established rules inside FedHEP, three seeds.** No rule beats FedHEP+ overall. Bulyan and FLAME stop backdoors completely (0.5%, even with 5 attackers or a 3× boost) but leave out 3–6 honest clients per round (−3.9 to −5.6 with no attack); FedHEP+'s gain grows with 5 sign flippers (+12.6) but disappears at α = 0.05. Answers to the professor's questions and the pending runs are in the last two entries.
 
-**Follow-up (2026-11-14): the improvement does not generalize yet.** At α = 0.5 with 15 clients, the measured MAD does not shrink (it grows sixfold after round 14), patience 3 cuts false isolations by 42%, and no defense isolates ALIE or Min-Max attackers because their z is far *above* the others (two-sided screening now implemented and queued). In the held-out setting (α = 0.2, 20 clients) FedHEP+ isolated 10 of 20 honest clients with no attack and lost to Defended FedHEP in four of five settings. Telling honest-but-different clients from attackers is the problem the next method must solve.
+**Follow-up (2026-11-14): the improvement does not generalize yet.** At α = 0.5 with 15 clients, the measured MAD does not shrink (it grows sixfold after round 14), patience 3 cuts false isolations by 42%, and no defense isolates ALIE or Min-Max attackers because their z is far *above* the others (two-sided screening now implemented and queued). In the held-out setting (α = 0.2, 20 clients) FedHEP+ isolated 10 of 20 honest clients with no attack and lost to Defended FedHEP in four of five settings; three development seeds confirm it (−2.0 with no attack on every seed, about 9 of 20 honest clients isolated per run), while with 5–6 of 15 sign flippers it is 9–15 points ahead. Telling honest-but-different clients from attackers is the problem the next method must solve.
 
 ## How the methods work (reference for every entry below)
 A visual version of this section (all diagrams, rendered formulas and key charts in one page) is `docs/methods_page/rfl_lab_methods.html`; open it in a browser. Rebuild it with `python docs/methods_page/build.py . docs/methods_page/rfl_lab_methods.html`. Diagram sources: `docs/diagrams/*.mmd`.
@@ -821,3 +821,49 @@ No attack 55.59 ± 1.34; sign flip with 4 attackers 42.51 ± 0.99 (−13.1). Acc
 - **Layer L0** of the research plan as a Global-step rule `robust.rule: arc_nnm_tm` (ARC, then NNM, then trimmed mean) with optional worker momentum `robust.momentum` (D31). Unit and property tests: ARC clips exactly the k largest rows to the next norm and keeps their direction; NNM averages the n − f nearest rows; a huge minority moves the aggregate by a bounded amount; the rule is permutation invariant.
 - **Resource measurement** in every run (`metrics.json → resources`): total and per-round wall time (GPU synchronized), peak process memory, peak device memory (exact peak on CUDA and XPU; sampled per round on MPS).
 - Sweeps `phase6_l0.yaml` (D1, 30 runs) and `phase6_l0_a02.yaml` (D2, 24 runs), both for the Mac because their baselines are Mac runs.
+
+## 2026-11-14 (evening) · α = 0.2 on three seeds; attack rate q
+New: `followup_alpha02` (the FedHEP, Defended FedHEP and FedHEP+ parts, 36 runs, Mac; the patience-3 and two-sided variants are still running) and `followup_q_sign` (36 runs, Acer). Charts: `python scripts/plot_adaptive.py outputs outputs_followup_full outputs_followup_holdout`.
+
+### α = 0.2, 20 clients, 4 attackers, 3 seeds (Mac): the held-out result is confirmed
+
+![α = 0.2, three seeds](figures/followup_alpha02.png)
+
+| Method | No attack | Sign flip | Backdoor (success) | Min-Max |
+|---|---|---|---|---|
+| FedHEP, no defense | **55.59 ± 1.34** | 42.51 ± 0.99 | **54.72 ± 1.27** (46.9%) | 52.10 ± 2.03 |
+| Defended FedHEP | 54.70 ± 0.61 | 50.62 ± 1.43 | 54.47 ± 2.12 (44.3%) | **54.16 ± 2.16** |
+| FedHEP+ | 52.68 ± 0.69 | **52.15 ± 1.34** | 53.08 ± 1.93 (43.3%) | 53.55 ± 2.07 |
+| FedHEP+ minus Defended FedHEP, per seed (42, 123, 7) | −2.50, −1.63, −1.93 | +2.19, +1.50, +0.91 | −2.89, −0.77, −0.50 | +0.39, −1.05, −1.18 |
+
+- **The single held-out seed (2026) was representative.** On three seeds FedHEP+ is worse than Defended FedHEP with no attack on every seed (−2.0 on average) and under the backdoor (−1.4), and better only under sign flip (+1.5, every seed). Held-out seed: −2.0, +1.2, −4.0, −1.4.
+- **False isolations are systematic at α = 0.2:** 27 honest clients isolated with no attack over 3 seeds (9 of 20 per run on average), the first in round 5 of every seed. Bottom-10% accuracy with no attack drops from 42.25 (Defended FedHEP) to 38.37: the clients it isolates are the ones with unusual data, and they end up with worse models. For a personalized method this fairness cost matters as much as the average.
+- **Patience 3 does not fix it at α = 0.2.** Two seeds finished so far: 17 honest clients isolated with no attack (8.5 per run, against 9 for FedHEP+), accuracy 52.32. The third seed and the two-sided variant are running.
+- **No method stops the backdoor at α = 0.2** (43–47% success for all three, against about 80% at α = 0.5). Success is lower here for every method, including no defense, probably because fewer clients hold the target class, so FedHEP's inference mask blocks it on more clients (not yet checked per client).
+- **Defended FedHEP isolates some attackers at α = 0.2** (4 of 12 Min-Max attackers and 3 of 12 sign flippers over 3 seeds, and no honest client), which it never did at α = 0.5 (Phase 1c). The cause is not yet checked; a likely one is that with more skewed data the honest clients' trust shares spread out, which moves the attackers' shares further below the isolation threshold.
+
+### Attack rate q (the authors' rule), α = 0.5, 15 clients, sign flip, 3 seeds (Acer)
+Each client attacks with probability q, so the attacker count differs by seed: 1 / 0 / 2 at q = 0.1, 6 / 3 / 5 at q = 0.3, 10 / 6 / 6 at q = 0.4 (seeds 42 / 123 / 7). Means over seeds mix different counts, so the chart plots each run against its own count.
+
+![Accuracy against the number of attackers](figures/followup_attack_rate.png)
+
+| Attackers (seed, q) | FedAvg | FedHEP | Defended FedHEP | FedHEP+ | Honest clients FedHEP+ kept |
+|---|---|---|---|---|---|
+| 0 (123, 0.1) | 38.3 | 47.6 | **49.2** | 46.8 | 11 of 15 |
+| 1 (42, 0.1) | 32.7 | 44.2 | 45.5 | **47.8** | 13 of 14 |
+| 2 (7, 0.1) | 25.2 | 36.0 | 41.1 | **45.7** | 9 of 13 |
+| 3 (123, 0.3) | 21.0 | 32.9 | 37.9 | **44.6** | 7 of 12 |
+| 5 (7, 0.3) | 1.0 | 6.9 | 29.5 | **44.2** | 4 of 10 |
+| 6 (42, 0.3) | 1.0 | 6.7 | 27.3 | **40.1** | 9 of 9 |
+| 6 (123, 0.4) | 1.2 | 8.5 | 32.3 | **41.5** | 5 of 9 |
+| 6 (7, 0.4) | 1.0 | 3.3 | 27.4 | **42.3** | 4 of 9 |
+| 10 (42, 0.4) | 1.0 | 1.1 | 1.2 | 1.2 | 0 of 5 |
+
+- **Against many sign flippers FedHEP+ is far ahead**: with 5–6 attackers of 15 it keeps 40–44% where Defended FedHEP falls to 27–32% and undefended FedHEP and FedAvg collapse. It isolates every attacker in every run.
+- **But it pays for that by isolating honest clients**: with 5–6 attackers it often keeps only 4–5 honest clients by the end, and with no attacker at all it isolated 4 of 15. That it still wins says sign flipping is so harmful that removing honest clients is the lesser cost; it does not mean the false isolations are harmless (see α = 0.2 above).
+- **With 10 of 15 attackers every method fails** (about 1%), as expected when attackers are the majority; FedHEP+ isolated all 10 attackers and the 5 honest clients too.
+
+### What this adds to the paper's story
+1. FedHEP+'s screening is strong against crude attacks (sign flip, any attacker count up to 40%) and weak against heterogeneity: at α = 0.2 it costs 2 points and 4 points of bottom-10% accuracy with no attack.
+2. Its false isolations are a property of the data distribution (the same clients, from round 5), not of the attack. This is now shown on 3 seeds plus a held-out seed.
+3. Both results point at the same requirement as the research plan: a defense that separates "different" from "malicious" (bimodality gate, multiple signals) and bounds influence instead of relying on removal alone (L0, queued as `phase6_l0` and `phase6_l0_a02`).

@@ -68,7 +68,7 @@ These decide whether the idea works, so each is an experiment, not a guess.
 | Screen, seed 42 | Done (2026-11-10) | `phase5_screen.yaml` (30 runs); results in EXPERIMENT_LOG.md |
 | Confirm the promising rules on seeds 123 and 7 | Done (2026-11-12) | all rules on 3 seeds: none beats FedHEP+ overall; Bulyan/FLAME stop backdoors (0.5%) at −3.9 to −5.6 clean |
 | Harder settings: 5 attackers, boosted backdoor, α = 0.05 | Done (2026-11-12) | FedHEP+ sign-flip gain grows at 5 attackers (+12.6); backdoor protection weakens (56%); no gain at α = 0.05 |
-| Professor's follow-up: MAD per round, floor, patience, ALIE / Min-Max, q, 20 and 30 clients, held-out setting | Diagnostics, adaptive attacks, held-out done (2026-11-14); two-sided, α = 0.2, q, 20/30 clients running | nine self-contained sweeps, 328 runs; assignment per machine in EXPERIMENT_LOG.md (run plan) |
+| Professor's follow-up: MAD per round, floor, patience, ALIE / Min-Max, q, 20 and 30 clients, held-out setting | Diagnostics, adaptive attacks, held-out, 20-client backdoor, q sign, α = 0.2 (three methods) done (2026-11-14); patience/two-sided at α = 0.2, two-sided at α = 0.5, q backdoor, 20-client sign, 30 clients running or queued | nine self-contained sweeps, 328 runs; assignment per machine in EXPERIMENT_LOG.md (run plan) |
 | Next candidate: FedHEP+ screening + FLAME-style cluster check as evidence (hybrid) | Superseded (2026-11-14) | replaced by Phase 6 below |
 
 ## Phase 6 · FedHEP-Guard (proposed 2026-11-14)

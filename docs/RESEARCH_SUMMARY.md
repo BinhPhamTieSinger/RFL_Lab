@@ -1,6 +1,6 @@
 # RFL Lab in plain words
 
-What we tried, what we found, and what comes next, from the first run (2026-11-06) to the start of Phase 6 (2026-11-14). Every number here comes from a recorded run; the full details, tables and settings are in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md).
+What we tried, what we found, and what comes next, from the first run (2026-11-06) to the start of Phase 6 (updated 2026-11-14, evening). Every number here comes from a recorded run; the full details, tables and settings are in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md).
 
 ## The problem
 
@@ -114,17 +114,27 @@ Under ALIE and Min-Max, **no defense isolated a single attacker**. The reason is
 
 ### 6c · The improvement did not carry over to a new setting
 
-We had set aside one setting that was never used for tuning: more different data (α = 0.2) and 20 clients. There, FedHEP+ **isolated 10 of 20 honest clients with no attack at all**, starting in round 4, and did worse than Defended FedHEP in four of five tests. The same honest clients were flagged whatever the attack, so their unusual data, not any attack, made them look suspicious. (One seed only; it is now being repeated on three seeds.)
+We had set aside one setting that was never used for tuning: more different data (α = 0.2) and 20 clients. There, FedHEP+ **isolated 10 of 20 honest clients with no attack at all**, starting in round 4, and did worse than Defended FedHEP in four of five tests. The same honest clients were flagged whatever the attack, so their unusual data, not any attack, made them look suspicious.
 
 ![Held-out setting](figures/followup_holdout.png)
 
-### 6d · A backdoor stays after its attackers are removed
+We then repeated this setting on our three usual seeds, and **the result held**. With no attack, FedHEP+ lost 2 points to Defended FedHEP on every seed and flagged about 9 of 20 honest clients per run, starting in round 5. The weakest 10% of clients lost 4 points, because the clients it flags are the ones with unusual data, and they end up with worse models. FedHEP+ still won under sign flip (+1.5 on every seed). At this level of data difference, no method stopped the backdoor (43–47% success).
+
+![α = 0.2, three seeds](figures/followup_alpha02.png)
+
+### 6d · Many attackers: FedHEP+ is far ahead against sign flipping
+
+Using the authors' rule, where each client becomes an attacker by chance (rate q), we tested from 0 to 10 sign-flip attackers out of 15. With 5 or 6 attackers, FedHEP+ kept 40–44% accuracy, while Defended FedHEP fell to 27–32% and the undefended methods collapsed to almost nothing. FedHEP+ caught every attacker in every run, but it also removed honest clients, sometimes leaving only 4 of them. With 10 attackers (a majority), every method failed, as expected.
+
+![Accuracy against the number of attackers](figures/followup_attack_rate.png)
+
+### 6e · A backdoor stays after its attackers are removed
 
 With 20 clients and 5 backdoor attackers, FedHEP+ isolated every attacker by rounds 11 to 15. But backdoor success on honest clients' models **kept rising afterwards**, by 17 to 47 points by round 30. Once the backdoor is in the shared part of the model, removing the attackers does not remove it. FLAME, which blocks the backdoor from the start, stayed at 0.6%.
 
 ![Backdoor persists after isolation](figures/followup_backdoor_persists.png)
 
-**The lesson of Step 6:** "far from the typical update" is a poor sign of an attacker. Honest clients with unusual data are far from it, and clever attackers are close to it.
+**The lesson of Step 6:** "far from the typical update" is a poor sign of an attacker. It catches crude attacks well, even many of them, but honest clients with unusual data are also far from typical, and clever attackers stay close to it.
 
 ## Step 7 · What the research literature says
 
@@ -152,7 +162,7 @@ Each part is a hypothesis with a test that can reject it, and it is added only i
 
 ![Experiment stages](figures/diagrams/11_experiment_stages.png)
 
-**Status on 2026-11-14:** the safety net (L0) and time and memory measurement are built and tested; their first experiments are queued on the Mac. The Mac and the Acer laptop are finishing the remaining follow-up experiments: 20 and 30 clients, the authors' attack-rate rule, α = 0.2 on three seeds, and the two-direction screen.
+**Status on 2026-11-14 (evening):** the safety net (L0) and time and memory measurement are built and tested; their first experiments are queued on the Mac. Done since the morning: α = 0.2 on three seeds and the attack-rate tests. Still running: the patience and two-direction variants at α = 0.2 (Mac) and 30 clients (Acer).
 
 ## Summary
 
@@ -163,6 +173,6 @@ Each part is a hypothesis with a test that can reject it, and it is added only i
 | 3 | Does finding and removing attackers help? | Yes at α = 0.5 with 15 clients: +8.3 points under sign flip, backdoor success 79% to 21%. |
 | 4 | Does checking groups first help? | No; members of a group are too alike to separate. |
 | 5 | Do famous defenses do better? | No overall; Bulyan and FLAME stop backdoors but cost 4 to 6 points with no attack. |
-| 6 | Does FedHEP+ hold up under closer inspection? | Not yet: it flags honest clients with unusual data, misses clever attacks, and a backdoor stays after the attackers are removed. |
+| 6 | Does FedHEP+ hold up under closer inspection? | Partly: it is far ahead against many sign flippers, but on 3 seeds at α = 0.2 it flags about 9 of 20 honest clients and loses 2 points with no attack; it misses clever attacks; and a backdoor stays after the attackers are removed. |
 | 7 | What does the literature recommend? | Limit every client's influence, use more than one signal, let trust recover. |
 | 8 | What next? | FedHEP-Guard, built and tested one part at a time. |
