@@ -1,0 +1,26 @@
+# Which signal sees the backdoor? (2026-11-15) The R2/R3 screen compares root-head rows of held classes to the
+# reference and never splits backdoor attackers off (z -1 to -2.5). FLAME rejects the same attackers in 27-28 of 30
+# rounds using cosine distances on whole models, pairwise, with a majority cluster. Test the signal alone: R3 with
+# plus.signal: weights (whole update minus BatchNorm) instead of root_head. Baselines p6__r3g8__* (Mac). Run on the
+# Mac after phase6_ladder_d1. 15 runs, about 3 h.
+seeds: [42, 123, 7]
+common:
+  method: fedhep_plus
+  data.alpha: 0.5
+  run.rounds: 30
+  plus.reference: median
+  plus.regroup: true
+  plus.two_sided: true
+  plus.isolation_patience: 3
+  plus.exclusion_patience: 3
+  plus.global_rule: arc_nnm_tm
+  plus.global_f: 3
+  plus.gap_gate: 8
+  plus.signal: weights
+axes:
+  - p6__r3w: {config: configs/cifar100_fedhep_defended.yaml}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

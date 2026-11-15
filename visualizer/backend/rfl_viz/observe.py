@@ -96,9 +96,33 @@ def instrument_fedhep(server: Any, emit: Emit) -> None:
             _wrap(getattr(server, tier), "aggregate", after=agg_end)
 
 
+def _wrap_module_function(module: Any, name: str, emit: Emit, event: str,
+                          summarize: Callable[[Any], dict[str, Any]]) -> Callable[[], None]:
+    """Wrap a function where a module imported it by name (e.g. runner.evaluate_clients); returns an undo."""
+    original = getattr(module, name)
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        t0 = time.perf_counter()
+        result = original(*args, **kwargs)
+        emit({"type": event, "seconds": time.perf_counter() - t0, **summarize(result)})
+        return result
+
+    setattr(module, name, wrapper)
+    return lambda: setattr(module, name, original)
+
+
 @contextlib.contextmanager
 def observed(emit: Emit) -> Iterator[None]:
     """Within this block, every server built through METHODS is instrumented."""
+    from rfl.experiment import runner
+    from rfl.server import fedhep_plus_server
+
+    undo = [
+        _wrap_module_function(runner, "evaluate_clients", emit, "evaluation_completed",
+                              lambda r: {"pooled": r.pooled, "bottom10": r.bottom10, "per_client": r.per_client}),
+        _wrap_module_function(fedhep_plus_server, "screening_scores", emit, "screening_scored",
+                              lambda s: {"scores": [float(v) for v in s.tolist()]}),
+    ]
     saved = dict(registry.METHODS)
 
     def wrap_builder(build: Callable[..., Any]) -> Callable[..., Any]:
@@ -116,3 +140,5 @@ def observed(emit: Emit) -> Iterator[None]:
     finally:
         registry.METHODS.clear()
         registry.METHODS.update(saved)
+        for u in undo:
+            u()

@@ -980,4 +980,28 @@ Every defense so far ran on Dirichlet label skew (α = 0.05, 0.2, 0.5); IID data
 The RFL Lab visualizer (a tool that runs the real code and shows each step) has completed Stage 1 and Stage 2: `visualizer/docs/01_REPOSITORY_INVENTORY.md` (execution specification of all ten methods from the source code, formulas, configuration, metrics, seven discrepancies between documents and code) and `visualizer/docs/02_ARCHITECTURE.md`. A spike shows that observing a run from outside leaves its results bit-identical (FedHEP+, Defended FedHEP, FedHEP with a backdoor).
 
 ### Run plan update
-Acer: after `followup_backdoor_heads`, run `followup_iid` before `followup_n30_sign`, `followup_n20_sign` and `followup_n30_backdoor`. Mac unchanged (`phase6_ladder_d1` → `phase6_ladder_d2` → `followup_q_backdoor`).
+Acer: after `followup_backdoor_heads`, run `followup_iid` before `followup_n30_sign`, `followup_n20_sign` and `followup_n30_backdoor`. Mac: `phase6_ladder_d1` → `phase6_signal` → `phase6_ladder_d2` → `followup_q_backdoor` (updated 2026-11-15 late).
+
+## 2026-11-15 (late) · Ladder rungs R2 and R3 on D1: the gap gate works
+23 new runs from `phase6_ladder_d1` (Mac): `p6__r2` = L0 Global step + two-sided screen, patience 3 (15 runs, all done); `p6__r3g8` = R2 + gap gate 8 (8 of 15 done: no attack, sign flip, two seeds of backdoor); `p6__r3g12` not yet run. D1: α = 0.5, 15 clients, 3 attackers, 3 seeds.
+
+| Method | No attack | Sign flip | Backdoor (success) | ALIE | Min-Max | Honest isolated (no attack / sign / backdoor) |
+|---|---|---|---|---|---|---|
+| FedHEP+ (reference) | 47.92 | 46.34 | 46.26 (20.8%) | 47.55 | 44.87 | 9 / 5 / 10 |
+| L0 alone | 47.56 | 41.65 | 46.48 (62.5%) | 47.56 | 45.47 | 0 / 0 / 0 |
+| R2: L0 + two-sided screen | 46.99 | 46.00 | 46.44 (22.6%) | 45.65 | **45.96** | 13 / 5 / 12 |
+| **R3: R2 + gap gate 8** | 47.36 | 46.14 | 46.57 (54.8%, 2 seeds) | pending | pending | **3 / 2 / 2** |
+
+- **The gate cuts false isolations by three quarters** (13 → 3 with no attack, 5 → 2 under sign flip, 12 → 2 under the backdoor so far) **while keeping sign-flip detection intact**: all 9 sign flippers isolated in round 3, as without the gate. This is the hypothesis H2 result. The mechanism is visible in the diagnostics: sign-flip rounds 1–3 have gap ratios of 25–134, attack-free rounds mostly 2–8, so the gate (threshold 8) blocks 16–26 of 30 rounds in attack-free runs and the first three rounds are never blocked under sign flip.
+- **R3 is within noise of FedHEP+ on accuracy** (−0.6 with no attack, −0.2 under sign flip; per-seed differences of both signs) **and recovers L0's sign-flip weakness** (+4.5 over L0 alone, every seed). So the combination does what neither part did: L0's zero-false-isolation behaviour under benign conditions, screening's protection against crude attacks, and the gate keeping the two from conflicting.
+- **The cost: the gate also blocks backdoor detection.** Backdoor attackers' z under the screen are only −1 to −2.5 in rounds 1–10 and only occasionally split off (seed 42 round 13: z = −8.0, −7.2, −3.1), so their rounds rarely pass the gate; R3's backdoor success is 54.8% (2 seeds) against 22.6% for R2 and 20.8% for FedHEP+. Backdoor attackers do not form a separate mode in cosine space; they look like unusual honest clients. This is the same conclusion as Phase 2 and Phase 4: cosine screening is the wrong tool for this backdoor, and the paper needs the aggregation-time block (L0 reduced success at α = 0.2; FLAME blocks it) or recovery (H8) instead of detection.
+- **R2 (no gate) under ALIE loses 1.9 to FedHEP+**: isolating the 3 ALIE attackers in round 3 removes 20% of clients to stop an attack that costs 0.02 points. With the gate (pending), the ALIE rounds may or may not pass: their gap ratios were 8–22 at α = 0.2. Under Min-Max, R2 is +1.1 over FedHEP+ and the best of all methods at D1.
+
+**Reading.** The gate converts "two-sided screening" from a net loss into a net neutral-to-positive on benign and crude-attack settings. The remaining problem is the backdoor, which no cosine-based rung will solve. Next: finish R3 on D1 (ALIE, Min-Max, gate 12), run the same rungs on D2 (`phase6_ladder_d2`, queued), and start H8 recovery once `followup_backdoor_heads` says which head carries the backdoor.
+
+### Why the backdoor escapes the screen, and a cheap test (2026-11-15)
+Two existing results point the same way:
+- **FLAME rejects the backdoor attackers in 27–28 of 30 rounds** (`p5__flame__backdoor`, 3 seeds), with cosine distances on *whole models*, pairwise, admitting the majority cluster. Its cost is the 2–4 honest clients per round it also rejects.
+- **Phase 3, seed 42:** screening the *whole weight update* (`plus.signal: weights`) instead of the root-head rows gave backdoor success **0.3%** (vs 33% with root-head rows), but was dropped because it isolated 6 honest clients with no attack (D-level decision at the time: the cascade problem).
+
+So the backdoor *is* separable in cosine space; it lives in the trunk, not in the root-head rows that FedHEP+ screens (the backdoor-critical layers are convolutional, as Zhuang et al. 2024 report). What stopped the whole-update signal in Phase 3 was exactly the false-isolation problem the gap gate now addresses. `phase6_signal.yaml` (15 runs, Mac) tests R3 with `plus.signal: weights`: if the gate holds false isolations at 2–3 while the whole-update signal catches the backdoor, the ladder's backdoor gap closes without any new mechanism. Per-head success (`followup_backdoor_heads`, Acer) will confirm independently where the backdoor sits.

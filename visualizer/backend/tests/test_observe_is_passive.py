@@ -27,6 +27,15 @@ def _strip(result):
     return out
 
 
+def test_wrappers_are_removed_afterwards():
+    from rfl.experiment import registry, runner
+    from rfl.server import fedhep_plus_server
+    before = (runner.evaluate_clients, fedhep_plus_server.screening_scores, dict(registry.METHODS))
+    with observed(lambda e: None):
+        assert runner.evaluate_clients is not before[0]
+    assert (runner.evaluate_clients, fedhep_plus_server.screening_scores, dict(registry.METHODS)) == before
+
+
 @pytest.mark.parametrize("method,extra", [
     ("fedhep_plus", {}),
     ("fedhep_defended", {}),
@@ -45,6 +54,16 @@ def test_observed_run_is_bit_identical_and_emits_events(tmp_path, method, extra)
     assert sum(e["type"] == "client_training_completed" for e in events) == 6 * 3
     if method != "fedhep":
         assert any(e["type"] == "aggregation_completed" and e["tier"] == "global_defense" for e in events)
+    evals = [e for e in events if e["type"] == "evaluation_completed"]
+    assert [e["pooled"] for e in evals] == [row["pooled_acc"] for row in plain["history"]]
+    if method == "fedhep_plus":   # screening seen live, before that round's Global aggregation, equal to the log
+        order = [e["type"] for e in events]
+        first = order.index("screening_scored")
+        assert first < next(i for i, t in enumerate(order) if t == "aggregation_completed" and
+                            events[i]["tier"] == "global_defense")
+        live = [e["scores"] for e in events if e["type"] == "screening_scored"]
+        logged = [list(d["scores"].values()) for d in plain["diagnostics"] if d["scores"]]
+        assert live == logged
     if extra.get("attack.kind") != "backdoor":
         flips = [e for e in events if e["type"] == "attack_executed"]
         assert flips and all(e["cosine_clean_vs_sent"] < -0.99 for e in flips)   # sign flip reverses the update
