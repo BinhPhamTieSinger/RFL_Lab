@@ -53,6 +53,8 @@ class AttackConfig:
 class FedHEPConfig:
     num_groups: int = 3                  # authors' num_clusters (parents)
     similarity_on: str = "full"          # what grouping compares: "full" flat update (authors) or "weights" only
+    exit_guard: bool = False             # evaluation only: also score with the depth-exit guard (rfl.defense.
+                                         # exit_guard); the main metrics stay the unguarded ones
 
 
 @dataclass(frozen=True)

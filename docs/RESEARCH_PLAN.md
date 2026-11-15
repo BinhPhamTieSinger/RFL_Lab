@@ -176,6 +176,8 @@ Efficiency results will be reported per device (Apple M5 MPS, Intel Arc XPU), ne
 
 - **2026-11-15:** H1 confirmed, H4 partly confirmed, momentum dropped (D33). The ladder is reordered: L0 is the base; rung R2 is L0 + two-sided screening with patience 3; R3 adds the bimodality gate; R4 reversible trust; R6 extra signals; R7 parent view; R8 sketching. The backdoor-stop test shows that honest training amplifies an implanted backdoor in FedHEP, so H8 (recovery) is now on the critical path, with per-head success logged to find where the backdoor lives.
 
+- **2026-11-16:** four new screening signals (layer-level, sign alignment, probe outputs, head gap) and a depth-exit guard against backdoors at prediction time are implemented and tested, waiting for the A1000 (`a1000_d1_signals`). Ranked rationale in `IDEAS.md`. Peer voting is published in its basic form (FedReview, BaFFLe, CrowdGuard); only a same-parent, trust-weighted version would be new.
+
 ## 8. Next steps
 1. Finish Stage 0 sweeps on both machines; sync the Acer with `bash scripts/sync_acer.sh`.
 2. Implement Stage 1 instrumentation and re-run one setting per method for cost numbers.

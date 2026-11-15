@@ -2,11 +2,14 @@
 # (alpha 0.5, 15 clients, 3 attackers). CUDA results cannot be compared with Mac (MPS) or Acer (XPU) runs, so the
 # baselines are rerun here. Signals: root_head (R3 as on the Mac), weights (whole update; 0.3% backdoor success in
 # Phase 3 seed 42), critical (most disputed layers, after FedSurrogate), sign_align (AlignIns MPSA), probe_logits and
-# head_gap (outputs on 200 probe images). Run on the A1000 only. 150 runs; time one run first (see OPERATIONS.md).
+# head_gap (outputs on 200 probe images). The depth-exit guard (fedhep.exit_guard) is on everywhere: it is
+# evaluation-only, so every main metric is unchanged and each run also records guarded accuracy, backdoor success and
+# the clean flag rate. Run on the A1000 only. 150 runs; time one run first (see OPERATIONS.md).
 seeds: [42, 123, 7]
 common:
   data.alpha: 0.5
   run.rounds: 30
+  fedhep.exit_guard: true
 axes:
   - g1__fedhep: {config: configs/cifar100_fedhep.yaml}
     g1__defended: {config: configs/cifar100_fedhep_defended.yaml}

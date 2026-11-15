@@ -47,6 +47,20 @@ Benchmark: `time python scripts/run.py configs/cifar100_fedhep_defended.yaml --s
 
 Make `(rfl)` activate automatically on the Acer: `echo 'source ~/venvs/rfl/bin/activate' >> ~/.bashrc`.
 
+### Lab GPU (NVIDIA A1000)
+```bash
+nvidia-smi                                   # note the "CUDA Version" in the top right
+git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git && cd RFL_Lab
+python3 -m venv .venv && source .venv/bin/activate
+# pick the wheel matching the driver's CUDA version (cu121, cu124 or cu126); cu124 shown:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+pip install -e ".[dev]"
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+Copy the CIFAR-100 folder next to the repository (`../Paper_Reproduction/data`), then time one round:
+`time python scripts/run.py configs/cifar100_fedhep_defended.yaml --set run.rounds=2 run.eval_every=2 name=bench run.output_dir=outputs_bench`.
+The A1000 is a third machine: its results are compared only with each other, so every A1000 sweep carries its own baselines (`a1000_*.yaml`).
+
 ## 3. Running experiments
 
 ### One configuration

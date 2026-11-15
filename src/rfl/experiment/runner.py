@@ -19,6 +19,7 @@ from rfl.core.types import ClientData
 from rfl.data.cifar100 import load_cifar100
 from rfl.data.clients import build_clients
 from rfl.data.partition import make_partitioner
+from rfl.defense.exit_guard import ExitGuard
 from rfl.evaluation.accuracy import evaluate_clients
 from rfl.evaluation.backdoor import attack_success_rate
 from rfl.evaluation.detection import detection_metrics
@@ -118,6 +119,11 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
     attackers = frozenset(getattr(server, "attackers", frozenset()))
     attack = getattr(server, "attack", None)
     trigger = getattr(attack, "trigger", None)
+    guard = None
+    if cfg.fedhep.exit_guard:
+        if not hasattr(server, "predict_head"):
+            raise ValueError(f"fedhep.exit_guard needs a FedHEP-family method, not {cfg.method}")
+        guard = ExitGuard(num_classes, seed=cfg.run.seed)
     history: list[dict[str, Any]] = []
     detection: list[dict[str, Any]] = []
     t0 = time.time()
@@ -150,6 +156,15 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
                     row["asr_heads"] = {h: attack_success_rate(partial(server.predict_head, h), clients, trigger,
                                                                cfg.attack.backdoor_target, exclude=attackers)
                                         for h in ("root", "parent", "local")}
+            if guard is not None:
+                guard.fit(server, clients, frozenset(attackers))
+                guarded = partial(guard.predict, server)
+                g_rep = evaluate_clients(guarded, clients, exclude=getattr(server, "unscored", frozenset()))
+                row["guarded"] = {"pooled_acc": g_rep.pooled, "bottom10": g_rep.bottom10,
+                                  "clean_flag_rate": guard.flagged / max(1, guard.seen)}
+                if trigger is not None:
+                    row["guarded"]["asr"] = attack_success_rate(guarded, clients, trigger,
+                                                                cfg.attack.backdoor_target, exclude=attackers)
             history.append(row)
             asr = f"  asr={row['asr']:.2f}" if row.get("asr") is not None else ""
             print(f"[{cfg.name} s{cfg.run.seed}] round {r}/{cfg.run.rounds}  acc={rep.pooled:.2f}  "

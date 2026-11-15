@@ -174,3 +174,43 @@ def test_stop_round_switches_attackers_to_honest_training(tmp_path, monkeypatch)
     assert poisoned == [1, 1]  # two attackers, round 1 only
     with pytest.raises(ValueError):
         run_experiment(_cfg(tmp_path / "avg", "fedavg", kind="sign_flip", count=2, stop_round=1))
+
+
+def test_exit_guard_leaves_training_and_main_metrics_unchanged(tmp_path):
+    """The guard is evaluation-only: with it on, every unguarded metric equals the run without it, and the guarded
+    metrics are recorded next to them."""
+    import dataclasses as dc
+    base = _cfg(tmp_path / "off", "fedhep", kind="backdoor", count=2)
+    off = run_experiment(base)
+    on_run = dc.replace(base.run, output_dir=str(tmp_path / "on"))
+    guard_on = dc.replace(base.fedhep, exit_guard=True)
+    on = run_experiment(dc.replace(base, name="guard_on", run=on_run, fedhep=guard_on))
+    for a, b in zip(off["history"], on["history"], strict=True):
+        assert {k: v for k, v in a.items() if k != "elapsed_s"} == \
+            {k: v for k, v in b.items() if k not in ("elapsed_s", "guarded")}
+    g = on["history"][-1]["guarded"]
+    assert 0 <= g["pooled_acc"] <= 100 and 0 <= g["clean_flag_rate"] <= 1 and g["asr"] is not None
+    with pytest.raises(ValueError):
+        avg = _cfg(tmp_path / "avg", "fedavg")
+        run_experiment(dc.replace(avg, fedhep=dc.replace(base.fedhep, exit_guard=True)))
+
+
+def test_exit_guard_refuses_a_trigger_the_trunk_learned():
+    """Unit check of the decision rule: inputs whose final class gets little support from the exits are re-decided
+    by the exits; inputs the exits agree with keep the final prediction."""
+    from types import SimpleNamespace
+
+    from rfl.defense.exit_guard import ExitGuard, _Exit
+    C = 4
+    guard = ExitGuard(num_classes=C)
+    eye = torch.eye(C)
+    exit_ = _Exit(torch.zeros(C), torch.ones(C), 10 * eye, torch.zeros(C))   # exit predicts the feature's argmax
+    guard.exits[0] = [exit_, exit_, exit_]
+    guard.tau[0] = 0.5
+    final_logits = torch.tensor([[0.0, 9.0, 0.0, 0.0], [0.0, 9.0, 0.0, 0.0]])   # final model says class 1 for both
+    feats = [torch.tensor([[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]])] * 3        # exits: class 1, then class 2
+    server = SimpleNamespace(predict=lambda cid, x: final_logits, memory=[SimpleNamespace(active_mask=None)])
+    guard._features = lambda server, cid, images: feats
+    out = guard.predict(server, 0, torch.zeros(2, 3, 32, 32)).argmax(dim=1).tolist()
+    assert out == [1, 2]
+    assert guard.flagged == 1 and guard.seen == 2
