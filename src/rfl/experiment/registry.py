@@ -130,9 +130,27 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
                            drill_down=p.drill_down, group_cut=p.group_cut, drill_cut=p.drill_cut,
                            drill_mode=p.drill_mode, min_group=p.min_group, mad_floor=p.mad_floor,
                            relative_floor=p.relative_floor, isolation_patience=p.isolation_patience,
-                           exclusion_patience=p.exclusion_patience, two_sided=p.two_sided, gap_gate=p.gap_gate)
+                           exclusion_patience=p.exclusion_patience, two_sided=p.two_sided, gap_gate=p.gap_gate,
+                           critical_k=p.critical_k, sign_topk=p.sign_topk)
+    probe = None
+    if p.signal in ("probe_logits", "head_gap"):
+        probe = _probe_set(cfg, clients, p.probe_size)
     return FedHEPPlusServer(hep, clients, trainer, grouping, screen, regroup=p.regroup, attack=attack,
-                            attackers=attackers, global_rule=p.global_rule, global_f=p.global_f)
+                            attackers=attackers, global_rule=p.global_rule, global_f=p.global_f, probe=probe)
+
+
+def _probe_set(cfg: ExperimentConfig, clients: Sequence[ClientData], size: int) -> torch.Tensor:
+    """Probe images for output-space screening: the FLTrust root-set draw (outside every client's data), images
+    only."""
+    d = cfg.data
+    device = clients[0].x_train.device
+    if d.dataset == "cifar100":
+        from rfl.data.cifar100 import load_root_set
+        x, _ = load_root_set(d.root, d.train_subset, d.test_subset, cfg.run.seed, size, device)
+        return x
+    from rfl.experiment.runner import synthetic_data
+    _, _, xte, _ = synthetic_data(d.train_subset or 600, (d.test_subset or 200) + size, 10, cfg.run.seed, device)
+    return xte[-size:]
 
 
 def _root_set(cfg: ExperimentConfig, clients: Sequence[ClientData]) -> ClientData:

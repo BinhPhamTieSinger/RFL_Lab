@@ -20,10 +20,12 @@ import torch.nn.functional as F
 @dataclass(frozen=True)
 class FlatLayout:
     """Where things sit in a flat state vector: which coordinates are buffers, and the root classifier weight's
-    range counted among weight coordinates only."""
+    range counted among weight coordinates only. `params` lists each parameter tensor's (name, start, end) range,
+    also in weight coordinates (used by layer-level screening)."""
 
     buffer_mask: torch.Tensor          # bool [D]
     classifier: tuple[int, int] | None
+    params: tuple[tuple[str, int, int], ...] = ()
 
 
 def flat_layout(state: Mapping[str, torch.Tensor], param_names: set[str]) -> FlatLayout:
@@ -31,12 +33,16 @@ def flat_layout(state: Mapping[str, torch.Tensor], param_names: set[str]) -> Fla
     `.weight` whose name contains "fc2" (fc2_root for FedHEP's model)."""
     is_buffer: list[bool] = []
     classifier = None
+    params: list[tuple[str, int, int]] = []
+    n_weights = 0
     for k, v in state.items():
         if classifier is None and "fc2" in k and k.endswith(".weight") and v.dim() == 2:
-            start = sum(1 for b in is_buffer if not b)
-            classifier = (start, start + v.numel())
+            classifier = (n_weights, n_weights + v.numel())
+        if k in param_names:
+            params.append((k, n_weights, n_weights + v.numel()))
+            n_weights += v.numel()
         is_buffer.extend([k not in param_names] * v.numel())
-    return FlatLayout(torch.tensor(is_buffer), classifier)
+    return FlatLayout(torch.tensor(is_buffer), classifier, tuple(params))
 
 
 def coordinate_median(stack: torch.Tensor) -> torch.Tensor:

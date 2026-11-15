@@ -234,3 +234,88 @@ def test_global_rule_arc_nnm_tm_runs_under_the_screen_and_differs_from_sccf(tmp_
     assert l0["history"][-1]["pooled_acc"] != sccf["history"][-1]["pooled_acc"]
     with pytest.raises(ValueError):
         run_experiment(_cfg(tmp_path, name="plus_bad", **{"plus.global_rule": "mean"}))
+
+
+@pytest.mark.parametrize("signal", ["probe_logits", "head_gap"])
+def test_probe_signals_run_and_probe_logits_catch_sign_flippers(tmp_path, signal):
+    """Output-space screening on a server probe set (rfl.defense.probe). A sign-flipped model predicts unlike the
+    others, so probe_logits must rank the flippers lowest from round 1 and leave them out by the last round (on
+    this 6-client toy it gets one in round 1, both by round 3); head_gap is only required to run and log scores."""
+    over = {"plus.reference": "median", "plus.signal": signal, "plus.probe_size": 64}
+    result = run_experiment(_cfg(tmp_path, name=f"plus_{signal}", **over))
+    attackers = set(result["attackers"])
+    assert all(len(d["scores"]) == 6 for d in result["diagnostics"])
+    if signal == "probe_logits":
+        z1 = result["diagnostics"][0]["z"]
+        assert {int(c) for c in sorted(z1, key=z1.get)[:2]} == attackers
+        assert attackers <= set(result["detection"][-1]["flagged"])
+
+
+def test_probe_outputs_shapes_and_zero_head_gap_for_identical_heads():
+    """probe_outputs returns the root logits flattened over the probe set and the mean KL gap between heads; with
+    all three heads equal, the gap is exactly zero."""
+    from rfl.core.state import flatten
+    from rfl.defense.probe import probe_outputs
+    torch.manual_seed(0)
+    model = MultiHeadResNet9(num_classes=10)
+    model.fc2_parent.load_state_dict(model.fc2_root.state_dict())
+    model.fc2_local.load_state_dict(model.fc2_root.state_dict())
+    template = {k: v.detach().clone() for k, v in model.state_dict().items()}
+    images = torch.randn(7, 3, 32, 32)
+    logits, gap = probe_outputs(model, template, flatten(template), images, chunk=3)
+    assert logits.shape == (7 * 10,)
+    assert abs(gap) < 1e-6
+    model.fc2_local.weight.data.add_(torch.randn_like(model.fc2_local.weight))  # a per-class change moves softmax
+    _, gap2 = probe_outputs(MultiHeadResNet9(num_classes=10), template,
+                            flatten({k: v.detach().clone() for k, v in model.state_dict().items()}), images)
+    assert gap2 > 0
+
+
+def _layered(n=12, seed=0):
+    """Toy flat updates over three 'layers' of very different sizes, plus their layout."""
+    from rfl.defense.soft_cosine import FlatLayout
+    g = torch.Generator().manual_seed(seed)
+    sizes = {"trunk.big": 4000, "trunk.small": 50, "fc2_root.weight": 200}
+    d = sum(sizes.values())
+    params, s = [], 0
+    for name, k in sizes.items():
+        params.append((name, s, s + k))
+        s += k
+    common = torch.randn(d, generator=g)
+    stack = common + 0.6 * torch.randn(n, d, generator=g)
+    return stack, FlatLayout(torch.zeros(d, dtype=torch.bool), (4050, 4250), tuple(params))
+
+
+def test_critical_layers_expose_an_attack_hidden_in_one_small_layer():
+    """An attacker reverses only the 50-coordinate layer: the whole-update cosine hardly moves, the layer-level
+    score puts it last."""
+    from rfl.defense.screening import ScreenOptions, critical_layer_scores, screening_scores
+    stack, layout = _layered()
+    stack[0, 4000:4050] = -3 * stack[0, 4000:4050]
+    whole = screening_scores(list(stack), layout, None, ScreenOptions(signal="weights", reference="median"))
+    crit = critical_layer_scores(list(stack), layout, ScreenOptions(signal="critical", reference="median",
+                                                                    critical_k=1))
+    assert int(crit.argmin()) == 0
+    assert robust_z(crit)[0] < -2.5 < robust_z(whole)[0]
+
+
+def test_sign_alignment_ranks_sign_flippers_lowest_and_ignores_scale():
+    from rfl.defense.screening import sign_alignment_scores
+    stack, layout = _layered()
+    stack[:3] = -stack[:3]
+    rho = sign_alignment_scores(list(stack), layout, 0.3)
+    assert set(torch.topk(-rho, 3).indices.tolist()) == {0, 1, 2}
+    scaled = stack.clone()
+    scaled[5] *= 100
+    assert torch.allclose(sign_alignment_scores(list(scaled), layout, 0.3), rho)
+
+
+@pytest.mark.parametrize("signal", ["critical", "sign_align"])
+def test_new_signals_run_end_to_end_and_leave_out_sign_flippers(tmp_path, signal):
+    """Both rank the sign flippers lowest from round 1 and leave them out by round 2 (critical: round 1)."""
+    result = run_experiment(_cfg(tmp_path, name=f"plus_{signal}", **{"plus.reference": "median",
+                                                                      "plus.signal": signal}))
+    attackers = set(result["attackers"])
+    z1 = result["diagnostics"][0]["z"]
+    assert {int(c) for c in sorted(z1, key=z1.get)[:2]} == attackers
+    assert all(attackers <= set(d["flagged"]) for d in result["detection"][1:])

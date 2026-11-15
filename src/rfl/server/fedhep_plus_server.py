@@ -15,11 +15,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import torch
+import torch.nn.functional as F
 
 from rfl.client.fedhep import FedHEPTrainer
 from rfl.core.interfaces import Attack
 from rfl.core.types import ClientData, DetectionResult, RoundReport
 from rfl.defense.classic import arc_nnm_trimmed_mean_rule
+from rfl.defense.probe import probe_outputs
 from rfl.defense.screening import (
     EvidenceTracker,
     ScreenOptions,
@@ -31,6 +33,7 @@ from rfl.defense.screening import (
     robust_z,
     screening_scores,
 )
+from rfl.defense.soft_cosine import coordinate_median
 from rfl.grouping.similarity import Regroup, SimilarityGrouping
 from rfl.models.resnet9 import MultiHeadResNet9
 from rfl.server.defended_fedhep_server import DefendedFedHEPServer
@@ -40,13 +43,16 @@ class FedHEPPlusServer(DefendedFedHEPServer):
     def __init__(self, model: MultiHeadResNet9, clients: Sequence[ClientData], trainer: FedHEPTrainer,
                  grouping: SimilarityGrouping, screen: ScreenOptions, regroup: bool = False,
                  attack: Attack | None = None, attackers: frozenset[int] = frozenset(),
-                 global_rule: str = "sccf", global_f: int = 3) -> None:
+                 global_rule: str = "sccf", global_f: int = 3, probe: torch.Tensor | None = None) -> None:
         super().__init__(model, clients, trainer, grouping, attack=attack, attackers=attackers)
         self.screen = screen
         self.regroup = regroup
         if global_rule not in ("sccf", "arc_nnm_tm"):
             raise ValueError(f"unknown global_rule {global_rule!r}")
         self.global_rule, self.global_f = global_rule, global_f
+        self.probe = probe   # images only; required for the output-space signals
+        if screen.signal in ("probe_logits", "head_gap") and probe is None:
+            raise ValueError(f"signal {screen.signal!r} needs a probe set")
         self.similarity_mask = ~self.global_defense.layout.buffer_mask  # regrouping compares weights only
         self.evidence = EvidenceTracker(screen.evidence_decay, screen.evidence_cut, screen.readmit,
                                         screen.isolation_patience)
@@ -78,8 +84,11 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         if len(scored) > 1:
             in_ref = torch.tensor([self.screen.population == "all" or c not in isolated for c in scored])
             updates = [to_global[c] - start for c in scored]
-            scores = screening_scores(updates, self.global_defense.layout, self._masks(scored), self.screen,
-                                      reference_rows=in_ref)
+            if self.screen.signal in ("probe_logits", "head_gap"):
+                scores = self._probe_scores(to_global, scored, in_ref)
+            else:
+                scores = screening_scores(updates, self.global_defense.layout, self._masks(scored), self.screen,
+                                          reference_rows=in_ref)
             ref_scores = scores[in_ref]
             if ref_scores.numel():
                 med = ref_scores.median()
@@ -159,6 +168,19 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                                  "flagged_groups": sorted(flagged_groups), "align_z": align_z,
                                  "evidence": dict(self.evidence.evidence), "global_trust": global_trust,
                                  "regroup": event.value, "groups": dict(self.grouping.assignment)})
+
+    def _probe_scores(self, uploads: dict[int, torch.Tensor], scored: list[int], in_ref: torch.Tensor
+                      ) -> torch.Tensor:
+        """Output-space scores on the uploaded models (what the server has), see rfl.defense.probe. probe_logits:
+        cosine of each upload's probe logits to the coordinate median of the reference rows' logits. head_gap: the
+        scalar gap itself (the screen's robust z handles scale)."""
+        assert self.probe is not None
+        outs = [probe_outputs(self.model, self.template, uploads[c], self.probe) for c in scored]
+        if self.screen.signal == "head_gap":
+            return torch.tensor([g for _, g in outs])
+        logits = torch.stack([v for v, _ in outs])
+        ref = coordinate_median(logits[in_ref.to(logits.device)])
+        return F.cosine_similarity(logits, ref.unsqueeze(0), dim=1, eps=1e-10).cpu()
 
     def _group_z(self, updates: list[torch.Tensor], scored: list[int], isolated: set[int], in_ref: torch.Tensor,
                  round_idx: int) -> dict[int, float]:

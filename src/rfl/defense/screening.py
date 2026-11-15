@@ -39,7 +39,8 @@ from rfl.defense.soft_cosine import FlatLayout, bound_update_norms, coordinate_m
 
 @dataclass(frozen=True)
 class ScreenOptions:
-    signal: str = "root_head"           # "root_head" | "weights"
+    signal: str = "root_head"           # "root_head" | "weights" | "critical" | "sign_align" | "probe_logits" |
+                                        # "head_gap" (rfl.defense.probe)
     reference: str = "mean_direction"   # "mean_direction" | "median"
     z_cut: float = 2.5
     evidence_cut: float = 1.5
@@ -59,6 +60,8 @@ class ScreenOptions:
     exclusion_patience: int = 1        # consecutive z < -z_cut before temporary exclusion
     two_sided: bool = False            # also act on z far above the others (colluders too close to the reference)
     gap_gate: float = 0.0              # > 0: bad evidence only in rounds whose scores split (gap_ratio >= this)
+    critical_k: int = 5                # "critical": layers screened per round (most disputed shared layers)
+    sign_topk: float = 0.3             # "sign_align": share of each update's largest coordinates compared
 
 
     def __post_init__(self) -> None:
@@ -66,7 +69,7 @@ class ScreenOptions:
             raise ValueError("MAD floors must be nonnegative")
         if self.isolation_patience < 1 or self.exclusion_patience < 1:
             raise ValueError("Patience must be positive")
-        if self.signal not in ("root_head", "weights"):
+        if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap"):
             raise ValueError(f"Unknown screening signal {self.signal!r}")
         if self.reference not in ("mean_direction", "median"):
             raise ValueError(f"Unknown screening reference {self.reference!r}")
@@ -102,10 +105,58 @@ def screening_scores(updates: Sequence[torch.Tensor], layout: FlatLayout, class_
                      opts: ScreenOptions, reference_rows: torch.Tensor | None = None) -> torch.Tensor:
     """Cosine of each sender's (norm-bounded) update to the reference, on the chosen signal. The reference is
     built from the rows in `reference_rows` (bool), default all."""
+    if opts.signal == "critical":
+        return critical_layer_scores(updates, layout, opts, reference_rows)
+    if opts.signal == "sign_align":
+        return sign_alignment_scores(updates, layout, opts.sign_topk, reference_rows)
     vecs, mask = _signal(updates, layout, class_masks, opts)
     ref = _reference(vecs, opts, reference_rows)
     target = ref.unsqueeze(0) * mask if mask is not None else ref.unsqueeze(0).expand_as(vecs)
     return F.cosine_similarity(vecs, target, dim=1, eps=1e-10)
+
+
+PERSONAL_HEADS = ("fc2_parent", "fc2_local")   # differ by design between clients; never screened layer by layer
+
+
+def critical_layer_scores(updates: Sequence[torch.Tensor], layout: FlatLayout, opts: ScreenOptions,
+                          reference_rows: torch.Tensor | None = None) -> torch.Tensor:
+    """Layer-level screening (after FedSurrogate, arXiv 2605.11122): for every shared parameter tensor l, each
+    client's cosine c_il between its (norm-bounded) layer-l update and the layer-l reference; the round's k most
+    disputed layers are those whose c_il vary most across the reference rows (standard deviation); score_i = mean
+    of c_il over those k layers. A backdoor that sits in a few trunk layers shows there, where the whole-update
+    cosine dilutes it."""
+    stack = torch.stack(list(updates)).float()
+    params = bound_update_norms(stack[:, ~layout.buffer_mask.to(stack.device)], opts.norm_bound)
+    rows = slice(None) if reference_rows is None else reference_rows.to(params.device)
+    cos = []
+    for name, s, e in layout.params:
+        if name.startswith(PERSONAL_HEADS):
+            continue
+        layer = params[:, s:e]
+        ref = _reference(layer, opts, None if reference_rows is None else reference_rows)
+        cos.append(F.cosine_similarity(layer, ref.unsqueeze(0).expand_as(layer), dim=1, eps=1e-10))
+    if not cos:
+        raise ValueError("layer-level screening needs the parameter layout (FlatLayout.params)")
+    c = torch.stack(cos, dim=1)                      # [n, layers]
+    spread = c[rows].std(dim=0, correction=0)
+    top = torch.topk(spread, k=min(opts.critical_k, c.shape[1])).indices
+    return c[:, top].mean(dim=1)
+
+
+def sign_alignment_scores(updates: Sequence[torch.Tensor], layout: FlatLayout, topk: float,
+                          reference_rows: torch.Tensor | None = None) -> torch.Tensor:
+    """Masked principal sign alignment (MPSA, AlignIns, CVPR 2025): principal sign p = sgn(sum_i sgn(delta_i)) over
+    the reference rows; for each client, the share of its top-k coordinates by magnitude (k = topk x d) whose sign
+    agrees with p. Weights only (BatchNorm buffers excluded); higher = more aligned."""
+    stack = torch.stack(list(updates)).float()
+    params = stack[:, ~layout.buffer_mask.to(stack.device)]
+    signs = torch.sign(params)
+    base = signs if reference_rows is None else signs[reference_rows.to(params.device)]
+    principal = torch.sign(base.sum(dim=0))
+    k = max(1, int(topk * params.shape[1]))
+    idx = params.abs().topk(k, dim=1).indices
+    agree = (torch.gather(signs, 1, idx) == principal[idx]).float()
+    return agree.mean(dim=1)
 
 
 def group_z(updates: Sequence[torch.Tensor], layout: FlatLayout, class_masks: torch.Tensor | None,

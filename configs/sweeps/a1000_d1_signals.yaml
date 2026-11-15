@@ -1,0 +1,29 @@
+# First A1000 batch (2026-11-16): every screening signal on top of rung R3, with fresh baselines, on D1
+# (alpha 0.5, 15 clients, 3 attackers). CUDA results cannot be compared with Mac (MPS) or Acer (XPU) runs, so the
+# baselines are rerun here. Signals: root_head (R3 as on the Mac), weights (whole update; 0.3% backdoor success in
+# Phase 3 seed 42), critical (most disputed layers, after FedSurrogate), sign_align (AlignIns MPSA), probe_logits and
+# head_gap (outputs on 200 probe images). Run on the A1000 only. 150 runs; time one run first (see OPERATIONS.md).
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - g1__fedhep: {config: configs/cifar100_fedhep.yaml}
+    g1__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    g1__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true}
+    g1__l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm,
+             robust.assumed_attackers: 3}
+    g1__r3: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}
+    g1__r3w: {<<: *r3, plus.signal: weights}
+    g1__r3c: {<<: *r3, plus.signal: critical}
+    g1__r3s: {<<: *r3, plus.signal: sign_align}
+    g1__r3p: {<<: *r3, plus.signal: probe_logits}
+    g1__r3h: {<<: *r3, plus.signal: head_gap}
+  - clean: {}
+    sign3: {attack.kind: sign_flip, attack.count: 3}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

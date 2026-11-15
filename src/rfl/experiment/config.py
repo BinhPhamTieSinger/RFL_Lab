@@ -59,6 +59,11 @@ class FedHEPConfig:
 class PlusConfig:
     """FedHEP+ (Phase 3); see rfl.defense.screening."""
     signal: str = "root_head"            # "root_head" (SCCF's signal) | "weights" (whole update minus BatchNorm)
+                                         # | "critical" (most disputed layers) | "sign_align" (AlignIns MPSA)
+                                         # | "probe_logits" | "head_gap" (outputs on a server probe set)
+    probe_size: int = 200                # probe images for the output signals (FLTrust-style root set)
+    critical_k: int = 5                  # "critical" signal: most disputed shared layers screened per round
+    sign_topk: float = 0.3               # "sign_align" signal: share of largest coordinates compared (AlignIns)
     reference: str = "mean_direction"    # "mean_direction" (SCCF's) | "median"
     z_cut: float = 2.5                   # leave a client out this round when its robust z < -z_cut
     evidence_cut: float = 1.5            # isolate for good when its running z falls below -evidence_cut
