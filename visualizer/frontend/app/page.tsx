@@ -164,7 +164,7 @@ export default function Workbench() {
             Object.fromEntries(
               f.map((x: Field) => [
                 x.key,
-                pendingConfig.current?.[x.key] ?? x.default,
+                pendingConfig.current && x.key in pendingConfig.current ? pendingConfig.current[x.key] : x.default,
               ]),
             ),
           );
@@ -929,7 +929,7 @@ export default function Workbench() {
                   if (config.method === method)
                     setValues(
                       Object.fromEntries(
-                        fields.map((f) => [f.key, next[f.key] ?? f.default]),
+                        fields.map((f) => [f.key, f.key in next ? next[f.key] : f.default]),
                       ),
                     );
                   else {
