@@ -2,7 +2,7 @@
 
 `observed(emit)` is a context manager that wraps the method builders in rfl.experiment.registry.METHODS, so the
 server `run_experiment` builds gets instance-level wrappers on the components it calls each round. Wrappers only
-read arguments and results, measure wall time, and call `emit(event)`. They draw no random numbers and write nothing
+read arguments and results, measure wall time and call `emit(event)`. They draw no random numbers and write nothing
 back, so a run under observation must produce exactly the same metrics as the same run without it (tested).
 """
 from __future__ import annotations
