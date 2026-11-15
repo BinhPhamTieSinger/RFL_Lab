@@ -1,0 +1,23 @@
+# Non-skewed data (2026-11-15). Until now every defense ran on Dirichlet skew only (alpha 0.05 / 0.2 / 0.5); IID was
+# used only for FedAvg in Phase 1. IID is where honest updates are most alike, so it checks (a) whether screening
+# flags honest clients when there is nothing to separate, (b) whether FedHEP's personalization still pays off, and
+# (c) how far each attack moves the model when the honest spread is smallest. Self-contained (own baselines).
+# Run on the Acer. 72 runs, about 15 h.
+seeds: [42, 123, 7]
+common:
+  data.alpha: null
+  run.rounds: 30
+axes:
+  - iid__fedavg: {config: configs/cifar100_fedavg.yaml}
+    iid__fedhep: {config: configs/cifar100_fedhep.yaml}
+    iid__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    iid__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                plus.regroup: true}
+    iid__plus_two: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                    plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3}
+    iid__l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm,
+              robust.assumed_attackers: 3}
+  - clean: {}
+    sign3: {attack.kind: sign_flip, attack.count: 3}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

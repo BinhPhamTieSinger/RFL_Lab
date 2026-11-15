@@ -969,3 +969,15 @@ q = 0.1 (1 / 0 / 2 attackers): undefended FedHEP 48.25, success 42.3%. The rest 
 |---|---|---|---|
 | Mac | `phase6_ladder_d1` → `phase6_ladder_d2` → `followup_q_backdoor` (rest) | 45 + 36 + ~24 | 9.5 + 7.5 + 5 h |
 | Acer | `followup_backdoor_heads` → `followup_n30_sign` (rest) → `followup_n20_sign` → `followup_n30_backdoor` | 12 + ~8 + 45 + 45 | 2.5 + 1.7 + 9.5 + 9.5 h |
+
+## 2026-11-15 (night) · Gap found: no defense has ever run on non-skewed data
+Every defense so far ran on Dirichlet label skew (α = 0.05, 0.2, 0.5); IID data appeared only in Phase 1, for FedAvg. IID is where honest updates are most alike, so it shows whether screening flags honest clients when there is nothing to separate, and how far each attack moves the model when the honest spread is smallest. One property of the code matters here: clients with $r_{\text{skew}} \ge 0.85$ predict with the root head alone, and under IID every client has $r_{\text{skew}}$ between 0.91 and 0.95 (computed with `label_stats` for 15 clients), so FedHEP's personalization is off at test time under IID.
+
+- **`followup_iid.yaml`** (72 runs, Acer, about 15 h): FedAvg, FedHEP, Defended FedHEP, FedHEP+, FedHEP+ two-sided with patience 3, and L0, under no attack, sign flip, backdoor and Min-Max, 3 seeds. Self-contained.
+- Bug fixed: `predict_head` lacked `@torch.no_grad()` (evaluation built unused gradient graphs; results unaffected).
+
+### Visualizer started
+The RFL Lab visualizer (a tool that runs the real code and shows each step) has completed Stage 1 and Stage 2: `visualizer/docs/01_REPOSITORY_INVENTORY.md` (execution specification of all ten methods from the source code, formulas, configuration, metrics, seven discrepancies between documents and code) and `visualizer/docs/02_ARCHITECTURE.md`. A spike shows that observing a run from outside leaves its results bit-identical (FedHEP+, Defended FedHEP, FedHEP with a backdoor).
+
+### Run plan update
+Acer: after `followup_backdoor_heads`, run `followup_iid` before `followup_n30_sign`, `followup_n20_sign` and `followup_n30_backdoor`. Mac unchanged (`phase6_ladder_d1` → `phase6_ladder_d2` → `followup_q_backdoor`).
