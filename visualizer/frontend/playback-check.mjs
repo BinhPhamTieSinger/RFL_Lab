@@ -70,6 +70,7 @@ await page
   .getByRole("button", { name: /r1 · aggregation started/ })
   .first()
   .click();
+await page.getByLabel("Follow camera").uncheck();
 await page.getByRole("button", { name: "Play animation", exact: true }).click();
 await page
   .locator(".weight-packet animateMotion")

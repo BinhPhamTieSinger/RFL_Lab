@@ -63,6 +63,11 @@ export function eventPhase(event: any) {
   return "Clients";
 }
 export function eventFocus(event: any) {
+  if (event?.type === "aggregation_started" && event.members?.length) {
+    const target = event.tier === "parent" || event.tier === "parent_defense" ? `p${event.parent}` : "global";
+    return [...event.members.map((id:number)=>`c${id}`), target].join("|");
+  }
+
   if (event?.type === "upload_ready")
     return `c${event.client}|${event.tier === "parent" ? (event.parent === undefined ? `c${event.client}` : `p${event.parent}`) : "global"}`;
   if (eventPhase(event) === "Parents") return `p${event.parent}`;

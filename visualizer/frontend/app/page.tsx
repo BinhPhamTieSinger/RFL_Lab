@@ -359,7 +359,7 @@ export default function Workbench() {
         data: {
           label: (
             <>
-              <strong>Dataset partitions</strong>
+              <strong>{initialized.dataset === "cifar100" ? "CIFAR-100" : initialized.dataset} partitions</strong>
               <span>
                 {clients.reduce((n: number, c: any) => n + c.train, 0)} training
                 examples
