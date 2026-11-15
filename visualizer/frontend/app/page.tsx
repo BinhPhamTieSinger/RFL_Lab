@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
+import Documentation from "./Documentation";
+import {
+  edgeTypes,
+  ExecutionAnimation,
+  eventFocus,
+  eventPhase,
+  isPlaybackStep,
+} from "./ExecutionAnimation";
 import {
   ReactFlow,
   useReactFlow,
@@ -84,7 +92,7 @@ function AutoFit({ focus }: { focus: string }) {
   useEffect(() => {
     if (focus)
       fitView({
-        nodes: [{ id: focus }],
+        nodes: focus.split("|").map((id) => ({ id })),
         maxZoom: 1.2,
         duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches
           ? 0
@@ -113,13 +121,18 @@ export default function Workbench() {
   const [events, setEvents] = useState<Event[]>([]),
     [history, setHistory] = useState<any[]>([]),
     [formulas, setFormulas] = useState<any[]>([]),
-    [docs, setDocs] = useState(""),
     [selected, setSelected] = useState("global"),
     [cursor, setCursor] = useState<number | null>(null),
     [filter, setFilter] = useState(""),
     [clearAt, setClearAt] = useState(0),
     [terminalOpen, setTerminalOpen] = useState(true),
     [source, setSource] = useState("");
+  const [captures, setCaptures] = useState<any[]>([]);
+  const [captureId, setCaptureId] = useState("fedhep_plus-sign_flip");
+  const [captureMode, setCaptureMode] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [followCamera, setFollowCamera] = useState(true);
   const [focus, setFocus] = useState("");
   const pendingConfig = useRef<Record<string, any> | null>(null);
   const stream = useRef<EventSource | null>(null);
@@ -128,23 +141,22 @@ export default function Workbench() {
     api("/capabilities")
       .then((c) => {
         setCapabilities(c);
-        if (!c.training) setView("Experiment history");
       })
       .catch((e) => setError(e.message));
-    Promise.all([api("/models"), api("/formulas"), api("/experiments")])
+    Promise.all([api("/models"), api("/formulas"), api("/history")])
       .then(([m, f, h]) => {
         setModels(m);
         setFormulas(f);
         setHistory(h);
       })
       .catch((e) => setError(e.message));
-    fetch("/api/documentation")
-      .then((r) => r.text())
-      .then(setDocs);
+    api("/live/captures")
+      .then(setCaptures)
+      .catch((e) => setError(e.message));
     setDark(localStorage.getItem("rfl-theme") !== "light");
     const refresh = setInterval(
       () =>
-        api("/experiments?refresh=true")
+        api("/history?refresh=true")
           .then(setHistory)
           .catch((e) => setError(e.message)),
       900000,
@@ -164,7 +176,9 @@ export default function Workbench() {
             Object.fromEntries(
               f.map((x: Field) => [
                 x.key,
-                pendingConfig.current && x.key in pendingConfig.current ? pendingConfig.current[x.key] : x.default,
+                pendingConfig.current && x.key in pendingConfig.current
+                  ? pendingConfig.current[x.key]
+                  : x.default,
               ]),
             ),
           );
@@ -204,7 +218,7 @@ export default function Workbench() {
       if (data.type === "worker_stopped") {
         setStatus(data.status);
         s.close();
-        api("/experiments").then(setHistory);
+        api("/history").then(setHistory);
       } else if (data.type === "experiment_started") setStatus("running");
     };
     s.onerror = () => {
@@ -222,6 +236,8 @@ export default function Workbench() {
   async function start() {
     setBusy(true);
     setError("");
+    setCaptureMode(false);
+    setPlaying(false);
     try {
       const request = { method, overrides: values };
       await api("/experiments/validate", request);
@@ -234,13 +250,93 @@ export default function Workbench() {
       setBusy(false);
     }
   }
+  async function installConfiguration(config: any) {
+    const schema = await api(`/models/${config.method}/schema`);
+    pendingConfig.current = config.overrides;
+    setMethod(config.method);
+    setFields(schema);
+    setValues(
+      Object.fromEntries(
+        schema.map((field: Field) => [
+          field.key,
+          field.key in config.overrides
+            ? config.overrides[field.key]
+            : field.default,
+        ]),
+      ),
+    );
+  }
+  async function loadCapture(selectedId = captureId) {
+    setBusy(true);
+    setError("");
+    stream.current?.close();
+    buffer.current = [];
+    try {
+      const capture = await api(`/live/captures/${selectedId}`);
+      await installConfiguration(capture.config);
+      setCaptureMode(true);
+      setPlaying(false);
+      setEvents(capture.events);
+      setId(capture.id);
+      setCursor(
+        Math.max(
+          0,
+          capture.events.findIndex((e: Event) => e.type === "initialized"),
+        ),
+      );
+      setClearAt(0);
+      setStatus("Visualization playback");
+      setView("Live Workbench");
+      setFocus("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (!playing || cursor === null) return;
+    const next = events.findIndex(
+      (event, index) => index > cursor && isPlaybackStep(event),
+    );
+    if (next < 0) {
+      setPlaying(false);
+      return;
+    }
+    const duration = ["operation_completed"].includes(events[cursor]?.type)
+      ? 100
+      : 1250;
+    const timer = setTimeout(() => setCursor(next), duration / speed);
+    return () => clearTimeout(timer);
+  }, [playing, cursor, events, speed]);
+  function seek(index: number) {
+    setPlaying(false);
+    setCursor(index);
+  }
   const visible = cursor === null ? events : events.slice(0, cursor + 1);
   const initialized = events.find((e) => e.type === "initialized");
   const last = visible.at(-1);
+  const animationEvent = [...visible].reverse().find((e) => isPlaybackStep(e));
+  const animationIndex = animationEvent ? events.indexOf(animationEvent) : -1;
+  useEffect(() => {
+    if (playing && followCamera && animationEvent)
+      setFocus(eventFocus(animationEvent));
+  }, [animationIndex, playing, followCamera]);
   const round =
     last?.round ?? [...visible].reverse().find((e) => e.round)?.round ?? 0;
   const diagnostics =
     [...visible].reverse().find((e) => e.type === "diagnostics")?.values ?? {};
+  const decisionEvent = [...visible]
+    .reverse()
+    .find((e) =>
+      ["screening_updated", "temporal_trust_updated", "diagnostics"].includes(
+        e.type,
+      ),
+    );
+  const isolatedClients =
+    decisionEvent?.type === "diagnostics"
+      ? (decisionEvent.values.isolated ?? [])
+      : (decisionEvent?.isolated ?? []);
   const groups =
     [...visible].reverse().find((e) => e.type === "grouping_completed")
       ?.groups ??
@@ -308,7 +404,7 @@ export default function Workbench() {
       );
     clients.forEach((c: any, index: number) => {
       const malicious = initialized.attackers.includes(c.id);
-      const isolated = (diagnostics.isolated ?? []).includes(c.id);
+      const isolated = isolatedClients.includes(c.id);
       const excluded = (diagnostics.excluded ?? []).includes(c.id);
       const active =
         latestTraining?.client === c.id &&
@@ -373,7 +469,44 @@ export default function Workbench() {
           markerEnd: { type: MarkerType.ArrowClosed, color: "#aaa" },
         });
     });
-    return { nodes, edges };
+    const transfers = edges.map((edge) => {
+      const cid = Number(edge.source.slice(1));
+      const event = animationEvent;
+      const target =
+        event?.tier === "parent" || event?.tier === "parent_defense"
+          ? `p${event.parent}`
+          : "global";
+      const upload =
+        event?.type === "upload_ready" &&
+        event.tier === "global" &&
+        event.client === cid &&
+        edge.target === "global";
+      const receive =
+        event?.type === "aggregation_started" &&
+        event.members?.includes(cid) &&
+        edge.target === target;
+      return {
+        ...edge,
+        type: "weight",
+        data: {
+          active: Boolean(upload || receive),
+          playing,
+          sequence: animationIndex,
+        },
+      };
+    });
+    if (
+      animationEvent &&
+      ["Parents", "Global", "Screening"].includes(eventPhase(animationEvent))
+    ) {
+      const target =
+        eventPhase(animationEvent) === "Parents"
+          ? `p${animationEvent.parent}`
+          : "global";
+      const node = nodes.find((node) => node.id === target);
+      if (node) node.className = "active";
+    }
+    return { nodes, edges: transfers };
   }, [
     initialized,
     groups,
@@ -382,6 +515,9 @@ export default function Workbench() {
     clients,
     hierarchy,
     selected,
+    animationIndex,
+    isolatedClients,
+    playing,
   ]);
   const metrics = visible
     .filter((e) => e.type === "evaluation_completed")
@@ -412,6 +548,8 @@ export default function Workbench() {
     "queued",
     "pending",
   ].includes(status);
+  const locked =
+    running || captureMode || Boolean(initialized) || !capabilities.training;
   const sections = Array.from(new Set(fields.map((f) => f.key.split(".")[0])));
   function displayField(f: Field) {
     const attack = values["attack.kind"];
@@ -433,7 +571,9 @@ export default function Workbench() {
           <div className="run-title" title={capabilities.mode}>
             {titles[initialized?.method ?? method]}
             <span>
-              {id ? `Experiment ${id.slice(0, 8)}` : "No experiment selected"}
+              {id
+                ? `Visualization ${id.slice(0, 16)}`
+                : "Choose a visualization"}
             </span>
           </div>
           <div className="run-status" role="status" aria-live="polite">
@@ -484,7 +624,7 @@ export default function Workbench() {
                 Method
                 <select
                   value={method}
-                  disabled={running}
+                  disabled={locked}
                   onChange={(e) => {
                     setMethod(e.target.value);
                     setId("");
@@ -499,20 +639,64 @@ export default function Workbench() {
                   ))}
                 </select>
               </label>
+              <label>
+                Visualization capture
+                <select
+                  aria-label="Visualization capture"
+                  value={captureId}
+                  disabled={running}
+                  onChange={(e) => setCaptureId(e.target.value)}
+                >
+                  {captures.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {titles[c.method]} · {c.attack ?? "clean"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {capabilities.training && (
+                <button onClick={() => loadCapture()}>
+                  Load captured visualization
+                </button>
+              )}
               <div className="launch">
                 <button
                   className="primary"
                   disabled={
-                    running || busy || !fields.length || !capabilities.training
+                    busy ||
+                    (capabilities.training &&
+                      !captureMode &&
+                      (running || !fields.length))
                   }
-                  onClick={start}
+                  onClick={() =>
+                    capabilities.training && !captureMode
+                      ? start()
+                      : loadCapture()
+                  }
                 >
                   {!capabilities.training
-                    ? "Training runs locally"
-                    : busy
-                      ? "Validating…"
-                      : "Run experiment"}
+                    ? "Load visualization"
+                    : captureMode
+                      ? "Reload visualization"
+                      : busy
+                        ? "Validating…"
+                        : "Run visualization"}
                 </button>
+                {(captureMode || (initialized && !running)) &&
+                  capabilities.training && (
+                    <button
+                      onClick={() => {
+                        setCaptureMode(false);
+                        setPlaying(false);
+                        setEvents([]);
+                        setCursor(null);
+                        setId("");
+                        setStatus("Ready");
+                      }}
+                    >
+                      Configure a new visualization
+                    </button>
+                  )}
                 {running && (
                   <button
                     onClick={() =>
@@ -525,7 +709,11 @@ export default function Workbench() {
                   </button>
                 )}
                 <small>
-                  Defaults run one CPU round with a 600-image CIFAR-100 subset.
+                  {captureMode
+                    ? "Sidebar values belong to the loaded execution."
+                    : capabilities.training
+                      ? "New visualization runs use the local Python engine."
+                      : "Choose a captured execution to inspect its actual computations."}
                 </small>
               </div>
               {sections.map((section) => (
@@ -549,7 +737,7 @@ export default function Workbench() {
                           .replaceAll("_", " ")}
                         {f.options ? (
                           <select
-                            disabled={running}
+                            disabled={locked}
                             value={
                               values[f.key] === null
                                 ? "null"
@@ -578,7 +766,7 @@ export default function Workbench() {
                         ) : f.type === "boolean" ? (
                           <input
                             type="checkbox"
-                            disabled={running}
+                            disabled={locked}
                             checked={!!values[f.key]}
                             onChange={(e) =>
                               setValues({
@@ -589,7 +777,7 @@ export default function Workbench() {
                           />
                         ) : (
                           <input
-                            disabled={running}
+                            disabled={locked}
                             type={f.type === "number" ? "number" : "text"}
                             step="any"
                             placeholder={
@@ -621,7 +809,7 @@ export default function Workbench() {
                   <p>
                     {initialized
                       ? "Select a component to inspect its recorded state."
-                      : "Run an experiment to reveal its actual initialization."}
+                      : "Load a visualization to reveal its actual initialization."}
                   </p>
                 </div>
                 <span>
@@ -630,10 +818,64 @@ export default function Workbench() {
                     : "Awaiting initialization"}
                 </span>
               </div>
+              {initialized && (
+                <div className="playback-controls">
+                  <button
+                    onClick={() => {
+                      if (cursor === null || cursor >= events.length - 2)
+                        setCursor(
+                          Math.max(
+                            0,
+                            events.findIndex((e) => e.type === "initialized"),
+                          ),
+                        );
+                      setPlaying(!playing);
+                    }}
+                  >
+                    {playing ? "Pause animation" : "Play animation"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const next = events.findIndex(
+                        (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                      );
+                      if (next >= 0) seek(next);
+                    }}
+                  >
+                    Next operation
+                  </button>
+                  <label>
+                    Playback speed
+                    <select
+                      aria-label="Playback speed"
+                      value={speed}
+                      onChange={(e) => setSpeed(Number(e.target.value))}
+                    >
+                      <option value={0.5}>0.5×</option>
+                      <option value={1}>1×</option>
+                      <option value={2}>2×</option>
+                      <option value={4}>4×</option>
+                    </select>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={followCamera}
+                      onChange={(e) => setFollowCamera(e.target.checked)}
+                    />{" "}
+                    Follow camera
+                  </label>
+                  <span>
+                    Inspection timing · recorded computation times remain
+                    visible
+                  </span>
+                </div>
+              )}
               <div className="canvas">
                 {initialized ? (
                   <ReactFlow
                     key={id}
+                    edgeTypes={edgeTypes}
                     nodes={graph.nodes}
                     edges={graph.edges}
                     fitView
@@ -653,11 +895,12 @@ export default function Workbench() {
                   </ReactFlow>
                 ) : (
                   <div className="empty">
-                    <h2>Observe the computation.</h2>
+                    <h2>Inspect a real execution.</h2>
                     <p>
-                      Initialize an experiment to inspect client partitions,
-                      model updates, screening and aggregation as Python
-                      executes them.
+                      Choose a model and attack capture, then load the
+                      visualization. Play its training operations, weight
+                      transfers and server decisions. Local Python execution is
+                      also available on your workstation.
                     </p>
                     <span>ResNet-9 · Real execution · Persisted events</span>
                   </div>
@@ -777,10 +1020,27 @@ export default function Workbench() {
                 }
               />
             </section>
-            <RoundWalkthrough
-              events={visible}
+            <ExecutionAnimation
+              event={animationEvent}
+              sequence={animationIndex}
               initialized={initialized}
               formulas={formulas}
+            />
+            <RoundWalkthrough
+              events={visible}
+              currentEvent={animationEvent}
+              playing={playing}
+              initialized={initialized}
+              formulas={formulas}
+              jump={(phase: string) => {
+                const index = events.findIndex(
+                  (e) =>
+                    e.round === (round || 1) &&
+                    eventPhase(e) === phase &&
+                    e.type !== "initialized",
+                );
+                if (index >= 0) seek(index);
+              }}
               focus={(id) => {
                 setSelected(id);
                 setFocus(id);
@@ -789,7 +1049,12 @@ export default function Workbench() {
             <section className="timeline" aria-label="Execution timeline">
               <div>
                 <h3>Execution trace</h3>
-                <button onClick={() => setCursor(null)}>
+                <button
+                  onClick={() => {
+                    setPlaying(false);
+                    setCursor(null);
+                  }}
+                >
                   {cursor === null ? "Following live" : "Return to live"}
                 </button>
               </div>
@@ -799,7 +1064,7 @@ export default function Workbench() {
                 min={0}
                 max={Math.max(0, events.length - 1)}
                 value={cursor ?? Math.max(0, events.length - 1)}
-                onChange={(e) => setCursor(Number(e.target.value))}
+                onChange={(e) => seek(Number(e.target.value))}
               />
               <div className="event-strip">
                 {events
@@ -817,7 +1082,7 @@ export default function Workbench() {
                   .map((e, i) => (
                     <button
                       key={i}
-                      onClick={() => setCursor(events.indexOf(e))}
+                      onClick={() => seek(events.indexOf(e))}
                       title={pretty(e)}
                     >
                       r{e.round ?? "—"} · {e.type.replaceAll("_", " ")}
@@ -920,16 +1185,27 @@ export default function Workbench() {
               <ExperimentHistory
                 history={history}
                 refresh={() =>
-                  api("/experiments?refresh=true")
+                  api("/history?refresh=true")
                     .then(setHistory)
                     .catch((e) => setError(e.message))
                 }
                 loadConfig={(config: any) => {
+                  stream.current?.close();
+                  buffer.current = [];
+                  setEvents([]);
+                  setId("");
+                  setCursor(null);
+                  setPlaying(false);
+                  setCaptureMode(false);
+                  setStatus("Ready");
                   const next = { ...config.overrides, "run.device": "cpu" };
                   if (config.method === method)
                     setValues(
                       Object.fromEntries(
-                        fields.map((f) => [f.key, f.key in next ? next[f.key] : f.default]),
+                        fields.map((f) => [
+                          f.key,
+                          f.key in next ? next[f.key] : f.default,
+                        ]),
                       ),
                     );
                   else {
@@ -946,7 +1222,7 @@ export default function Workbench() {
                 }}
                 cancel={(runId: string) =>
                   api(`/experiments/${runId}/cancel`, {})
-                    .then(() => api("/experiments"))
+                    .then(() => api("/history"))
                     .then(setHistory)
                     .catch((e) => setError(e.message))
                 }
@@ -1013,12 +1289,7 @@ export default function Workbench() {
                 </pre>
               </>
             ) : (
-              <Markdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {docs}
-              </Markdown>
+              <Documentation />
             )}
           </section>
         )}

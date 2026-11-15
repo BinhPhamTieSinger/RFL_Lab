@@ -62,7 +62,7 @@ Elapsed event time uses the worker's monotonic clock. Operation durations measur
 
 Per-class test accuracy and test loss are unavailable in the current runner. Checkpoint resume is unavailable. Cancellation terminates the isolated worker, retaining partial logs and events. A killed training kernel may require the ten-second escalation to process kill. API restart marks unfinished records interrupted. No automatic resume is attempted.
 
-The interface renders the instantiated ResNet-9 module tree and first captured forward operations for client 0, round 1. Client inspectors expose captured forward shapes, output means, backward gradient norms, and optimizer measurements. Fine-grained activation tensor browsing and editable model graphs remain outside this implementation. Screened clients' diagnostics become available when the original round completes. Existing research output folders remain separate from visualizer experiment history.
+The interface renders the instantiated ResNet-9 module tree and first captured forward operations for client 0, round 1. Client inspectors expose captured forward shapes, output means, backward gradient norms, and optimizer measurements. Fine-grained activation tensor browsing and editable model graphs remain outside this implementation. Screening evidence and TTT decisions appear as their actual events arrive. Full round diagnostics remain available at round completion. Curated research history has its own manually edited manifest.
 
 This service is designed for loopback use. Remote multi-user deployment requires authentication, authorization and production process supervision.
 
@@ -74,12 +74,14 @@ cd RFL_Lab/visualizer/frontend
 npm run build
 ```
 
-Tests compare observed and unobserved executions for every registered method with a smaller ResNet-9 width and real training on the synthetic fixture. API tests execute a standard-width training run, verify persistence, replay, cancellation, conflicts and configuration errors. See `docs/VALIDATION.md` for recorded execution evidence and remaining limitations.
+Tests compare observed and unobserved executions for every registered method with a smaller ResNet-9 width and real training on the synthetic fixture. API tests execute a standard-width training run, verify persistence, replay, cancellation, queued execution and configuration errors. See `docs/VALIDATION.md` for recorded execution evidence and remaining limitations.
 
 ## Detailed rounds and research history
 
 The round walkthrough compares honest and malicious clients using actual partition histograms, CIFAR-100 thumbnails, R_skew, captured model operations, attack events and uploads. Phase controls focus the topology on clients, parents or Global. FedHEP+ screening is shown at Global before parent aggregation. Mathematics expands alongside the relevant phase.
 
-Experiment history imports the repository's saved output folders, including incomplete configs. Expand an entry to inspect its own charts, tables and configuration. Load configuration preserves supported fields and selects CPU. History refreshes every 15 minutes. New local training remains streamed continuously.
+Experiment history publishes the research-output folders selected by hand in `frontend/research/history-manifest.json`. Expand an entry to inspect its own charts, tables and configuration. Load configuration preserves supported fields and selects CPU. History refreshes every 15 minutes. New local training remains streamed continuously.
 
-The Netlify archive includes a labeled replay of an actual CPU smoke round. New training runs locally, as selected by the owner. See `docs/DEPLOYMENT.md` for GitHub-triggered publication and hosting details.
+The hosted Live Workbench provides animated playback of real CPU captures for all ten models. Visualization captures are separate from research history. New training runs locally, as selected by the owner. See `docs/DEPLOYMENT.md` for GitHub-triggered publication and hosting details.
+
+See `docs/PLAYBACK.md` for animation controls and ACLM/SCCF/TTT inspection, and `docs/HISTORY_CURATION.md` for maintaining research history. The Documentation tab renders the repository Markdown files with tables, mathematical notation and figures.

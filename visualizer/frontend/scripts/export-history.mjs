@@ -5,24 +5,22 @@ import YAML from "yaml";
 const root = path.resolve("../..");
 const destination = path.resolve("public/research");
 fs.mkdirSync(destination, { recursive: true });
-function walk(folder) {
-  return fs.readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
-    const location = path.join(folder, entry.name);
-    return entry.isDirectory()
-      ? walk(location)
-      : ["metrics.json", "config.yaml"].includes(entry.name)
-        ? [location]
-        : [];
-  });
-}
-const files = fs
-  .readdirSync(root, { withFileTypes: true })
-  .filter((x) => x.isDirectory() && x.name.startsWith("outputs"))
-  .flatMap((x) => walk(path.join(root, x.name)));
+const manifest = JSON.parse(
+  fs.readFileSync("research/history-manifest.json", "utf8"),
+);
+const selectedSources = new Set(manifest.map((entry) => entry.source));
+const additional = JSON.parse(
+  fs.readFileSync("research/additional-history.json", "utf8"),
+);
 const entries = [];
-for (const folder of [
-  ...new Set(files.map((file) => path.dirname(file))),
-].sort()) {
+for (const selection of manifest) {
+  const folder = path.resolve(root, selection.source);
+  if (
+    !folder.startsWith(root + path.sep) ||
+    !selection.source.startsWith("outputs")
+  )
+    throw Error("Invalid history source");
+  if (!fs.existsSync(folder)) continue;
   const source = path.relative(root, folder).split(path.sep).join("/");
   const id =
     "archive-" +
@@ -46,7 +44,8 @@ for (const folder of [
     id,
     source,
     archived: true,
-    name: config.name ?? path.basename(folder),
+    name: selection.title ?? config.name ?? path.basename(folder),
+    notes: selection.notes,
     status: error ? "unreadable" : result?.final ? "completed" : "incomplete",
     created:
       fs.statSync(fs.existsSync(resultPath) ? resultPath : configPath).mtimeMs /
@@ -73,18 +72,87 @@ for (const folder of [
     JSON.stringify({ ...entry, result, logs: [] }),
   );
 }
-const recorded = JSON.parse(fs.readFileSync('research/recorded-round.json', 'utf8'));
-const {result: recordedResult, events: recordedEvents, ...recordedEntry} = recorded;
-entries.unshift(recordedEntry);
-const additional = JSON.parse(fs.readFileSync('research/additional-history.json', 'utf8'));
 for (const saved of additional) {
-  if (entries.some(entry => entry.id === saved.id)) continue;
-  const {result, logs, ...entry} = saved;
+  if (
+    !selectedSources.has(saved.source) ||
+    entries.some((entry) => entry.id === saved.id)
+  )
+    continue;
+  const { result, logs, ...entry } = saved;
   entries.push(entry);
-  fs.writeFileSync(path.join(destination, saved.id + '.json'), JSON.stringify(saved));
+  fs.writeFileSync(
+    path.join(destination, saved.id + ".json"),
+    JSON.stringify(saved),
+  );
 }
 fs.writeFileSync(
   path.join(destination, "history.json"),
   JSON.stringify(entries),
 );
 console.log(`Exported ${entries.length} research experiments`);
+
+const captureRoot = path.resolve("research/captures");
+fs.mkdirSync(path.join(destination, "captures"), { recursive: true });
+const captures = [];
+if (fs.existsSync(captureRoot)) {
+  for (const name of fs
+    .readdirSync(captureRoot)
+    .filter((name) => name.endsWith(".json"))) {
+    const capture = JSON.parse(
+      fs.readFileSync(path.join(captureRoot, name), "utf8"),
+    );
+    fs.copyFileSync(
+      path.join(captureRoot, name),
+      path.join(destination, "captures", name),
+    );
+    captures.push({
+      id: capture.id,
+      method: capture.config.method,
+      attack: capture.config.overrides["attack.kind"],
+      config: capture.config,
+    });
+  }
+}
+fs.writeFileSync(
+  path.join(destination, "captures.json"),
+  JSON.stringify(captures),
+);
+const documents = [];
+for (const relative of [
+  "README.md",
+  ...fs
+    .readdirSync(path.join(root, "docs"))
+    .filter((name) => name.endsWith(".md"))
+    .map((name) => "docs/" + name),
+]) {
+  const content = fs.readFileSync(path.join(root, relative), "utf8");
+  documents.push({
+    path: relative,
+    title: content.match(/^#\s+(.+)$/m)?.[1] ?? relative,
+    content,
+  });
+}
+fs.writeFileSync(
+  path.join(destination, "documentation.json"),
+  JSON.stringify(documents),
+);
+// Preserve relative image paths in the published Markdown documents.
+function copyImages(folder) {
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+    const location = path.join(folder, entry.name);
+    if (entry.isDirectory()) copyImages(location);
+    else if (/\.(png|svg|jpe?g|webp)$/i.test(entry.name)) {
+      const target = path.join(
+        destination,
+        "documents",
+        path.relative(root, location),
+      );
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(location, target);
+    }
+  }
+}
+copyImages(path.join(root, "docs"));
+console.log(
+  `Published ${captures.length} visualization captures and ${documents.length} Markdown documents`,
+);

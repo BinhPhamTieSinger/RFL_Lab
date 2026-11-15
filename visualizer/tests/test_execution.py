@@ -47,6 +47,28 @@ def test_all_methods_are_passively_observed(tmp_path, monkeypatch, method):
     assert [e["values"]["pooled"] for e in events if e["type"] == "evaluation_completed"] == [
         r["pooled_acc"] for r in actual["history"]
     ]
+    if method.startswith("fedhep"):
+        masks = [e for e in events if e["type"] == "aclm_applied"]
+        assert {e["head"] for e in masks} == {"parent", "local"}
+        for event in masks:
+            assert all(
+                after == before if active else after == -1e9
+                for active, before, after in zip(
+                    event["active_mask"], event["before"], event["after"], strict=True
+                )
+            )
+    if method == "fedhep_defended":
+        ledgers = [e for e in events if e["type"] == "temporal_trust_updated"]
+        assert {e["tier"] for e in ledgers} == {"parent", "global"}
+        for event in ledgers:
+            for cid in event["members"]:
+                expected = event["momentum"] * event["before"][cid] + (1 - event["momentum"]) * min(
+                    1, event["trust"][cid] * event["num_senders"]
+                )
+                assert event["after"][cid] == pytest.approx(expected)
+    if method == "fedhep_plus":
+        assert any(e["type"] == "screening_updated" for e in events)
+        assert not any(e["type"] == "temporal_trust_updated" for e in events)
     assert events[0]["type"] == "initialized"
     assert all(e["round"] > 0 for e in events if e["type"] == "client_training_started")
 

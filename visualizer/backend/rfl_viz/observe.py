@@ -47,6 +47,15 @@ def observed(emit):
             dataset=cfg.data.dataset,
             attack=asdict(cfg.attack),
             configured_rounds=cfg.run.rounds,
+            configuration={
+                "method": cfg.method,
+                "overrides": {
+                    f"{section}.{key}": value
+                    for section, values in asdict(cfg).items()
+                    if isinstance(values, dict)
+                    for key, value in values.items()
+                },
+            },
         )
         # Leaf-module hooks capture one actual forward per module per client training call.
         seen_modules = set()
@@ -117,6 +126,8 @@ def observed(emit):
             seen_modules.clear()
             state["training"] = True
             state["steps"] = 0
+            state["mask_calls"] = 0
+            state["num_classes"] = server.trainer.num_classes if hierarchical else 0
             state["last_loss"] = None
             event("client_training_started", client=cid, samples=data.num_train)
 
@@ -158,9 +169,39 @@ def observed(emit):
 
         if hierarchical:
 
+            def mask_members(result, seconds, members):
+                state["members"] = list(members)
+
+            if hasattr(server, "_masks"):
+                wrap(server, "_masks", after=mask_members)
+
+            if hasattr(server, "ledger") and cfg.method == "fedhep_defended":
+
+                def trust_before(trust, num_senders):
+                    state["trust_before"] = dict(server.ledger.score)
+
+                def trust_after(result, seconds, trust, num_senders):
+                    event(
+                        "temporal_trust_updated",
+                        tier=state.get("tier"),
+                        parent=state.get("parent"),
+                        members=list(trust),
+                        trust=dict(trust),
+                        num_senders=num_senders,
+                        before={c: state["trust_before"][c] for c in trust},
+                        after={c: server.ledger.score[c] for c in trust},
+                        momentum=server.ledger.momentum,
+                        threshold=server.ledger.threshold,
+                        isolated=sorted(server.ledger.isolated),
+                        duration_s=seconds,
+                    )
+
+                wrap(server.ledger, "update", trust_before, trust_after)
+
             def members(result, seconds, group, among):
                 state["parent"] = group
                 state["members"] = result
+                state["pending_parent"] = group if result else None
 
             wrap(server.grouping, "members", after=members)
             if hasattr(server, "evidence"):
@@ -168,6 +209,17 @@ def observed(emit):
 
                 def isolation(result, seconds, *args):
                     nonlocal previous
+                    event(
+                        "screening_updated",
+                        tier="global",
+                        z=dict(args[0]),
+                        evidence=dict(server.evidence.evidence),
+                        isolated=sorted(server.evidence.isolated),
+                        evidence_cut=server.evidence.cut,
+                        decay=server.evidence.decay,
+                        patience=server.evidence.patience,
+                        duration_s=seconds,
+                    )
                     for cid in server.evidence.isolated - previous:
                         event("client_isolated", client=cid, evidence=server.evidence.evidence.get(cid))
                     previous = set(server.evidence.isolated)
@@ -197,19 +249,74 @@ def observed(emit):
                     duration_s=seconds,
                 ),
             )
+        if cfg.method == "fedhep":
+            from rfl.server import fedhep_server
+
+            def agreement(result, seconds, *args):
+                state["parents_copy_global"] = result > server.sync_similarity
+
+            wrap(fedhep_server, "mean_member_similarity", after=agreement)
+
+            def average_start(members, deltas):
+                state["average_tier"] = (
+                    "parent"
+                    if state.get("pending_parent") is not None and not state.get("parents_copy_global")
+                    else "global"
+                )
+                state["pending_parent"] = None
+
+            wrap(server, "_average", before=average_start)
+
         for attr in ("aggregator", "parent_defense", "global_defense"):
             if hasattr(server, attr):
 
                 def begin(*args, _tier=attr, **kw):
-                    event("aggregation_started", tier=_tier)
+                    state["tier"] = (
+                        state.get("average_tier", "global")
+                        if _tier == "aggregator"
+                        else "parent"
+                        if _tier == "parent_defense"
+                        else "global"
+                    )
+                    state["aggregating"] = True
+                    state["cosines"] = []
+                    info = {
+                        "tier": state["tier"],
+                        "algorithm": "SCCF"
+                        if _tier.endswith("defense")
+                        else type(getattr(server, _tier)).__name__,
+                    }
+                    if _tier.endswith("defense"):
+                        info["members"] = list(state.get("members", []))
+                        info["input_norms"] = [float(update.norm()) for update in args[0]]
+                    if _tier == "aggregator":
+                        info["members"] = [update.client_id for update in args[0]]
+                        info["input_norms"] = [float(update.delta["state"].norm()) for update in args[0]]
+                        if not hierarchical:
+                            for update in args[0]:
+                                vector = update.delta["state"]
+                                event(
+                                    "upload_ready",
+                                    client=update.client_id,
+                                    tier="global",
+                                    bytes=vector.numel() * vector.element_size(),
+                                    update_norm=float(vector.norm()),
+                                    transport="in-process tensor",
+                                )
+                    if state["tier"] == "parent":
+                        info["parent"] = state.get("parent")
+                    state["aggregation_context"] = info
+                    event("aggregation_started", **info)
 
                 def end(result, seconds, *args, _tier=attr, **kw):
-                    info = {"tier": _tier, "duration_s": seconds}
-                    if _tier == "parent_defense":
-                        info.update(parent=state["parent"], members=state.get("members", []))
+                    info = {**state.get("aggregation_context", {}), "duration_s": seconds}
                     if isinstance(result, tuple):
                         info["trust"] = result[1].tolist()
+                        info["output_norm"] = float(result[0].norm())
+                    elif isinstance(result, dict) and "state" in result:
+                        info["output_norm"] = float(result["state"].norm())
                     event("aggregation_completed", **info)
+                    state["aggregating"] = False
 
                 wrap(getattr(server, attr), "aggregate", begin, end)
         if hasattr(server, "_apply"):
@@ -227,6 +334,11 @@ def observed(emit):
                 ),
             )
         if server.attack:
+
+            def attack_client(cid, data):
+                state["client"] = cid
+
+            wrap(server.attack, "poison_data", before=attack_client)
             kind = cfg.attack.kind
             if kind not in ("label_flip", "backdoor", "alie", "min_max"):
                 wrap(
@@ -288,6 +400,64 @@ def observed(emit):
                     ][:12],
                     scope="first step; first twelve parameter gradient norms",
                 )
+
+    def masking_completed(result, seconds, tensor, mask, value):
+        if (
+            state["training"]
+            and state["steps"] == 0
+            and value == -1e9
+            and tensor.ndim == 2
+            and tensor.shape[1] == state.get("num_classes")
+        ):
+            head = ("parent", "local")[min(state["mask_calls"], 1)]
+            state["mask_calls"] += 1
+            event(
+                "aclm_applied",
+                client=state["client"],
+                head=head,
+                active_mask=(~mask[0]).tolist(),
+                masked_value=value,
+                before=tensor[0].detach().tolist(),
+                after=result[0].detach().tolist(),
+                scope="first sample of first training batch",
+                duration_s=seconds,
+            )
+
+    wrap(torch.Tensor, "masked_fill", after=masking_completed)
+    from rfl.defense import soft_cosine
+
+    def bounded(result, seconds, stack, k):
+        if state.get("aggregating"):
+            event(
+                "update_norms_bounded",
+                **state["aggregation_context"],
+                norm_bound=k,
+                before=stack.norm(dim=1).tolist(),
+                after=result.norm(dim=1).tolist(),
+                duration_s=seconds,
+            )
+
+    def cosines(result, seconds, *args, **kwargs):
+        if state.get("aggregating"):
+            state["cosines"] = result.tolist()
+
+    def consensus(result, seconds, updates, temperature, hard_rejection, hard_threshold, class_masks, classifier):
+        if state.get("aggregating"):
+            event(
+                "sccf_computed",
+                **state["aggregation_context"],
+                cosines=state["cosines"],
+                trust=result.tolist(),
+                base_temperature=temperature,
+                hard_rejection=hard_rejection,
+                hard_threshold=hard_threshold,
+                uses_class_mask=class_masks is not None,
+                duration_s=seconds,
+            )
+
+    wrap(soft_cosine, "bound_update_norms", after=bounded)
+    wrap(soft_cosine.F, "cosine_similarity", after=cosines)
+    wrap(soft_cosine, "soft_cosine_trust", after=consensus)
 
     def backward_completed(result, seconds, tensor, *args, **kwargs):
         if state["training"] and tensor.numel() == 1:

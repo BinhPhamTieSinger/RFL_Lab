@@ -1,5 +1,4 @@
 import catalog from "../../../research/catalog.json";
-import recorded from "../../../research/recorded-round.json";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
@@ -19,8 +18,33 @@ async function handle(request: Request, context: Context) {
       training: local,
       mode: local
         ? "Local Python execution"
-        : "Research archive · training runs locally",
+        : "Execution visualization and curated history",
     });
+  let artifact: string | undefined;
+  if (route === "history") artifact = "history.json";
+  if (path[0] === "history" && /^archive-[a-f0-9]{24}$/.test(path[1] ?? ""))
+    artifact = `${path[1]}.json`;
+  if (route === "live/captures") artifact = "captures.json";
+  if (
+    path[0] === "live" &&
+    path[1] === "captures" &&
+    /^[a-z0-9_-]+$/.test(path[2] ?? "")
+  )
+    artifact = `captures/${path[2]}.json`;
+  if (route === "documentation") artifact = "documentation.json";
+  if (artifact && request.method === "GET") {
+    const response = await fetch(
+      new URL(`/research/${artifact}`, request.url),
+      { cache: "no-store" },
+    );
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
   if (local) {
     try {
       const upstream = await fetch(
@@ -65,21 +89,8 @@ async function handle(request: Request, context: Context) {
       },
       { status: 409 },
     );
-  if (path[0] === "experiments" && path[1] === recorded.id) {
-    if (path[2] === "events") {
-      const after = Math.max(Number(new URL(request.url).searchParams.get("after") ?? 0), Number(request.headers.get("last-event-id") ?? 0));
-      const text = recorded.events.map((event, index) => ({event, seq: index + 1})).filter(item => item.seq > after).map(item => `id: ${item.seq}\ndata: ${JSON.stringify(item.event)}\n\n`).join("");
-      return new Response(text, {headers: {"Content-Type": "text/event-stream", "Cache-Control": "no-store"}});
-    }
-    const {events, ...detail} = recorded;
-    return Response.json(detail);
-  }
   if (route === "models") return Response.json(catalog.models);
   if (route === "formulas") return Response.json(catalog.formulas);
-  if (route === "documentation")
-    return new Response(catalog.documentation, {
-      headers: { "Content-Type": "text/plain" },
-    });
   if (path[0] === "source") {
     const source =
       catalog.sources[path.slice(1).join("/") as keyof typeof catalog.sources];

@@ -323,3 +323,33 @@ FORMULAS.append(
         "source": "client/fedhep.py",
     }
 )
+
+FORMULAS.extend(
+    [
+        {
+            "name": "ACLM · active-class logit masking",
+            "method": "fedhep",
+            "latex": (
+                r"\widetilde z_{h,c}=\begin{cases}z_{h,c}&c\in Y_i\\-10^9&c\notin Y_i\end{cases},"
+                r"\quad h\in\{parent,local\}"
+            ),
+            "explanation": (
+                "The true client labels define Y_i. Parent and local cross-entropy receive masked logits. "
+                "The root loss uses every class. The adapter captures actual pre-mask and post-mask logits "
+                "for the first sample of the first batch."
+            ),
+            "source": "client/fedhep.py",
+        },
+        {
+            "name": "TTT · temporal trust tracking",
+            "method": "fedhep_defended",
+            "latex": r"q_i' = 0.85 q_i + 0.15\min(1,n t_i),\quad q_i'<0.25\Rightarrow i\in I",
+            "explanation": (
+                "Defended FedHEP starts q_i at 1. Each parent and Global aggregation updates the ledger "
+                "using its sender count n and SCCF weight t_i. Isolation persists. FedHEP+ replaces this "
+                "ledger with its screening evidence rule."
+            ),
+            "source": "defense/trust_ledger.py",
+        },
+    ]
+)

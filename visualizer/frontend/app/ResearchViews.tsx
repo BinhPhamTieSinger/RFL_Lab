@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -153,11 +153,17 @@ function Values({ value }: { value: any }) {
 }
 export function RoundWalkthrough({
   events,
+  currentEvent,
+  playing,
+  jump,
   initialized,
   formulas,
   focus,
 }: {
   events: RecordValue[];
+  currentEvent?: RecordValue;
+  playing?: boolean;
+  jump: (phase: string) => void;
   initialized?: RecordValue;
   formulas: RecordValue[];
   focus: (id: string) => void;
@@ -166,6 +172,32 @@ export function RoundWalkthrough({
   const [phase, setPhase] = useState("Clients");
   const [honestId, setHonest] = useState<number | null>(null);
   const [maliciousId, setMalicious] = useState<number | null>(null);
+  useEffect(() => {
+    if (!playing || !currentEvent) return;
+    if (currentEvent.round) setRound(currentEvent.round);
+    const tier = currentEvent.tier;
+    if (currentEvent.type === "evaluation_completed") setPhase("Evaluation");
+    else if (
+      ["similarity_computed", "screening_updated", "client_isolated"].includes(
+        currentEvent.type,
+      )
+    )
+      setPhase("Screening");
+    else if (
+      [
+        "aggregation_started",
+        "aggregation_completed",
+        "update_norms_bounded",
+        "sccf_computed",
+        "temporal_trust_updated",
+      ].includes(currentEvent.type)
+    )
+      setPhase(
+        tier === "parent" || tier === "parent_defense" ? "Parents" : "Global",
+      );
+    else if (currentEvent.type === "client_training_started")
+      setPhase("Clients");
+  }, [currentEvent, playing]);
   if (!initialized) return null;
   const rounds = Array.from(
     new Set(
@@ -200,6 +232,7 @@ export function RoundWalkthrough({
       ? records.filter((e) =>
           [
             "similarity_computed",
+            "screening_updated",
             "client_isolated",
             "diagnostics",
             "detection",
@@ -209,12 +242,21 @@ export function RoundWalkthrough({
         ? records.filter((e) => e.type === "evaluation_completed")
         : records.filter(
             (e) =>
-              e.type.startsWith("aggregation_") &&
-              (phase === "Parents" ? e.tier === "parent" : e.tier !== "parent"),
+              [
+                "aggregation_started",
+                "aggregation_completed",
+                "update_norms_bounded",
+                "sccf_computed",
+                "temporal_trust_updated",
+              ].includes(e.type) &&
+              (phase === "Parents"
+                ? ["parent", "parent_defense"].includes(e.tier)
+                : !["parent", "parent_defense"].includes(e.tier)),
           );
   const formulaIds =
     phase === "Clients"
       ? [
+          "ACLM · active-class logit masking",
           "Three-head objective",
           "Label distribution",
           "Ensemble mixing update",
@@ -222,7 +264,11 @@ export function RoundWalkthrough({
         ]
       : phase === "Screening"
         ? ["Screening scale", "Temporal evidence"]
-        : ["Sample-weighted mean", "SCCF aggregation"];
+        : [
+            "Sample-weighted mean",
+            "SCCF aggregation",
+            "TTT · temporal trust tracking",
+          ];
   const selectedFormulas = formulas.filter(
     (f) =>
       formulaIds.includes(f.name) &&
@@ -262,6 +308,7 @@ export function RoundWalkthrough({
             aria-pressed={phase === name}
             onClick={() => {
               setPhase(name);
+              jump(name);
               focus(
                 name === "Clients"
                   ? `c${honestId ?? honest[0]?.id ?? 0}`
@@ -345,6 +392,7 @@ export function RoundWalkthrough({
                       "loss_backward_completed",
                       "optimizer_step",
                       "ensemble_mixing_updated",
+                      "aclm_applied",
                     ].includes(e.type),
                   )
                   .map((e, i) => (
@@ -418,7 +466,11 @@ export function RoundWalkthrough({
       {selectedFormulas.map((f) => (
         <details key={f.name}>
           <summary>{f.name} · implementation formula</summary>
-          <Formula>{`$$${f.latex}$$\n\n${f.explanation}`}</Formula>
+          <Formula>{`$$
+${f.latex}
+$$
+
+${f.explanation}`}</Formula>
           <code>{f.source}</code>
         </details>
       ))}
@@ -433,7 +485,7 @@ function ResultDetails({ run, loadConfig, replay, cancel }: any) {
   async function load() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/experiments/${run.id}`);
+      const response = await fetch(`/api/history/${run.id}`);
       if (!response.ok) throw Error("Result could not be loaded");
       setDetail(await response.json());
     } catch (e) {
@@ -463,6 +515,7 @@ function ResultDetails({ run, loadConfig, replay, cancel }: any) {
         </span>
       </summary>
       <div className="experiment-content">
+        {run.notes && <Formula>{run.notes}</Formula>}
         <div className="section-actions">
           <button onClick={() => loadConfig(run.config)}>
             Load configuration · CPU
@@ -574,8 +627,9 @@ export function ExperimentHistory({
     <>
       <h1>Experiment history</h1>
       <p>
-        {history.length} saved entries. Refreshes every 15 minutes while this
-        page is open. Live execution streams continuously.
+        {history.length} curated research entries. Edit
+        research/history-manifest.json to add or remove experiments. Published
+        changes refresh every 15 minutes.
       </p>
       <div className="section-actions">
         <input

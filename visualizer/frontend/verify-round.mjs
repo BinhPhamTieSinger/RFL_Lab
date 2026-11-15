@@ -12,7 +12,7 @@ await page.getByLabel('rounds', {exact: true}).fill('1');
 await page.locator('summary').filter({hasText: /^attack$/i}).click();
 await page.locator('label').filter({hasText:/^kind/}).locator('select').selectOption('sign_flip');
 await page.getByLabel('count', {exact: true}).fill('1');
-await page.getByRole('button', {name: 'Run experiment', exact: true}).click();
+await page.getByRole('button', {name: 'Run visualization', exact: true}).click();
 await page.getByText('completed', {exact: true}).first().waitFor({timeout: 120000});
 await page.locator('.round-walkthrough').scrollIntoViewIfNeeded();
 await page.locator('.sample-images img').first().waitFor();

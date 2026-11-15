@@ -36,3 +36,11 @@ Each experiment owns its configuration, evaluation table, accuracy chart, MAD ch
 Green and red identify honest and malicious clients following the owner's latest request. Sample photographs retain their actual colors. Remaining interface controls and plots use neutral colors.
 
 The expanded Python suite passed 32 tests. Production compilation and TypeScript validation passed after adding archived history, client images and queued execution.
+
+## Documentation and animated execution
+
+The expanded passive-observation tests validate ACLM's masked values and unchanged active logits, TTT ledger arithmetic, and the use of screening evidence in FedHEP+. All ten methods still match their uninstrumented scientific results. Eleven real CIFAR-100 CPU captures cover all ten methods plus clean FedHEP+. Each capture uses one round, six clients and 300 training images.
+
+The production build and TypeScript checks passed with the documentation reader, separate capture endpoints, manual history manifest and event-driven weight-transfer rendering. Documentation is exported from the current repository Markdown during builds, including its figures. GFM tables, lists and KaTeX are rendered in the reading view.
+
+Browser verification passed on the local workbench with zero page errors, 14 rendered Markdown documents, 783 curated history entries, consistent attack configuration, a clean capture with zero malicious nodes, measured SVG packet motion and no mobile document overflow. The real local one-round training browser test also passed after the playback changes.
