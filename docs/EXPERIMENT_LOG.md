@@ -882,3 +882,90 @@ Rebalanced so that every comparison stays on one machine and the decisive runs c
 | Acer | `followup_backdoor_stop` → `followup_n30_sign` (resumes) → `followup_n20_sign` → `followup_n30_backdoor` | 6 + 60 + 45 + 45 | 1.3 + 12.5 + 9.5 + 9.5 h |
 
 `followup_n20_sign` moved to the Acer because its no-attack runs are the clean baseline for the Acer's `followup_n20_backdoor`.
+
+## 2026-11-15 · Phase 6 first results: two-sided screening, layer L0, the backdoor-stop test, 30 clients
+141 new runs. Charts: `python scripts/plot_phase6.py outputs`. All comparisons within one device.
+
+### 1. Two-sided screening catches every adaptive attacker (D1: α = 0.5, 15 clients, 3 attackers, Mac)
+`ts__two_p3` = FedHEP+ with `plus.two_sided` and patience 3.
+
+![D1](figures/phase6_d1.png)
+
+| Method | No attack | Sign flip | Backdoor (success) | ALIE | Min-Max | Attackers isolated (of 9) | Honest isolated |
+|---|---|---|---|---|---|---|---|
+| Defended FedHEP | **48.39** | 38.08 | 46.4 (78.7%) | 47.49 | 45.19 | – | – |
+| FedHEP+ | 47.92 | **46.34** | 46.26 (20.8%) | 47.55 | 44.87 | 0 / 9 / 9 / 0 / 0 | 9, 5, 10, 6, 3 |
+| FedHEP+ two-sided, patience 3 | 48.29 | 46.05 | **46.54** (27.8%) | 45.47 | **45.72** | 0 / 9 / 9 / **9** / **9** | 12, 4, 8, 5, 7 |
+| L0 (ARC, NNM, trimmed mean) | 47.56 | 41.65 | 46.48 (62.5%) | **47.56** | 45.47 | isolates nobody | 0 |
+| L0 + momentum 0.5 | 46.43 | 40.71 | 45.18 (64.5%) | 45.82 | 44.44 | isolates nobody | 0 |
+
+- **Hypothesis H1 confirmed.** The two-sided screen isolates all 9 ALIE and all 9 Min-Max attackers, every one in round 3 (the earliest round patience 3 allows), where the one-sided screen isolated none. Under sign flip and the backdoor it isolates the same attackers as before.
+- **But isolating them does not raise accuracy at α = 0.5.** Under ALIE, accuracy *fell* from 47.55 to 45.47 (ALIE with z = 0.43 barely hurt FedHEP in the first place, so removing 3 clients costs more than it saves), and under Min-Max it rose by only 0.85. Detection is right; the benefit is small because these attacks were weak here. Their value should show at α = 0.2 and with more attackers (pending).
+- **False isolations did not improve** (36 vs 33 honest client-runs over the five settings): folding z onto −|z| exposes honest clients that are unusually *close* to the consensus too.
+- **Layer L0 alone (hypothesis H7 holds, H4 partly):** no false isolations by construction, within 0.4 of FedHEP+ with no attack, and the best or equal method under ALIE, Min-Max and the backdoor in accuracy. But **it fails against sign flip** (41.65, −4.7 against FedHEP+): three sign flippers among 15 are inside the n − f = 12 nearest neighbours of many honest clients, so NNM mixes their reversed updates into honest ones, and the trimmed mean then drops only f = 3 per coordinate. And it gives **no backdoor protection** (62.5%). **Momentum 0.5 hurts** in every setting (−1.1 with no attack): with 30 rounds and one momentum step per round, the stale update slows learning. Momentum is dropped (D33).
+
+### 2. Layer L0 at α = 0.2 is the best defense there so far (D2: α = 0.2, 20 clients, 4 attackers, Mac)
+
+![D2](figures/phase6_d2.png)
+
+| Method | No attack | Sign flip | Backdoor (success) | Min-Max | Honest isolated, no attack |
+|---|---|---|---|---|---|
+| FedHEP, no defense | **55.59** | 42.51 | **54.72** (46.9%) | 52.10 | – |
+| Defended FedHEP | 54.70 | 50.62 | 54.47 (44.3%) | **54.16** | 0 |
+| FedHEP+ | 52.68 | **52.15** | 53.08 (43.3%) | 53.55 | 27 |
+| FedHEP+ patience 3 | 52.69 | **52.15** | 53.07 (44.0%) | 53.72 | 23 |
+| FedHEP+ two-sided, patience 3 | 51.61 | 51.85 | 52.52 (43.0%) | 52.55 | 37 |
+| L0 | 54.23 | 50.52 | 54.51 (**37.7%**) | 52.96 | 0 |
+
+- **L0 beats FedHEP+ with no attack by +1.56 (every seed: +2.07, +0.83, +1.77) and under the backdoor by +1.43 (every seed)**, is within 0.5 of Defended FedHEP with no attack, and gives the lowest backdoor success of any method at α = 0.2 (37.7%). It loses to FedHEP+ under sign flip by 1.6 and to Defended FedHEP under Min-Max by 1.2.
+- **Bottom-10% accuracy with no attack:** L0 42.70, Defended FedHEP 42.25, FedHEP+ 38.37. L0 keeps the unusual clients that FedHEP+ removes.
+- **Patience 3 and two-sided screening do not fix false isolations at α = 0.2:** 23 and 37 honest clients isolated with no attack against 27. Two-sided screening isolated all 12 Min-Max attackers here, as at α = 0.5, but accuracy fell by 1.0.
+- **Reading across D1 and D2:** screening wins when the attack is crude and the data is moderately skewed; influence bounding wins when the data is strongly skewed. Neither alone is enough; the research plan's layered design (L0 as the base, screening on top with a gate that stops it from firing on honest spread) is what the data asks for.
+
+### 3. The backdoor grows after poisoning stops (undefended FedHEP, 20 clients, 5 attackers, Acer)
+
+![Backdoor stop](figures/followup_backdoor_stop.png)
+
+| Attackers poison | Round 10 | Round 15 | Round 20 | Round 30 |
+|---|---|---|---|---|
+| all 30 rounds | 4 / 8 / 14 | 23 / 36 / 33 | 43 / 63 / 67 | 70 / 82 / 88 |
+| until round 15, then honest | 5 / 8 / 13 | 20 / 35 / 34 | 33 / 45 / 49 | 56 / 67 / 74 |
+| until round 10, then honest | 4 / 10 / 13 | 7 / 8 / 12 | 11 / 13 / 22 | 28 / 33 / 53 |
+
+(seeds 42 / 123 / 7; success on honest clients only.)
+
+- **Confirmed: this is not an isolation leak and not a defense artefact.** With no defense at all, after the attackers switch to honest training on clean data at round 10 (success 4–13% at that point), success still climbs to 28–53% by round 30; after a stop at round 15 it reaches 56–74%. The published picture (Chameleon, ICML 2023: backdoors fade once poisoning stops) does not hold for FedHEP in this setting. Honest training amplifies the implanted feature instead of erasing it.
+- **Why, is open.** FedHEP carries per-client state across rounds that the Global model never overwrites (each client's local head and head memory), and the shared trunk keeps learning from clients whose personalized heads already respond to the trigger. To locate the backdoor, per-head success (root, parent, local heads separately) is now logged at every evaluation for the FedHEP family, and `followup_backdoor_heads` (Acer, 12 runs) repeats the stop test with it, for undefended FedHEP and FedHEP+.
+- **Consequence for the paper:** detection-then-isolation cannot be the whole backdoor defense for FedHEP; either the backdoor is blocked at aggregation time (L0 lowered success to 37.7% at α = 0.2; FLAME's clustering to 0.6%) or the shared layers are rewound after detection (hypothesis H8).
+
+### 4. 30 clients, α = 0.5, sign flip with 6 / 9 / 12 attackers (20 / 30 / 40%), Acer, partly done
+
+![30 clients](figures/followup_n30.png)
+
+| Method | No attack | 6 attackers | 9 attackers | 12 attackers |
+|---|---|---|---|---|
+| FedAvg | 32.83 | 18.08 | 4.31 | 1.06 |
+| FedHEP, no defense | **45.53** | 28.44 | 22.26 | 5.26 |
+| Defended FedHEP | 44.37 | 39.67 | 29.64 | 17.93 |
+| FedHEP+ | 44.58 | **41.96** | 41.57 (1 seed) | pending |
+
+FedHEP+ isolated all 18 attackers with 6 attackers (and 23 honest clients), and in the one finished 9-attacker seed all 9 attackers and 1 honest client. Defended FedHEP's trust-weighting degrades steadily with the attacker share; FedHEP+ holds at about 42. The remaining runs are queued.
+
+### 5. Attack rate q, backdoor (partly done, Mac)
+q = 0.1 (1 / 0 / 2 attackers): undefended FedHEP 48.25, success 42.3%. The rest of the sweep follows.
+
+### Decisions
+- **D33:** worker momentum is dropped from L0 (hurts in every setting with one step per round).
+- The L0 result settles the first rung of the ablation ladder: L0 is the base layer, and the next rung adds screening *on top of L0* with the bimodality gate, instead of the planned order R1–R4 then R5. Rationale: at α = 0.2 screening alone loses to no defense; the gate is what has to be shown to work, and it should be measured against L0's floor, not FedHEP+'s.
+
+### Code added (2026-11-15)
+- `plus.global_rule: arc_nnm_tm` with `plus.global_f`: FedHEP+'s Global step aggregates the kept clients with layer L0 instead of the SCCF trust-weighted mean, with f reduced by the clients already excluded. Test: screening unchanged, step differs.
+- `plus.gap_gate`: a round contributes bad evidence only if its scores split, measured as the largest gap between neighbouring sorted scores divided by the median gap (`gap_ratio`, logged in `score_stats`). From seed-42 diagnostics at α = 0.2: attack-free rounds 3–8×, sign-flip rounds 1–2 10–23× with exactly the attackers below the gap, Min-Max rounds 8–22× with the attackers above it. Thresholds 8 and 12 are tested; this is a hypothesis (H2), not a result.
+- Per-head backdoor success (`history[*].asr_heads`: root, parent, local) for the FedHEP family.
+- `docs/OPERATIONS.md`: setup, running, syncing and publishing for both machines.
+
+### Run plan update (2026-11-15)
+| Machine | In order | Runs | About |
+|---|---|---|---|
+| Mac | `phase6_ladder_d1` → `phase6_ladder_d2` → `followup_q_backdoor` (rest) | 45 + 36 + ~24 | 9.5 + 7.5 + 5 h |
+| Acer | `followup_backdoor_heads` → `followup_n30_sign` (rest) → `followup_n20_sign` → `followup_n30_backdoor` | 12 + ~8 + 45 + 45 | 2.5 + 1.7 + 9.5 + 9.5 h |

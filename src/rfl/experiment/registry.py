@@ -130,9 +130,9 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
                            drill_down=p.drill_down, group_cut=p.group_cut, drill_cut=p.drill_cut,
                            drill_mode=p.drill_mode, min_group=p.min_group, mad_floor=p.mad_floor,
                            relative_floor=p.relative_floor, isolation_patience=p.isolation_patience,
-                           exclusion_patience=p.exclusion_patience, two_sided=p.two_sided)
+                           exclusion_patience=p.exclusion_patience, two_sided=p.two_sided, gap_gate=p.gap_gate)
     return FedHEPPlusServer(hep, clients, trainer, grouping, screen, regroup=p.regroup, attack=attack,
-                            attackers=attackers)
+                            attackers=attackers, global_rule=p.global_rule, global_f=p.global_f)
 
 
 def _root_set(cfg: ExperimentConfig, clients: Sequence[ClientData]) -> ClientData:

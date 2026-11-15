@@ -135,3 +135,11 @@ class FedHEPServer:
         self._load(self.trained[client_id])
         self.model.eval()
         return ensemble_logits(self.model, images, self.memory[client_id])
+
+    def predict_head(self, head: str, client_id: int, images: torch.Tensor) -> torch.Tensor:
+        """One head's logits ("root", "parent" or "local") on the client's model, no ensemble and no class mask.
+        Used to locate a backdoor: which head carries it."""
+        self._load(self.trained[client_id])
+        self.model.eval()
+        z_root, z_parent, z_local = self.model(images)
+        return {"root": z_root, "parent": z_parent, "local": z_local}[head]

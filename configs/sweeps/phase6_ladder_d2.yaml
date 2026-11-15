@@ -1,0 +1,24 @@
+# Phase 6 ladder, rungs R2-R3 on D2 (alpha 0.2, 20 clients, 4 attackers). Same rungs as phase6_ladder_d1.
+# The decisive question here: does the gate stop the false isolations (27 of 60 honest clients with no attack)
+# while keeping sign-flip detection? Baselines a02__* on disk (Mac). Run on the Mac. 36 runs, about 7.5 h.
+seeds: [42, 123, 7]
+common:
+  method: fedhep_plus
+  data.alpha: 0.2
+  data.num_clients: 20
+  run.rounds: 30
+  plus.reference: median
+  plus.regroup: true
+  plus.two_sided: true
+  plus.isolation_patience: 3
+  plus.exclusion_patience: 3
+  plus.global_rule: arc_nnm_tm
+  plus.global_f: 4
+axes:
+  - a02__r2: {config: configs/cifar100_fedhep_defended.yaml}
+    a02__r3g8: {config: configs/cifar100_fedhep_defended.yaml, plus.gap_gate: 8}
+    a02__r3g12: {config: configs/cifar100_fedhep_defended.yaml, plus.gap_gate: 12}
+  - clean: {}
+    sign4: {attack.kind: sign_flip, attack.count: 4}
+    backdoor4: {attack.kind: backdoor, attack.count: 4}
+    minmax4: {attack.kind: min_max, attack.count: 4, attack.knowledge: omniscient}

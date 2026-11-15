@@ -7,6 +7,7 @@ import resource
 import sys
 import time
 from dataclasses import asdict, replace
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -145,6 +146,10 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
             if trigger is not None:
                 row["asr"] = attack_success_rate(server.predict, clients, trigger, cfg.attack.backdoor_target,
                                                  exclude=attackers)
+                if hasattr(server, "predict_head"):   # FedHEP family: which head carries the backdoor
+                    row["asr_heads"] = {h: attack_success_rate(partial(server.predict_head, h), clients, trigger,
+                                                               cfg.attack.backdoor_target, exclude=attackers)
+                                        for h in ("root", "parent", "local")}
             history.append(row)
             asr = f"  asr={row['asr']:.2f}" if row.get("asr") is not None else ""
             print(f"[{cfg.name} s{cfg.run.seed}] round {r}/{cfg.run.rounds}  acc={rep.pooled:.2f}  "

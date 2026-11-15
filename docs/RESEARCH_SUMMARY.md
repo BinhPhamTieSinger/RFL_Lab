@@ -163,7 +163,15 @@ Each part is a hypothesis with a test that can reject it, and it is added only i
 
 ![Experiment stages](figures/diagrams/11_experiment_stages.png)
 
-**Status on 2026-11-14 (evening):** the safety net (L0) and time and memory measurement are built and tested; their first experiments are queued on the Mac. Done since the morning: α = 0.2 on three seeds and the attack-rate tests. Still running: the patience and two-direction variants at α = 0.2 (Mac) and 30 clients (Acer).
+**Status on 2026-11-15:** the first Phase 6 results are in.
+- **Looking in both directions works:** the two-direction screen caught all 9 ALIE and all 9 Min-Max attackers in round 3, where the old screen caught none. It did not raise accuracy much at α = 0.5, because those attacks were weak there to begin with, and it did not reduce false isolations.
+- **The safety net (L0) alone is the best defense at α = 0.2:** +1.6 points over FedHEP+ with no attack and +1.4 under the backdoor on every seed, with no false isolations at all, and it keeps the unusual clients that FedHEP+ removes. But it fails against sign flip at α = 0.5 (−4.7), because mixing each update with its neighbours lets reversed updates in. Momentum made everything worse and was dropped.
+- **The growing backdoor is real:** with no defense, attackers who switch to honest training after round 10 (success 4–13% then) still reach 28–53% by round 30. Honest training strengthens the backdoor instead of erasing it, the opposite of what the literature reports. We now record which head carries it.
+- **Reading:** screening wins against crude attacks on moderately skewed data; influence bounding wins on strongly skewed data. The next experiments, queued on the Mac, combine them: L0 underneath, the two-direction screen on top, and a gate that blames nobody unless the round's scores clearly split into two groups.
+
+![Phase 6 at α = 0.5](figures/phase6_d1.png)
+![Phase 6 at α = 0.2](figures/phase6_d2.png)
+![The backdoor grows after poisoning stops](figures/followup_backdoor_stop.png)
 
 ## Summary
 
@@ -176,4 +184,4 @@ Each part is a hypothesis with a test that can reject it, and it is added only i
 | 5 | Do famous defenses do better? | No overall; Bulyan and FLAME stop backdoors but cost 4 to 6 points with no attack. |
 | 6 | Does FedHEP+ hold up under closer inspection? | Partly: it is far ahead against many sign flippers, but on 3 seeds at α = 0.2 it flags about 9 of 20 honest clients and loses 2 points with no attack; it misses clever attacks; and a backdoor stays after the attackers are removed. |
 | 7 | What does the literature recommend? | Limit every client's influence, use more than one signal, let trust recover. |
-| 8 | What next? | FedHEP-Guard, built and tested one part at a time. |
+| 8 | What next? | FedHEP-Guard, built one part at a time: two-direction screening catches every adaptive attacker; the influence bound is the best defense at α = 0.2; their combination with a gate is running. |

@@ -27,6 +27,7 @@ against the same shrunken group):
     that population; isolation stays permanent."""
 from __future__ import annotations
 
+import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -57,6 +58,7 @@ class ScreenOptions:
     isolation_patience: int = 1        # consecutive z < -evidence_cut, also requiring EMA below cut
     exclusion_patience: int = 1        # consecutive z < -z_cut before temporary exclusion
     two_sided: bool = False            # also act on z far above the others (colluders too close to the reference)
+    gap_gate: float = 0.0              # > 0: bad evidence only in rounds whose scores split (gap_ratio >= this)
 
 
     def __post_init__(self) -> None:
@@ -179,6 +181,20 @@ def robust_z(scores: torch.Tensor, floor: float = 0.1, reference: torch.Tensor |
     scale = torch.maximum((ref - med).abs().median() * 1.4826, floor * med.abs()).clamp_min(absolute_floor)
     no_spread = scale <= 1e-9 * ref.abs().max()  # relative, so the cutoff itself does not depend on scale
     return torch.zeros_like(scores) if no_spread else (scores - med) / scale
+
+
+def gap_ratio(scores: Sequence[float]) -> float:
+    """How clearly the round's scores split into two groups: the largest gap between neighbouring sorted scores,
+    divided by the median gap. A heterogeneous attack-free round has a long tail (ratio of a few); colluding
+    attackers form a separate cluster (ratio of ten or more). Fewer than four scores: 0."""
+    v = sorted(float(x) for x in scores)
+    if len(v) < 4:
+        return 0.0
+    gaps = [b - a for a, b in zip(v[:-1], v[1:], strict=True)]
+    med = statistics.median(gaps)
+    if med <= 0:
+        return float("inf") if max(gaps) > 0 else 0.0
+    return max(gaps) / med
 
 
 def one_sided(z: Mapping[int, float], two_sided: bool) -> dict[int, float]:

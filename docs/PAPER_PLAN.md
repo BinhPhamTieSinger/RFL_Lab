@@ -21,10 +21,10 @@ Working titles (pick after the method results):
 | C1 | Distance-based screening isolates honest clients systematically under non-IID data: the same clients, early in training, whatever the attack. | **Supported** | α = 0.2, 20 clients: about 9 of 20 honest clients isolated per run with no attack, first in round 5, on 3 seeds and one held-out seed; the same clients flagged across attacks (log, 2026-11-14 entries). |
 | C2 | Those false isolations cost accuracy and fairness, not just a few points of average accuracy. | **Supported** | α = 0.2, no attack: −2.0 accuracy on every seed and bottom-10% 42.25 to 38.37 against Defended FedHEP. |
 | C3 | The robust z-score's scale collapses during training, so a single round can isolate an honest client for good. | **Supported** | Logged MAD and floor per round; z down to −11.4 late in training (log, 2026-11-14 morning). |
-| C4 | In-distribution attacks (ALIE, Min-Max) sit *above* the consensus; none of the tested defenses isolates them. | **Supported** at α = 0.5 (3 seeds; 30 runs, 5 defenses); at α = 0.2, FedHEP+ isolated no Min-Max attacker either. | Attackers' median z +5.2 (ALIE) and +2.9 (Min-Max). |
+| C4 | In-distribution attacks (ALIE, Min-Max) sit *above* the consensus; one-sided defenses miss them and a two-sided robust z catches them all. | **Supported** (2026-11-15) | One-sided: 0 of 9 isolated by any of 5 defenses at α = 0.5. Two-sided FedHEP+: 9 of 9 ALIE, 9 of 9 Min-Max at α = 0.5 (round 3), 12 of 12 Min-Max at α = 0.2. |
 | C5 | Removal-based screening is far better than trust-weighting against many crude attackers. | **Supported** | 5–6 of 15 sign flippers: FedHEP+ 40–44% vs Defended FedHEP 27–32%. |
-| C6 | Isolating backdoor attackers does not remove the backdoor; it keeps growing afterwards. | **Observed**, cause **pending** | 20 clients: +17 to +47 points after the last isolation in all 5 runs where every attacker was isolated. Decided by `followup_backdoor_stop` (attackers stop at round 10 or 15). |
-| C7 | An influence bound (ARC, NNM, trimmed mean) limits the damage of undetected attackers without false isolations. | **Pending** | `phase6_l0`, `phase6_l0_a02`. |
+| C6 | A backdoor keeps growing after poisoning stops, even with no defense: honest training amplifies it in FedHEP. | **Supported** (2026-11-15) | Undefended FedHEP, 20 clients, 5 attackers stopping at round 10: success 4–13% then, 28–53% at round 30; stopping at 15: 56–74%. Which head carries it: pending (`followup_backdoor_heads`). |
+| C7 | An influence bound (ARC, NNM, trimmed mean) limits the damage of undetected attackers without false isolations. | **Supported with a caveat** (2026-11-15) | Zero false isolations; best or equal under ALIE, Min-Max and backdoor at α = 0.5 and the best defense at α = 0.2 (+1.6 over FedHEP+ with no attack, every seed). Fails sign flip at α = 0.5 (−4.7 vs FedHEP+). |
 | C8 | FedHEP-Guard improves accuracy and bottom-10% accuracy over FedHEP+, Defended FedHEP and established rules, under crude, adaptive and backdoor attacks, on held-out settings. | **Pending** | Research plan, Stages 2–4. |
 | C9 | Its cost in time and memory is small and measured on two kinds of laptop GPUs. | **Pending** | Stage 1 instrumentation is in place; numbers come with the Phase 6 runs. |
 
@@ -62,9 +62,9 @@ In priority order. Estimates use 12.5 min per 30-round run on either machine.
 
 | # | Experiment | Decides | Runs | About |
 |---|---|---|---|---|
-| E1 | `followup_backdoor_stop` (Acer) | C6 | 6 | 1.3 h |
-| E2 | `phase6_l0`, `phase6_l0_a02` (Mac) | C7 | 54 | 11 h |
-| E3 | Ablation ladder R1–R8 on D1 and D2 | C8, design | ~240 | 50 h (25 h on both machines) |
+| E1 | `followup_backdoor_stop` (Acer) | C6 | 6 | done; `followup_backdoor_heads` (12 runs, 2.5 h) locates the backdoor |
+| E2 | `phase6_l0`, `phase6_l0_a02` (Mac) | C7 | 54 | done |
+| E3 | Ablation ladder on D1 and D2 (reordered, D33) | C8, design | 81 queued (`phase6_ladder_d1`, `phase6_ladder_d2`), more after | 17 h for the queued rungs |
 | E4 | Baselines for the closest work: Errami and Bergou's re-inclusion (simple to implement), FedCAP, HadAGG if code exists, Ditto and FedRep under attack | Positioning | ~90 | 19 h |
 | E5 | Defense-aware adaptive attack against the final method | Reviewer expectation | ~30 | 6 h |
 | E6 | Second and third dataset (CIFAR-10, FEMNIST natural partition), 50 clients with 50% participation, 100 rounds for the main setting | Generality | sized after Stage 1 timings | likely needs cloud GPU time |

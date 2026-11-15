@@ -221,3 +221,16 @@ def test_evidence_mode_drill_down_never_leaves_anyone_out_for_a_round(tmp_path):
         assert set(d["left_out"]) == {c for c, v in d["z"].items() if v < -2.5}
         assert "align_z" in d
     assert any(d["align_z"] for d in result["diagnostics"])
+
+
+def test_global_rule_arc_nnm_tm_runs_under_the_screen_and_differs_from_sccf(tmp_path):
+    base = {"plus.reference": "median", "plus.regroup": True}
+    sccf = run_experiment(_cfg(tmp_path, **base))
+    l0 = run_experiment(_cfg(tmp_path, name="plus_l0", **base, **{"plus.global_rule": "arc_nnm_tm",
+                                                                      "plus.global_f": 3}))
+    assert set(l0["attackers"]) <= set(l0["detection"][-1]["flagged"])   # screening unchanged
+    assert l0["detection"][-1]["flagged"] == sccf["detection"][-1]["flagged"]
+    # with both attackers excluded, f = 3 - 2 = 1 of the 4 kept clients is still trimmed, so the step differs
+    assert l0["history"][-1]["pooled_acc"] != sccf["history"][-1]["pooled_acc"]
+    with pytest.raises(ValueError):
+        run_experiment(_cfg(tmp_path, name="plus_bad", **{"plus.global_rule": "mean"}))

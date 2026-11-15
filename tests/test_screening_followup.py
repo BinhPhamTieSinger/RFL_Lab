@@ -57,3 +57,13 @@ def test_two_sided_screening_acts_on_clients_far_above_the_others():
     z = {0: 5.0, 1: -3.0, 2: 0.4}
     assert one_sided(z, two_sided=False) == z
     assert one_sided(z, two_sided=True) == {0: -5.0, 1: -3.0, 2: -0.4}
+
+
+def test_gap_ratio_is_small_for_a_spread_and_large_for_a_split():
+    from rfl.defense.screening import gap_ratio
+    assert gap_ratio([0.1, 0.2, 0.3]) == 0.0                          # too few to judge
+    spread = [i / 10 for i in range(12)]                              # evenly spread: ratio 1
+    assert abs(gap_ratio(spread) - 1.0) < 1e-9
+    split = spread + [-5.0, -5.1, -5.05]                              # three far below: a clear split
+    assert gap_ratio(split) > 10
+    assert gap_ratio(spread + [9.0]) > 10                             # a split above counts too

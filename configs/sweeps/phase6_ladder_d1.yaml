@@ -1,0 +1,27 @@
+# Phase 6 ladder, rungs R2-R3 on D1 (2026-11-15, D33 order): screening on top of L0.
+#   r2    L0 Global step + two-sided screen, patience 3 (the two pieces that each worked, combined)
+#   r3g8  r2 + gap gate 8   (a round gives bad evidence only if its scores split: largest gap >= 8 x median gap)
+#   r3g12 r2 + gap gate 12
+# Gate thresholds from seed-42 diagnostics: clean rounds 3-8x, sign-flip rounds 1-2 10-23x, Min-Max 8-22x.
+# Baselines on disk: p3__zmr__*, ts__two_p3__*, p6__l0__* (Mac). Run on the Mac. 45 runs, about 9.5 h.
+seeds: [42, 123, 7]
+common:
+  method: fedhep_plus
+  data.alpha: 0.5
+  run.rounds: 30
+  plus.reference: median
+  plus.regroup: true
+  plus.two_sided: true
+  plus.isolation_patience: 3
+  plus.exclusion_patience: 3
+  plus.global_rule: arc_nnm_tm
+  plus.global_f: 3
+axes:
+  - p6__r2: {config: configs/cifar100_fedhep_defended.yaml}
+    p6__r3g8: {config: configs/cifar100_fedhep_defended.yaml, plus.gap_gate: 8}
+    p6__r3g12: {config: configs/cifar100_fedhep_defended.yaml, plus.gap_gate: 12}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
+    backdoor: {attack.kind: backdoor, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax3: {attack.kind: min_max, attack.count: 3, attack.knowledge: omniscient}

@@ -1,0 +1,17 @@
+# Which head carries the backdoor? (2026-11-15) Per-head success (root / parent / local) is now logged every
+# evaluation. Same setting as followup_backdoor_stop so the curves are comparable; runs under new names so the earlier
+# ones stay. 20 clients, 5 backdoor attackers who stop after round 10, undefended FedHEP and FedHEP+. Acer (its
+# baselines are Acer runs). 12 runs, about 2.5 h.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  data.num_clients: 20
+  run.rounds: 30
+  attack.kind: backdoor
+  attack.count: 5
+axes:
+  - n20h__fedhep: {config: configs/cifar100_fedhep.yaml}
+    n20h__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true}
+  - stop10: {attack.stop_round: 10}
+    full: {}

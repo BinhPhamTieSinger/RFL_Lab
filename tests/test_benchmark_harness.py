@@ -114,6 +114,11 @@ def test_backdoor_run_records_asr_and_detection_every_round(tmp_path, method):
     assert len(result["attackers"]) == 2
     assert result["history"][-1]["asr"] is not None
     assert [d["round"] for d in result["detection"]] == [1, 2]
+    heads = result["history"][-1].get("asr_heads")
+    if method.startswith("fedhep"):
+        assert set(heads) == {"root", "parent", "local"} and all(0 <= v <= 100 for v in heads.values())
+    else:
+        assert heads is None
     if method == "multikrum":
         assert len(result["detection"][-1]["flagged"]) == 6 - 3  # keeps m = 3
         assert result["detection"][-1]["auroc"] is not None

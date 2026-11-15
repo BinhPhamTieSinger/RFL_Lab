@@ -19,10 +19,12 @@ import torch
 from rfl.client.fedhep import FedHEPTrainer
 from rfl.core.interfaces import Attack
 from rfl.core.types import ClientData, DetectionResult, RoundReport
+from rfl.defense.classic import arc_nnm_trimmed_mean_rule
 from rfl.defense.screening import (
     EvidenceTracker,
     ScreenOptions,
     apply_cap,
+    gap_ratio,
     group_z,
     member_alignment,
     one_sided,
@@ -37,10 +39,14 @@ from rfl.server.defended_fedhep_server import DefendedFedHEPServer
 class FedHEPPlusServer(DefendedFedHEPServer):
     def __init__(self, model: MultiHeadResNet9, clients: Sequence[ClientData], trainer: FedHEPTrainer,
                  grouping: SimilarityGrouping, screen: ScreenOptions, regroup: bool = False,
-                 attack: Attack | None = None, attackers: frozenset[int] = frozenset()) -> None:
+                 attack: Attack | None = None, attackers: frozenset[int] = frozenset(),
+                 global_rule: str = "sccf", global_f: int = 3) -> None:
         super().__init__(model, clients, trainer, grouping, attack=attack, attackers=attackers)
         self.screen = screen
         self.regroup = regroup
+        if global_rule not in ("sccf", "arc_nnm_tm"):
+            raise ValueError(f"unknown global_rule {global_rule!r}")
+        self.global_rule, self.global_f = global_rule, global_f
         self.similarity_mask = ~self.global_defense.layout.buffer_mask  # regrouping compares weights only
         self.evidence = EvidenceTracker(screen.evidence_decay, screen.evidence_cut, screen.readmit,
                                         screen.isolation_patience)
@@ -88,6 +94,10 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                           absolute_floor=self.screen.mad_floor)
             z_logged = {c: float(v) for c, v in zip(scored, zs.tolist(), strict=True)}
             z = one_sided(z_logged, self.screen.two_sided)
+            split = gap_ratio(scores.tolist())
+            score_stats["gap_ratio"] = split
+            if self.screen.gap_gate > 0 and split < self.screen.gap_gate:
+                z = {c: max(v, 0.0) for c, v in z.items()}   # no separate group this round: no bad evidence
             z_evidence = dict(z)
             if self.screen.drill_down:
                 parent_z = self._group_z(updates, scored, isolated, in_ref, round_idx)
@@ -127,7 +137,13 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                 self.parents[g] = ref + step
 
         global_trust: dict[int, float] = {}
-        if kept:
+        if kept and self.global_rule == "arc_nnm_tm":
+            # Layer L0 under the screen: the attackers still assumed present are those not yet excluded.
+            f = max(0, min(self.global_f - len(excluded), (len(kept) - 1) // 2))
+            step = arc_nnm_trimmed_mean_rule(torch.stack([to_global[c] - start for c in kept]), f).update
+            self.global_vec = start + step
+            global_trust = {c: 1.0 / len(kept) for c in kept}
+        elif kept:
             step, weights = self.global_defense.aggregate([to_global[c] - start for c in kept], self._masks(kept))
             self.global_vec = start + step
             global_trust = {c: float(t) for c, t in zip(kept, weights.tolist(), strict=True)}

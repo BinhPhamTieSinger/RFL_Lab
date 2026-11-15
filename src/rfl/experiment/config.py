@@ -77,6 +77,9 @@ class PlusConfig:
     isolation_patience: int = 1        # consecutive z < -evidence_cut, also requiring EMA below cut
     exclusion_patience: int = 1        # consecutive z < -z_cut before temporary exclusion
     two_sided: bool = False            # also act on z far above the others (colluders too close to the reference)
+    gap_gate: float = 0.0              # > 0: bad evidence only in rounds whose scores split (max gap / median gap)
+    global_rule: str = "sccf"          # Global step over kept clients: "sccf" (trust-weighted mean) | "arc_nnm_tm"
+    global_f: int = 3                  # f for arc_nnm_tm before screening; reduced by the clients excluded
 
 
 
