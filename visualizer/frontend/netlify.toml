@@ -1,0 +1,9 @@
+[build]
+  base = "visualizer/frontend"
+  command = "npm run build"
+  publish = ".next"
+[build.environment]
+  NODE_VERSION = "22"
+  RFL_ARCHIVE_ONLY = "1"
+[context.production.environment]
+  RFL_ARCHIVE_ONLY = "1"
