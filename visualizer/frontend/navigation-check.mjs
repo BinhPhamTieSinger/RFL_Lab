@@ -188,6 +188,24 @@ try {
     .getByRole("button", { name: "Show settings", exact: true })
     .click();
   await expect(page.locator(".configuration")).toBeVisible();
+  const inspectorToggle = page.getByRole("button", {
+    name: "Hide inspection",
+    exact: true,
+  });
+  const leftToggle = await page
+    .getByRole("button", { name: "Hide settings", exact: true })
+    .boundingBox();
+  const rightToggle = await inspectorToggle.boundingBox();
+  expect(leftToggle.x).toBeLessThan(rightToggle.x);
+  await inspectorToggle.click();
+  await expect(page.locator(".inspector")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".inspector")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Show inspection", exact: true })
+    .click();
+  await expect(page.locator(".inspector")).toBeVisible();
+
   await page.reload();
   await expect(slider).toHaveValue(paused);
   await page

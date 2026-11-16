@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Documentation from "./Documentation";
+import { Facts, RoundSummary, EventSummary } from "./InspectionSummary";
 import {
   edgeTypes,
   ExecutionAnimation,
@@ -181,6 +182,7 @@ export default function Workbench() {
   const [speed, setSpeed] = useState(1);
   const [followCamera, setFollowCamera] = useState(true);
   const [focus, setFocus] = useState("");
+  const [inspectionHidden, setInspectionHidden] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [historyTarget, setHistoryTarget] = useState("");
   const [cpuKey, setCpuKey] = useState("");
@@ -263,6 +265,9 @@ export default function Workbench() {
       installConfiguration({ method: "fedhep_plus", overrides: {} }).catch(
         (e) => setError(e.message),
       );
+    setInspectionHidden(
+      localStorage.getItem("rfl-inspection-hidden") === "true",
+    );
     setSidebarHidden(localStorage.getItem("rfl-sidebar-hidden") === "true");
     window.addEventListener("popstate", shared);
     api("/capabilities")
@@ -844,101 +849,119 @@ export default function Workbench() {
         )}
         <div className="workbench-view" hidden={view !== "Live Workbench"}>
           <div className="sticky-workbench-controls">
-            <button
-              aria-expanded={!sidebarHidden}
-              onClick={() => {
-                setSidebarHidden(!sidebarHidden);
-                localStorage.setItem(
-                  "rfl-sidebar-hidden",
-                  String(!sidebarHidden),
-                );
-              }}
-            >
-              {sidebarHidden ? "Show settings" : "Hide settings"}
-            </button>
-            {initialized && (
-              <div className="playback-controls">
-                <button
-                  onClick={() => {
-                    if (
-                      !playing &&
+            <div className="workbench-toolbar">
+              <button
+                className="panel-toggle"
+                aria-controls="experiment-settings"
+                aria-expanded={!sidebarHidden}
+                onClick={() => {
+                  setSidebarHidden(!sidebarHidden);
+                  localStorage.setItem(
+                    "rfl-sidebar-hidden",
+                    String(!sidebarHidden),
+                  );
+                }}
+              >
+                {sidebarHidden ? "Show settings" : "Hide settings"}
+              </button>
+              {initialized && (
+                <div className="playback-controls">
+                  <button
+                    onClick={() => {
+                      if (
+                        !playing &&
+                        !events.some(
+                          (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                        )
+                      )
+                        setCursor(
+                          Math.max(
+                            0,
+                            events.findIndex((e) => e.type === "initialized"),
+                          ),
+                        );
+                      setPlaying(!playing);
+                    }}
+                  >
+                    {playing ? "Pause animation" : "Play animation"}
+                  </button>
+                  <button
+                    disabled={
+                      !events.some(
+                        (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
+                      )
+                    }
+                    onClick={() => {
+                      const previous = events.findLastIndex(
+                        (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
+                      );
+                      if (previous >= 0) seek(previous);
+                    }}
+                  >
+                    Previous operation
+                  </button>
+                  <button
+                    disabled={
                       !events.some(
                         (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
                       )
-                    )
-                      setCursor(
-                        Math.max(
-                          0,
-                          events.findIndex((e) => e.type === "initialized"),
-                        ),
+                    }
+                    onClick={() => {
+                      const next = events.findIndex(
+                        (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
                       );
-                    setPlaying(!playing);
-                  }}
-                >
-                  {playing ? "Pause animation" : "Play animation"}
-                </button>
-                <button
-                  disabled={
-                    !events.some(
-                      (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
-                    )
-                  }
-                  onClick={() => {
-                    const previous = events.findLastIndex(
-                      (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
-                    );
-                    if (previous >= 0) seek(previous);
-                  }}
-                >
-                  Previous operation
-                </button>
-                <button
-                  disabled={
-                    !events.some(
-                      (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
-                    )
-                  }
-                  onClick={() => {
-                    const next = events.findIndex(
-                      (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
-                    );
-                    if (next >= 0) seek(next);
-                  }}
-                >
-                  Next operation
-                </button>
-                <label>
-                  Animation speed
-                  <select
-                    aria-label="Animation speed"
-                    value={speed}
-                    onChange={(e) => setSpeed(Number(e.target.value))}
+                      if (next >= 0) seek(next);
+                    }}
                   >
-                    <option value={0.5}>0.5×</option>
-                    <option value={1}>1×</option>
-                    <option value={2}>2×</option>
-                    <option value={4}>4×</option>
-                  </select>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={followCamera}
-                    onChange={(e) => setFollowCamera(e.target.checked)}
-                  />{" "}
-                  Follow camera
-                </label>
-                <span>
-                  {playing ? "Automatic playback" : "Paused"} ·{" "}
-                  {
-                    events.filter(
-                      (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
-                    ).length
-                  }{" "}
-                  operations available
-                </span>
-              </div>
-            )}
+                    Next operation
+                  </button>
+                  <label>
+                    Animation speed
+                    <select
+                      aria-label="Animation speed"
+                      value={speed}
+                      onChange={(e) => setSpeed(Number(e.target.value))}
+                    >
+                      <option value={0.5}>0.5×</option>
+                      <option value={1}>1×</option>
+                      <option value={2}>2×</option>
+                      <option value={4}>4×</option>
+                    </select>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={followCamera}
+                      onChange={(e) => setFollowCamera(e.target.checked)}
+                    />{" "}
+                    Follow camera
+                  </label>
+                  <span>
+                    {playing ? "Automatic playback" : "Paused"} ·{" "}
+                    {
+                      events.filter(
+                        (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                      ).length
+                    }{" "}
+                    operations available
+                  </span>
+                </div>
+              )}
+              <button
+                className="panel-toggle inspection-toggle"
+                aria-controls="component-inspection"
+                aria-expanded={!inspectionHidden}
+                onClick={() => {
+                  setInspectionHidden(!inspectionHidden);
+                  localStorage.setItem(
+                    "rfl-inspection-hidden",
+                    String(!inspectionHidden),
+                  );
+                }}
+              >
+                {inspectionHidden ? "Show inspection" : "Hide inspection"}
+              </button>
+            </div>
             {initialized && (
               <details className="sticky-trace">
                 <summary>Execution trace</summary>{" "}
@@ -991,10 +1014,10 @@ export default function Workbench() {
             )}
           </div>
           <main
-            className={`workbench ${sidebarHidden ? "sidebar-hidden" : ""}`}
+            className={`workbench ${sidebarHidden ? "sidebar-hidden" : ""} ${inspectionHidden ? "inspection-hidden" : ""}`}
           >
             {!sidebarHidden && (
-              <aside className="configuration">
+              <aside className="configuration" id="experiment-settings">
                 <h2>Experiment setup</h2>
                 <p>Parameters are passed to the research implementation.</p>
                 {schemaLoading && <p role="status">Loading model settings…</p>}
@@ -1042,7 +1065,10 @@ export default function Workbench() {
                   Load captured visualization
                 </button>
                 {(capabilities.requiresKey || !capabilities.training) && (
-                  <details open={!cpuKey}>
+                  <details
+                    className="connection-settings"
+                    open={!cpuKey || !capabilities.online}
+                  >
                     <summary>
                       {capabilities.requiresKey
                         ? capabilities.mode
@@ -1072,38 +1098,50 @@ export default function Workbench() {
                         }}
                       />
                     </label>
-                    <button
-                      disabled={running}
-                      onClick={() => {
-                        for (const storage of [sessionStorage, localStorage]) {
-                          if (cpuEndpoint.trim())
-                            storage.setItem("rfl-cpu-url", cpuEndpoint.trim());
-                          else storage.removeItem("rfl-cpu-url");
-                        }
-                        api("/capabilities")
-                          .then(setCapabilities)
-                          .catch((e) => setError(e.message));
-                      }}
-                    >
-                      Connect computer
-                    </button>
-                    <button
-                      disabled={running}
-                      onClick={() => {
-                        for (const storage of [localStorage, sessionStorage]) {
-                          storage.removeItem("rfl-cpu-key");
-                          storage.removeItem("rfl-cpu-url");
-                        }
-                        setCpuKey("");
-                        setCpuEndpoint("");
-                        api("/capabilities").then(setCapabilities);
-                      }}
-                    >
-                      Forget computer connection
-                    </button>
+                    <div className="connection-actions">
+                      <button
+                        disabled={running}
+                        onClick={() => {
+                          for (const storage of [
+                            sessionStorage,
+                            localStorage,
+                          ]) {
+                            if (cpuEndpoint.trim())
+                              storage.setItem(
+                                "rfl-cpu-url",
+                                cpuEndpoint.trim(),
+                              );
+                            else storage.removeItem("rfl-cpu-url");
+                          }
+                          api("/capabilities")
+                            .then(setCapabilities)
+                            .catch((e) => setError(e.message));
+                        }}
+                      >
+                        Connect computer
+                      </button>
+                      <button
+                        disabled={running}
+                        onClick={() => {
+                          for (const storage of [
+                            localStorage,
+                            sessionStorage,
+                          ]) {
+                            storage.removeItem("rfl-cpu-key");
+                            storage.removeItem("rfl-cpu-url");
+                          }
+                          setCpuKey("");
+                          setCpuEndpoint("");
+                          api("/capabilities").then(setCapabilities);
+                        }}
+                      >
+                        Forget connection
+                      </button>
+                    </div>
                     <small>
-                      The local bridge opens a connected browser tab. The key is
-                      remembered in this browser.
+                      {capabilities.online
+                        ? "Connection saved in this browser."
+                        : "To use your Mac GPU, start the bridge on your Mac with --allow-accelerators and use the tab it opens."}
                     </small>
                   </details>
                 )}
@@ -1112,8 +1150,14 @@ export default function Workbench() {
                     Training device
                     <select
                       aria-label="Training device"
-                      disabled={locked}
-                      value={values["run.device"] ?? "cpu"}
+                      disabled={
+                        locked || !capabilities.online || !capabilities.training
+                      }
+                      value={
+                        capabilities.online && capabilities.training
+                          ? (values["run.device"] ?? "cpu")
+                          : ""
+                      }
                       onChange={(event) =>
                         editValues({
                           ...values,
@@ -1121,11 +1165,15 @@ export default function Workbench() {
                         })
                       }
                     >
-                      {(capabilities.devices ?? ["cpu"]).map((device) => (
-                        <option key={device} value={device}>
-                          {deviceLabels[device] ?? device}
-                        </option>
-                      ))}
+                      {!capabilities.online || !capabilities.training ? (
+                        <option value="">Connect to see devices</option>
+                      ) : (
+                        (capabilities.devices ?? ["cpu"]).map((device) => (
+                          <option key={device} value={device}>
+                            {deviceLabels[device] ?? device}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </label>
                   <button
@@ -1343,103 +1391,99 @@ export default function Workbench() {
                 )}
               </div>
             </section>
-            <motion.aside
-              className="inspector"
-              key={selected}
-              initial={{ opacity: 0.6 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-            >
-              <h2>
-                {selectedClient
-                  ? `Client ${clientId}`
-                  : selected === "global"
-                    ? "Global inspection"
-                    : `Parent ${selected.slice(1)}`}
-              </h2>
-              <p>Values captured by the execution adapter</p>
-              {selectedClient ? (
-                <>
-                  <ClientDistribution
-                    client={selectedClient}
-                    malicious={initialized?.attackers.includes(clientId)}
-                    parent={groups[clientId!]}
-                  />
-                  <h3>Latest local training</h3>
-                  <pre>
-                    {clientEvent
-                      ? pretty(clientEvent)
-                      : "No completed training captured."}
-                  </pre>
-                  <details>
-                    <summary>Captured local operations</summary>
-                    {visible
-                      .filter(
-                        (e) =>
-                          e.client === clientId &&
-                          [
-                            "operation_completed",
-                            "optimizer_step",
-                            "loss_backward_completed",
-                          ].includes(e.type),
-                      )
-                      .slice(-90)
-                      .map((e, i) => (
-                        <details key={i}>
-                          <summary>
-                            {e.operation ?? "Optimizer step"} {e.module ?? ""}
-                          </summary>
-                          <pre>{pretty(e)}</pre>
-                        </details>
-                      ))}
-                  </details>
-                  <h3>Screening record</h3>
-                  <pre>
-                    {pretty({
-                      score: diagnostics.scores?.[clientId!],
-                      z: diagnostics.z?.[clientId!],
-                      evidence: diagnostics.evidence?.[clientId!],
-                    })}
-                  </pre>
-                </>
-              ) : (
-                <>
-                  {selected.startsWith("p") && (
-                    <>
-                      <h3>Parent aggregation</h3>
-                      <pre>
-                        {pretty(
-                          [...visible]
+            {!inspectionHidden && (
+              <motion.aside
+                id="component-inspection"
+                className="inspector"
+                key={selected}
+                initial={{ opacity: 0.6 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15 }}
+              >
+                <h2>
+                  {selectedClient
+                    ? `Client ${clientId}`
+                    : selected === "global"
+                      ? "Global inspection"
+                      : selected === "dataset"
+                        ? "Dataset inspection"
+                        : `Parent ${selected.slice(1)}`}
+                </h2>
+                <p>Values captured by the execution adapter</p>
+                {selectedClient ? (
+                  <>
+                    <ClientDistribution
+                      client={selectedClient}
+                      malicious={initialized?.attackers.includes(clientId)}
+                      parent={groups[clientId!]}
+                    />
+                    <h3>Latest local training</h3>
+                    <EventSummary event={clientEvent} />
+                    <details>
+                      <summary>Captured local operations</summary>
+                      {visible
+                        .filter(
+                          (e) =>
+                            e.client === clientId &&
+                            [
+                              "operation_completed",
+                              "optimizer_step",
+                              "loss_backward_completed",
+                            ].includes(e.type),
+                        )
+                        .slice(-90)
+                        .map((e, i) => (
+                          <details key={i}>
+                            <summary>
+                              {e.operation ?? "Optimizer step"} {e.module ?? ""}
+                            </summary>
+                            <EventSummary event={e} />
+                          </details>
+                        ))}
+                    </details>
+                    <h3>Screening record</h3>
+                    <Facts
+                      values={{
+                        Similarity: diagnostics.scores?.[clientId!],
+                        "z-score": diagnostics.z?.[clientId!],
+                        "Accumulated evidence":
+                          diagnostics.evidence?.[clientId!],
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {selected.startsWith("p") && (
+                      <>
+                        <h3>Parent aggregation</h3>
+                        <EventSummary
+                          event={[...visible]
                             .reverse()
                             .find(
                               (e) =>
                                 e.type === "aggregation_completed" &&
                                 e.parent === Number(selected.slice(1)),
-                            ) ?? "No aggregation recorded.",
-                        )}
-                      </pre>
-                    </>
-                  )}
-                  <h3>Round diagnostics</h3>
+                            )}
+                        />
+                      </>
+                    )}
+                    <h3>Round diagnostics</h3>
+                    <RoundSummary data={diagnostics} />
+                  </>
+                )}
+                <details>
+                  <summary>Actual module architecture</summary>
                   <pre>
-                    {Object.keys(diagnostics).length
-                      ? pretty(diagnostics)
-                      : "No round diagnostics captured."}
+                    {initialized?.architecture ??
+                      "Available after initialization."}
                   </pre>
-                </>
-              )}
-              <details>
-                <summary>Actual module architecture</summary>
-                <pre>
-                  {initialized?.architecture ??
-                    "Available after initialization."}
-                </pre>
-              </details>
-              <details>
-                <summary>Selected execution event</summary>
-                <pre>{last ? pretty(last) : "No event selected."}</pre>
-              </details>
-            </motion.aside>
+                </details>
+                <details>
+                  <summary>Selected execution event</summary>
+                  <EventSummary event={last} />
+                </details>
+              </motion.aside>
+            )}
             <section className="execution-progress">
               <label htmlFor="round-progress">
                 Completed rounds ·{" "}
