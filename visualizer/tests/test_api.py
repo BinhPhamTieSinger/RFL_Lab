@@ -30,6 +30,18 @@ def test_execution_replay_queue_and_cancellation():
         assert result["status"] == "completed", result
         events = client.get(f"/experiments/{id}/events").text
         assert "evaluation_completed" in events and "worker_stopped" in events
+        cursor = 0
+        captured = []
+        while True:
+            batch = client.get(f"/experiments/{id}/event-batch?after={cursor}").json()
+            assert batch["cursor"] >= cursor
+            cursor = batch["cursor"]
+            captured.extend(batch["events"])
+            if not batch["more"]:
+                break
+        assert captured[-1]["type"] == "worker_stopped"
+        assert sum(e["type"] == "evaluation_completed" for e in captured) == 1
+        assert client.get(f"/experiments/{id}/event-batch?after={cursor}").json()["events"] == []
         assert result["result"]["final"]["pooled"] >= 0
         response = client.post("/experiments", json={"overrides": {"run.rounds": 100}})
         id = response.json()["id"]
@@ -42,3 +54,18 @@ def test_execution_replay_queue_and_cancellation():
         assert (
             client.post("/experiments", json={}, headers={"origin": "https://foreign.example"}).status_code == 403
         )
+
+
+def test_remote_cpu_authentication_and_device(monkeypatch):
+    monkeypatch.setenv("RFL_VIZ_TOKEN", "test-private-key")
+    monkeypatch.setenv("RFL_VIZ_CPU_ONLY", "1")
+    with TestClient(app) as client:
+        assert client.get("/health").json() == {"online": True, "device": "cpu"}
+        assert client.get("/models").status_code == 401
+        assert client.post("/experiments", json={}).status_code == 401
+        client.headers["Authorization"] = "Bearer incorrect"
+        assert client.get("/models").status_code == 401
+        client.headers["Authorization"] = "Bearer test-private-key"
+        assert client.get("/models").status_code == 200
+        assert client.post("/experiments/validate", json={"overrides": {"run.device": "mps"}}).status_code == 422
+        assert client.post("/experiments/validate", json={"overrides": {"run.device": "cpu"}}).status_code == 200

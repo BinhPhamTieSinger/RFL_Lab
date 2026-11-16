@@ -13,13 +13,32 @@ async function handle(request: Request, context: Context) {
   }
 
   const local = process.env.RFL_ARCHIVE_ONLY !== "1";
-  if (route === "capabilities")
+  const remote = !local && Boolean(process.env.RFL_BACKEND_URL);
+  if (route === "capabilities") {
+    let online = local;
+    if (remote) {
+      try {
+        online = (
+          await fetch(`${process.env.RFL_BACKEND_URL}/health`, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(4000),
+          })
+        ).ok;
+      } catch {
+        online = false;
+      }
+    }
     return Response.json({
-      training: local,
+      training: local || remote,
+      online,
+      requiresKey: remote,
       mode: local
         ? "Local Python execution"
-        : "Execution visualization and curated history",
+        : remote
+          ? `Computer CPU · ${online ? "online" : "offline"}`
+          : "Execution visualization and curated history",
     });
+  }
   let artifact: string | undefined;
   if (route === "history") artifact = "history.json";
   if (path[0] === "history" && /^archive-[a-f0-9]{24}$/.test(path[1] ?? ""))
@@ -45,7 +64,7 @@ async function handle(request: Request, context: Context) {
       },
     });
   }
-  if (local) {
+  if (local || (remote && path[0] === "experiments")) {
     try {
       const upstream = await fetch(
         `${process.env.RFL_BACKEND_URL ?? "http://127.0.0.1:8000"}/${route}${new URL(request.url).search}`,
@@ -53,12 +72,19 @@ async function handle(request: Request, context: Context) {
           method: request.method,
           headers: {
             "Content-Type": "application/json",
+            ...(remote
+              ? {
+                  Authorization: `Bearer ${request.headers.get("x-rfl-key") ?? ""}`,
+                }
+              : {}),
             ...(request.headers.get("last-event-id")
               ? { "Last-Event-ID": request.headers.get("last-event-id")! }
               : {}),
           },
           body: request.method === "GET" ? undefined : await request.text(),
-          signal: request.signal,
+          signal: remote
+            ? AbortSignal.any([request.signal, AbortSignal.timeout(8000)])
+            : request.signal,
           cache: "no-store",
         },
       );
@@ -74,8 +100,9 @@ async function handle(request: Request, context: Context) {
     } catch {
       return Response.json(
         {
-          detail:
-            "Local training API is unavailable. Start visualizer/scripts/dev.sh.",
+          detail: remote
+            ? "Your computer CPU is offline or the connection timed out. Keep the local bridge running and retry."
+            : "Local training API is unavailable. Start visualizer/scripts/dev.sh.",
         },
         { status: 503 },
       );

@@ -49,16 +49,15 @@ type Event = {
 };
 type Field = { key: string; default: any; options: any[] | null; type: string };
 async function api(path: string, body?: unknown) {
-  const response = await fetch(
-    "/api" + path,
-    body === undefined
-      ? {}
-      : {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-  );
+  const key = sessionStorage.getItem("rfl-cpu-key");
+  const response = await fetch("/api" + path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(key ? { "X-RFL-Key": key } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   const value = await response.json();
   if (!response.ok)
     throw Error(
@@ -106,6 +105,8 @@ function AutoFit({ focus }: { focus: string }) {
 export default function Workbench() {
   const [capabilities, setCapabilities] = useState({
     training: true,
+    online: true,
+    requiresKey: false,
     mode: "Local Python execution",
   });
   const [method, setMethod] = useState("fedhep_plus"),
@@ -134,10 +135,27 @@ export default function Workbench() {
   const [speed, setSpeed] = useState(1);
   const [followCamera, setFollowCamera] = useState(true);
   const [focus, setFocus] = useState("");
+  const [historyTarget, setHistoryTarget] = useState("");
+  const [cpuKey, setCpuKey] = useState("");
   const pendingConfig = useRef<Record<string, any> | null>(null);
-  const stream = useRef<EventSource | null>(null);
+  const stream = useRef<{ close: () => void } | null>(null);
   const buffer = useRef<Event[]>([]);
   useEffect(() => {
+    const shared = () => {
+      const url = new URL(window.location.href);
+      const target = url.searchParams.get("experiment") ?? "";
+      setHistoryTarget(target);
+      if (target) setView("Experiment history");
+      const key = new URLSearchParams(url.hash.slice(1)).get("cpu-key");
+      if (key) {
+        sessionStorage.setItem("rfl-cpu-key", key);
+        url.hash = "";
+        window.history.replaceState(null, "", url);
+      }
+      setCpuKey(sessionStorage.getItem("rfl-cpu-key") ?? "");
+    };
+    shared();
+    window.addEventListener("popstate", shared);
     api("/capabilities")
       .then((c) => {
         setCapabilities(c);
@@ -161,9 +179,18 @@ export default function Workbench() {
           .catch((e) => setError(e.message)),
       900000,
     );
+    const health = setInterval(
+      () =>
+        api("/capabilities")
+          .then(setCapabilities)
+          .catch(() => {}),
+      15000,
+    );
     return () => {
       stream.current?.close();
       clearInterval(refresh);
+      clearInterval(health);
+      window.removeEventListener("popstate", shared);
     };
   }, []);
   useEffect(() => {
@@ -207,31 +234,39 @@ export default function Workbench() {
     stream.current?.close();
     buffer.current = [];
     setEvents([]);
-    setCursor(null);
+    setCursor(0);
     setClearAt(0);
     setId(runId);
-    const s = new EventSource(`/api/experiments/${runId}/events`);
-    stream.current = s;
-    s.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      buffer.current.push(data);
-      if (data.type === "worker_stopped") {
-        setStatus(data.status);
-        s.close();
-        api("/history").then(setHistory);
-      } else if (data.type === "experiment_started") setStatus("running");
+    let closed = false;
+    let after = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    stream.current = {
+      close: () => {
+        closed = true;
+        clearTimeout(timer);
+      },
     };
-    s.onerror = () => {
-      api(`/experiments/${runId}`)
-        .then((run) => {
-          setStatus(run.status);
-          if (
-            !["running", "cancelling", "queued", "pending"].includes(run.status)
-          )
-            s.close();
-        })
-        .catch((e) => setError(e.message));
-    };
+    async function poll() {
+      try {
+        const batch = await api(
+          `/experiments/${runId}/event-batch?after=${after}`,
+        );
+        if (closed) return;
+        after = batch.cursor;
+        buffer.current.push(...batch.events);
+        setStatus(batch.status);
+        if (
+          batch.more ||
+          ["running", "cancelling", "queued", "pending"].includes(batch.status)
+        )
+          timer = setTimeout(poll, batch.more ? 0 : 1000);
+      } catch (e) {
+        if (closed) return;
+        setError((e as Error).message);
+        timer = setTimeout(poll, 5000);
+      }
+    }
+    void poll();
   }
   async function start() {
     setBusy(true);
@@ -252,7 +287,7 @@ export default function Workbench() {
   }
   async function installConfiguration(config: any) {
     const schema = await api(`/models/${config.method}/schema`);
-    pendingConfig.current = config.overrides;
+    pendingConfig.current = config.method === method ? null : config.overrides;
     setMethod(config.method);
     setFields(schema);
     setValues(
@@ -294,24 +329,26 @@ export default function Workbench() {
       setBusy(false);
     }
   }
-  useEffect(() => {
-    if (!playing || cursor === null) return;
-    const next = events.findIndex(
-      (event, index) => index > cursor && isPlaybackStep(event),
-    );
-    if (next < 0) {
-      setPlaying(false);
-      return;
-    }
-    const duration = ["operation_completed"].includes(events[cursor]?.type)
-      ? 100
-      : 1250;
-    const timer = setTimeout(() => setCursor(next), duration / speed);
-    return () => clearTimeout(timer);
-  }, [playing, cursor, events, speed]);
+  // Arriving results accumulate independently. Only the researcher advances inspection.
   function seek(index: number) {
     setPlaying(false);
     setCursor(index);
+    if (followCamera && events[index]) setFocus(eventFocus(events[index]));
+  }
+  function resetInspection() {
+    stream.current?.close();
+    buffer.current = [];
+    setEvents([]);
+    setId("");
+    setCursor(0);
+    setCaptureMode(false);
+    setPlaying(false);
+    setStatus("Ready");
+    setFocus("");
+  }
+  function editValues(next: Record<string, any>) {
+    if (events.length) resetInspection();
+    setValues(next);
   }
   const visible = cursor === null ? events : events.slice(0, cursor + 1);
   const initialized = events.find((e) => e.type === "initialized");
@@ -359,7 +396,12 @@ export default function Workbench() {
         data: {
           label: (
             <>
-              <strong>{initialized.dataset === "cifar100" ? "CIFAR-100" : initialized.dataset} partitions</strong>
+              <strong>
+                {initialized.dataset === "cifar100"
+                  ? "CIFAR-100"
+                  : initialized.dataset}{" "}
+                partitions
+              </strong>
               <span>
                 {clients.reduce((n: number, c: any) => n + c.train, 0)} training
                 examples
@@ -491,6 +533,7 @@ export default function Workbench() {
         data: {
           active: Boolean(upload || receive),
           playing,
+          speed,
           sequence: animationIndex,
         },
       };
@@ -518,6 +561,7 @@ export default function Workbench() {
     animationIndex,
     isolatedClients,
     playing,
+    speed,
   ]);
   const metrics = visible
     .filter((e) => e.type === "evaluation_completed")
@@ -548,8 +592,7 @@ export default function Workbench() {
     "queued",
     "pending",
   ].includes(status);
-  const locked =
-    running || captureMode || Boolean(initialized) || !capabilities.training;
+  const locked = running || busy;
   const sections = Array.from(new Set(fields.map((f) => f.key.split(".")[0])));
   function displayField(f: Field) {
     const attack = values["attack.kind"];
@@ -623,13 +666,12 @@ export default function Workbench() {
               <label>
                 Method
                 <select
+                  aria-label="Method"
                   value={method}
                   disabled={locked}
                   onChange={(e) => {
+                    resetInspection();
                     setMethod(e.target.value);
-                    setId("");
-                    setEvents([]);
-                    stream.current?.close();
                   }}
                 >
                   {models.map((m) => (
@@ -654,46 +696,48 @@ export default function Workbench() {
                   ))}
                 </select>
               </label>
-              {capabilities.training && (
-                <button onClick={() => loadCapture()}>
-                  Load captured visualization
-                </button>
+              <button disabled={running || busy} onClick={() => loadCapture()}>
+                Load captured visualization
+              </button>
+              {capabilities.requiresKey && (
+                <details open={!cpuKey}>
+                  <summary>{capabilities.mode}</summary>
+                  <label>
+                    CPU access key
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={cpuKey}
+                      onChange={(e) => {
+                        setCpuKey(e.target.value);
+                        sessionStorage.setItem("rfl-cpu-key", e.target.value);
+                      }}
+                    />
+                  </label>
+                  <small>
+                    The local bridge opens a connected browser tab. The key is
+                    stored for this tab’s session.
+                  </small>
+                </details>
               )}
               <div className="launch">
                 <button
                   className="primary"
                   disabled={
                     busy ||
-                    (capabilities.training &&
-                      !captureMode &&
-                      (running || !fields.length))
+                    running ||
+                    !fields.length ||
+                    !capabilities.training ||
+                    !capabilities.online ||
+                    (capabilities.requiresKey && !cpuKey)
                   }
-                  onClick={() =>
-                    capabilities.training && !captureMode
-                      ? start()
-                      : loadCapture()
-                  }
+                  onClick={start}
                 >
-                  {!capabilities.training
-                    ? "Load visualization"
-                    : captureMode
-                      ? "Reload visualization"
-                      : busy
-                        ? "Validating…"
-                        : "Run visualization"}
+                  {busy ? "Validating…" : "Run visualization"}
                 </button>
                 {(captureMode || (initialized && !running)) &&
                   capabilities.training && (
-                    <button
-                      onClick={() => {
-                        setCaptureMode(false);
-                        setPlaying(false);
-                        setEvents([]);
-                        setCursor(null);
-                        setId("");
-                        setStatus("Ready");
-                      }}
-                    >
+                    <button onClick={resetInspection}>
                       Configure a new visualization
                     </button>
                   )}
@@ -710,9 +754,9 @@ export default function Workbench() {
                 )}
                 <small>
                   {captureMode
-                    ? "Sidebar values belong to the loaded execution."
+                    ? "Editing a setting starts a new configuration. Run visualization to compute its results."
                     : capabilities.training
-                      ? "New visualization runs use the local Python engine."
+                      ? "Run these settings on your computer’s CPU. Results wait for Next operation."
                       : "Choose a captured execution to inspect its actual computations."}
                 </small>
               </div>
@@ -744,7 +788,7 @@ export default function Workbench() {
                                 : String(values[f.key])
                             }
                             onChange={(e) =>
-                              setValues({
+                              editValues({
                                 ...values,
                                 [f.key]:
                                   e.target.value === "null"
@@ -753,15 +797,22 @@ export default function Workbench() {
                               })
                             }
                           >
-                            {f.options.map((v) => (
-                              <option key={String(v)} value={String(v)}>
-                                {v === null
-                                  ? "Disabled"
-                                  : v === "synthetic"
-                                    ? "Synthetic (test fixture)"
-                                    : v}
-                              </option>
-                            ))}
+                            {f.options
+                              .filter(
+                                (v) =>
+                                  !capabilities.requiresKey ||
+                                  f.key !== "run.device" ||
+                                  v === "cpu",
+                              )
+                              .map((v) => (
+                                <option key={String(v)} value={String(v)}>
+                                  {v === null
+                                    ? "Disabled"
+                                    : v === "synthetic"
+                                      ? "Synthetic (test fixture)"
+                                      : v}
+                                </option>
+                              ))}
                           </select>
                         ) : f.type === "boolean" ? (
                           <input
@@ -769,7 +820,7 @@ export default function Workbench() {
                             disabled={locked}
                             checked={!!values[f.key]}
                             onChange={(e) =>
-                              setValues({
+                              editValues({
                                 ...values,
                                 [f.key]: e.target.checked,
                               })
@@ -785,7 +836,7 @@ export default function Workbench() {
                             }
                             value={values[f.key] ?? ""}
                             onChange={(e) =>
-                              setValues({
+                              editValues({
                                 ...values,
                                 [f.key]:
                                   e.target.value === ""
@@ -820,21 +871,15 @@ export default function Workbench() {
               </div>
               {initialized && (
                 <div className="playback-controls">
-                  <button
-                    onClick={() => {
-                      if (cursor === null || cursor >= events.length - 2)
-                        setCursor(
-                          Math.max(
-                            0,
-                            events.findIndex((e) => e.type === "initialized"),
-                          ),
-                        );
-                      setPlaying(!playing);
-                    }}
-                  >
+                  <button onClick={() => setPlaying(!playing)}>
                     {playing ? "Pause animation" : "Play animation"}
                   </button>
                   <button
+                    disabled={
+                      !events.some(
+                        (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                      )
+                    }
                     onClick={() => {
                       const next = events.findIndex(
                         (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
@@ -845,9 +890,9 @@ export default function Workbench() {
                     Next operation
                   </button>
                   <label>
-                    Playback speed
+                    Animation speed
                     <select
-                      aria-label="Playback speed"
+                      aria-label="Animation speed"
                       value={speed}
                       onChange={(e) => setSpeed(Number(e.target.value))}
                     >
@@ -866,8 +911,13 @@ export default function Workbench() {
                     Follow camera
                   </label>
                   <span>
-                    Inspection timing · recorded computation times remain
-                    visible
+                    Waiting for your Next click ·{" "}
+                    {
+                      events.filter(
+                        (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                      ).length
+                    }{" "}
+                    operations available
                   </span>
                 </div>
               )}
@@ -1029,7 +1079,6 @@ export default function Workbench() {
             <RoundWalkthrough
               events={visible}
               currentEvent={animationEvent}
-              playing={playing}
               initialized={initialized}
               formulas={formulas}
               jump={(phase: string) => {
@@ -1052,10 +1101,10 @@ export default function Workbench() {
                 <button
                   onClick={() => {
                     setPlaying(false);
-                    setCursor(null);
+                    setCursor(Math.max(0, events.length - 1));
                   }}
                 >
-                  {cursor === null ? "Following live" : "Return to live"}
+                  Inspect latest available
                 </button>
               </div>
               <input
@@ -1183,6 +1232,7 @@ export default function Workbench() {
               </>
             ) : view === "Experiment history" ? (
               <ExperimentHistory
+                targetId={historyTarget}
                 history={history}
                 refresh={() =>
                   api("/history?refresh=true")
@@ -1190,6 +1240,10 @@ export default function Workbench() {
                     .catch((e) => setError(e.message))
                 }
                 loadConfig={(config: any) => {
+                  if (running) {
+                    setError("Wait for the current visualization to finish or cancel it before loading another configuration.");
+                    return;
+                  }
                   stream.current?.close();
                   buffer.current = [];
                   setEvents([]);

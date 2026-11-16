@@ -4,7 +4,7 @@ The Live Workbench visualizes captured execution events and local Python trainin
 
 1. Choose a visualization capture by model and attack setting.
 2. Load it. The configuration rail and graph are populated together from that capture.
-3. Use Play animation, Pause animation and Next operation. Playback speed controls inspection time. Each operation retains its original captured timestamp and duration.
+3. Use Next operation to accept the current result and move forward. Play animation repeats the current weight transfer. Animation speed changes only its visual movement. Each operation retains its original captured timestamp and duration.
 4. Select a timeline event to inspect a particular calculation. Phase buttons navigate to the corresponding part of the round.
 5. Enable Follow camera to focus on the active client, transfer endpoints or processing server.
 
@@ -17,3 +17,5 @@ SCCF shows bounded update norms, computed cosines and returned trust weights. Ze
 TTT shows the actual ledger update in Defended FedHEP. Scores start at 1, use momentum 0.85 toward min(1, n times trust), and isolate below 0.25. Updates occur at parent and Global tiers. FedHEP+ displays its screening evidence update instead.
 
 The hosted site supports playback for all ten models, plus clean and attacked FedHEP+ captures. Custom runs execute through the local Python service. The source algorithms remain unchanged. Reduced-motion preferences retain static transfer markers and manual event navigation.
+
+Sidebar settings are editable after a capture or completed run. Editing clears the previous trace. Run visualization executes the new configuration on the connected computer CPU. Training continues while the researcher inspects a result. Arriving events accumulate, and the round progress and terminal update independently. Only Next operation, a phase button, a timeline selection or Inspect latest available changes the inspected result.

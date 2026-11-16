@@ -4,6 +4,7 @@ import asyncio
 import fcntl
 import json
 import os
+import secrets
 import sqlite3
 import subprocess
 import sys
@@ -110,6 +111,13 @@ app = FastAPI(title="RFL Lab Visualizer", lifespan=lifespan)
 
 @app.middleware("http")
 async def local_requests(request: Request, call_next):
+    token = os.environ.get("RFL_VIZ_TOKEN")
+    if token and request.url.path != "/health" and not secrets.compare_digest(
+        request.headers.get("authorization", ""), f"Bearer {token}"
+    ):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"detail": "Connect your CPU using the local bridge access key."}, status_code=401)
     origin = request.headers.get("origin")
     if (
         request.method in ("POST", "PUT", "DELETE")
@@ -120,6 +128,11 @@ async def local_requests(request: Request, call_next):
 
         return JSONResponse({"detail": "Untrusted origin"}, status_code=403)
     return await call_next(request)
+
+
+@app.get("/health")
+def health():
+    return {"online": True, "device": "cpu" if os.environ.get("RFL_VIZ_CPU_ONLY") == "1" else "configured"}
 
 
 @app.get("/models")
@@ -142,6 +155,8 @@ def formulas():
 
 @app.post("/experiments/validate")
 def check(body: RunRequest):
+    if os.environ.get("RFL_VIZ_CPU_ONLY") == "1" and body.overrides.get("run.device", "cpu") != "cpu":
+        raise HTTPException(422, "The online computer bridge uses CPU. Select cpu for run.device.")
     try:
         validate(body.method, body.overrides)
     except (ValueError, TypeError) as e:
@@ -153,7 +168,7 @@ def dispatch():
     with mutex:
         if processes:
             return
-        lock = (DATA / "training.lock").open("a")
+        lock = Path(os.environ.get("RFL_VIZ_LOCK_PATH", DATA / "training.lock")).open("a")
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
@@ -286,6 +301,21 @@ async def events(id: str, request: Request, after: int = 0):
     return StreamingResponse(
         stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
+
+
+@app.get("/experiments/{id}/event-batch")
+def event_batch(id: str, after: int = 0):
+    run = detail(id)
+    with db() as con:
+        rows = con.execute(
+            "SELECT seq,payload FROM events WHERE run=? AND seq>? ORDER BY seq LIMIT 100", (id, max(0, after))
+        ).fetchall()
+    return {
+        "events": [json.loads(row["payload"]) for row in rows],
+        "cursor": rows[-1]["seq"] if rows else after,
+        "status": run["status"],
+        "more": len(rows) == 100,
+    }
 
 
 @app.get("/source/{path:path}", response_class=PlainTextResponse)

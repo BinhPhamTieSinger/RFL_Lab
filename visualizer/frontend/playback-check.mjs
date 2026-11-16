@@ -72,6 +72,17 @@ await page
   .click();
 await page.getByLabel("Follow camera").uncheck();
 await page.getByRole("button", { name: "Play animation", exact: true }).click();
+const heldCursor = await page
+  .getByLabel("Execution event", { exact: true })
+  .inputValue();
+await page.waitForTimeout(1800);
+if (
+  (await page.getByLabel("Execution event", { exact: true }).inputValue()) !==
+  heldCursor
+)
+  throw Error(
+    "Inspection advanced without the researcher accepting the next step",
+  );
 await page
   .locator(".weight-packet animateMotion")
   .first()

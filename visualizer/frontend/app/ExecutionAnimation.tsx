@@ -29,7 +29,7 @@ export function WeightEdge(props: EdgeProps) {
             <animateMotion
               key={String(props.data?.sequence)}
               path={path}
-              dur="1s"
+              dur={`${1 / Number(props.data?.speed ?? 1)}s`}
               repeatCount="indefinite"
             />
           )}
@@ -64,8 +64,11 @@ export function eventPhase(event: any) {
 }
 export function eventFocus(event: any) {
   if (event?.type === "aggregation_started" && event.members?.length) {
-    const target = event.tier === "parent" || event.tier === "parent_defense" ? `p${event.parent}` : "global";
-    return [...event.members.map((id:number)=>`c${id}`), target].join("|");
+    const target =
+      event.tier === "parent" || event.tier === "parent_defense"
+        ? `p${event.parent}`
+        : "global";
+    return [...event.members.map((id: number) => `c${id}`), target].join("|");
   }
 
   if (event?.type === "upload_ready")

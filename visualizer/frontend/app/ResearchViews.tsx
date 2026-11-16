@@ -154,7 +154,6 @@ function Values({ value }: { value: any }) {
 export function RoundWalkthrough({
   events,
   currentEvent,
-  playing,
   jump,
   initialized,
   formulas,
@@ -162,7 +161,6 @@ export function RoundWalkthrough({
 }: {
   events: RecordValue[];
   currentEvent?: RecordValue;
-  playing?: boolean;
   jump: (phase: string) => void;
   initialized?: RecordValue;
   formulas: RecordValue[];
@@ -173,7 +171,7 @@ export function RoundWalkthrough({
   const [honestId, setHonest] = useState<number | null>(null);
   const [maliciousId, setMalicious] = useState<number | null>(null);
   useEffect(() => {
-    if (!playing || !currentEvent) return;
+    if (!currentEvent) return;
     if (currentEvent.round) setRound(currentEvent.round);
     const tier = currentEvent.tier;
     if (currentEvent.type === "evaluation_completed") setPhase("Evaluation");
@@ -197,7 +195,7 @@ export function RoundWalkthrough({
       );
     else if (currentEvent.type === "client_training_started")
       setPhase("Clients");
-  }, [currentEvent, playing]);
+  }, [currentEvent]);
   if (!initialized) return null;
   const rounds = Array.from(
     new Set(
@@ -478,12 +476,20 @@ ${f.explanation}`}</Formula>
   );
 }
 
-function ResultDetails({ run, loadConfig, replay, cancel }: any) {
+function ResultDetails({
+  run,
+  loadConfig,
+  replay,
+  cancel,
+  expanded = false,
+}: any) {
   const [detail, setDetail] = useState<any>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   async function load() {
     setLoading(true);
+    setError("");
     try {
       const response = await fetch(`/api/history/${run.id}`);
       if (!response.ok) throw Error("Result could not be loaded");
@@ -501,6 +507,8 @@ function ResultDetails({ run, loadConfig, replay, cancel }: any) {
   return (
     <details
       className="experiment-entry"
+      id={run.id}
+      open={expanded || undefined}
       onToggle={(e) => {
         if (e.currentTarget.open && !detail && !loading && !error) load();
       }}
@@ -527,10 +535,33 @@ function ResultDetails({ run, loadConfig, replay, cancel }: any) {
             <button onClick={() => cancel(run.id)}>Cancel</button>
           )}
           <button onClick={load}>Reload results</button>
+          <a href={`?experiment=${encodeURIComponent(run.id)}&section=config`}>
+            Configuration link
+          </a>
+          <button
+            onClick={async () => {
+              const url = new URL(
+                window.location.pathname,
+                window.location.origin,
+              );
+              url.searchParams.set("experiment", run.id);
+              url.searchParams.set("section", "config");
+              try {
+                await navigator.clipboard.writeText(url.toString());
+                setCopied(true);
+              } catch {
+                setError(
+                  "Use the Configuration link to copy this experiment’s address.",
+                );
+              }
+            }}
+          >
+            {copied ? "Link copied" : "Copy configuration link"}
+          </button>
         </div>
         {loading && <p>Loading saved result…</p>}
         {error && <p role="alert">{error}</p>}
-        <details>
+        <details open={expanded || undefined}>
           <summary>Configuration</summary>
           <table>
             <tbody>
@@ -610,6 +641,7 @@ function ResultDetails({ run, loadConfig, replay, cancel }: any) {
   );
 }
 export function ExperimentHistory({
+  targetId,
   history,
   refresh,
   loadConfig,
@@ -618,10 +650,13 @@ export function ExperimentHistory({
 }: any) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(25);
-  const filtered = history.filter((r: any) =>
-    `${r.name} ${r.config.method} ${r.status} ${r.source}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
+  const target = history.find((r: any) => r.id === targetId);
+  const filtered = history.filter(
+    (r: any) =>
+      r.id !== targetId &&
+      `${r.name} ${r.config.method} ${r.status} ${r.source}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
   return (
     <>
@@ -643,6 +678,19 @@ export function ExperimentHistory({
         />
         <button onClick={refresh}>Refresh history</button>
       </div>
+      {target && (
+        <ResultDetails
+          key={target.id}
+          run={target}
+          expanded
+          {...{ loadConfig, replay, cancel }}
+        />
+      )}
+      {targetId && history.length > 0 && !target && (
+        <p role="alert">
+          This experiment is absent from the current curated history.
+        </p>
+      )}
       {filtered.slice(0, limit).map((run: any) => (
         <ResultDetails key={run.id} {...{ run, loadConfig, replay, cancel }} />
       ))}
