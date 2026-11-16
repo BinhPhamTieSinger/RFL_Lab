@@ -15,6 +15,9 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 try {
   await page.goto(base);
+  await expect(page.locator(".canvas-heading")).not.toContainText(
+    "Awaiting initialization",
+  );
   const toolbar = await page
     .locator(".sticky-workbench-controls")
     .boundingBox();
@@ -37,6 +40,18 @@ try {
   expect(
     Math.abs(center.y + center.height - canvas.y - canvas.height),
   ).toBeLessThan(2);
+  const viewport = page.locator(".center .react-flow__viewport");
+  const transform = await viewport.getAttribute("style");
+  await page.locator(".center .react-flow").hover();
+  await page.mouse.wheel(0, 650);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(100);
+  await expect(viewport).toHaveAttribute("style", transform);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(
+    page.locator('.center .react-flow__node[data-id="global"]'),
+  ).toBeVisible();
   await page.screenshot({ path: "/tmp/rfl-layout.png" });
   await page.locator(".sticky-trace > summary").click();
   await page

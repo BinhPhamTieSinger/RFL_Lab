@@ -1114,6 +1114,26 @@ export default function Workbench() {
                     </details>
                   )}
                   <div className="launch">
+                    <label>
+                      Training device
+                      <select
+                        aria-label="Training device"
+                        disabled={locked}
+                        value={values["run.device"] ?? "cpu"}
+                        onChange={(event) =>
+                          editValues({
+                            ...values,
+                            "run.device": event.target.value,
+                          })
+                        }
+                      >
+                        {(capabilities.devices ?? ["cpu"]).map((device) => (
+                          <option key={device} value={device}>
+                            {deviceLabels[device] ?? device}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <button
                       className="primary"
                       disabled={
@@ -1175,7 +1195,9 @@ export default function Workbench() {
                       {fields
                         .filter(
                           (f) =>
-                            f.key.startsWith(section + ".") && displayField(f),
+                            f.key.startsWith(section + ".") &&
+                            f.key !== "run.device" &&
+                            displayField(f),
                         )
                         .map((f) => (
                           <label key={f.key}>
@@ -1277,7 +1299,12 @@ export default function Workbench() {
                   <span>
                     {clients.length
                       ? `${clients.length} clients`
-                      : "Awaiting initialization"}
+                      : busy ||
+                          (!captureMode &&
+                            id &&
+                            ["running", "pending", "queued"].includes(status))
+                        ? "Awaiting initialization"
+                        : "Ready"}
                   </span>
                 </div>
                 <div className="canvas">
@@ -1290,6 +1317,9 @@ export default function Workbench() {
                       fitView
                       fitViewOptions={{ padding: 0.2 }}
                       minZoom={0.15}
+                      zoomOnScroll={false}
+                      panOnScroll={false}
+                      preventScrolling={false}
                       onNodeClick={(_, node) => setSelected(node.id)}
                       nodesDraggable={false}
                       colorMode={dark ? "dark" : "light"}
