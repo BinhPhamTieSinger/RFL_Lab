@@ -1013,3 +1013,19 @@ Research and ideas in [`IDEAS.md`](IDEAS.md). Implemented and tested, waiting fo
 - **`a1000_d1_signals.yaml`**: 150 runs on the A1000 with fresh CUDA baselines (FedHEP, Defended FedHEP, FedHEP+, L0, R3) and R3 with each of the six signals, guard on everywhere.
 - **Toy check of the guard** (synthetic data, 8 clients, 2 backdoor attackers, 10 rounds, CPU; a mechanical test, not evidence for CIFAR-100, where shallow exits are much weaker): backdoor success 93.6% → 6.4% with the guard, accuracy 100.0 → 99.6, 9% of clean test images re-decided by the exits.
 - Housekeeping: half-finished `probe.py` from the previous session repaired (its docstring broke the module), and its placeholder test replaced by a real one.
+
+## 2026-11-16 · R3 ladder on D1 complete (gates 8 and 12); visualizer history verified
+All 15 runs of each of `p6__r3g8` and `p6__r3g12` are done (Mac, MPS). D1: α = 0.5, 15 clients, 3 attackers, mean of 3 seeds. Honest isolated = honest clients isolated by round 30 (mean per run); attackers isolated out of 3.
+
+| Rung | No attack | Sign flip | ALIE | Min-Max | Backdoor (success) | Honest isolated (no attack / sign / ALIE / Min-Max / backdoor) | Attackers isolated (sign / ALIE / Min-Max / backdoor) |
+|---|---|---|---|---|---|---|---|
+| L0 alone | **47.56** | 41.65 | **47.56** | 45.47 | 46.48 (62.5%) | 0 / 0 / 0 / 0 / 0 | 0 / 0 / 0 / 0 |
+| R2: L0 + two-sided screen | 46.99 | 46.00 | 45.65 | 45.96 | 46.44 (**22.6%**) | 4.3 / 1.7 / 3.0 / 3.7 / 4.0 | 3 / 3 / 3 / 3 |
+| R3, gate 8 | 47.36 | 46.14 | 45.74 | 46.02 | 46.84 (51.4%) | 1.0 / 0.7 / 0.7 / 0.7 / 0.7 | 3 / 3 / 3 / 2 |
+| R3, gate 12 | 47.31 | **46.20** | 45.87 | **46.07** | **47.03** (61.6%) | **0 / 0.7 / 0 / 0.3 / 1.0** | 3 / 3 / 3 / 2 |
+
+- **Gate 12 nearly removes false isolation at D1** (none with no attack or under ALIE) while still isolating every sign-flip, ALIE and Min-Max attacker. Gate 8 and gate 12 differ by at most 0.2 points on accuracy; the higher gate costs only in the backdoor rate (51% → 62%), which is already the failure case for both.
+- **Unexpected: isolating ALIE attackers lowers accuracy.** L0 alone, which isolates nobody, beats both R3 gates under ALIE on every seed (by 1.0, 1.8 and 2.3 points with gate 12). All three attackers are caught in round 3, so this is the cost of removing them, not of missing them. Under Min-Max, isolation helps on two seeds of three (+1.5, +0.7, −0.4). Not yet explained. Candidates to test: (a) isolation triggers regrouping, which reshuffles parents mid-training; (b) ALIE's updates sit near the honest mean, so removing them removes useful averaging without removing harm. A run of R3 with `plus.regroup: false` under ALIE separates the two.
+- **Backdoor stays the open problem**: only R2 (no gate) keeps success near FedHEP+'s 21%, at the price of 4 honest isolations per run. Next steps unchanged: the whole-update and layer-level signals (`phase6_signal`, `a1000_d1_signals`) and recovery (H8).
+
+**Visualizer history check.** Every built history file was compared with its `metrics.json`: 794 entries, all completed, none differing. Fixed on the way: one run (`p2__fedhep__q40_sign_s42`, NaN in an undefined diagnostic) showed as unreadable on Netlify and returned an error locally; the local archive was empty for 15 minutes after a reboot; 23 finished Phase 6 runs were uncommitted and absent; 7 non-research entries (smoke tests, benchmark harness, a CPU timing test, two placeholders) were listed; and backdoor success was not charted on a run's page. Details in the commits of 2026-11-16.

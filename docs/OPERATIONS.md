@@ -112,6 +112,21 @@ git push
 ```
 `outputs/` is tracked on purpose: every number in the documents is backed by a run in the repository.
 
+The visualizer's Experiment history lists only runs named in `visualizer/frontend/research/history-manifest.json`. After committing new runs, add the completed ones (the Netlify build log also names any it finds missing):
+```bash
+python3 - <<'PY'
+import json, glob, os
+path = "visualizer/frontend/research/history-manifest.json"
+listed = {e["source"] for e in json.load(open(path))}
+done = sorted(os.path.dirname(m) for m in glob.glob("outputs*/*/metrics.json")
+              if not m.startswith(("outputs_smoke", "outputs_bench")) and json.load(open(m)).get("final"))
+entries = [{"source": s} for s in sorted(listed | set(done))]
+json.dump(entries, open(path, "w"), indent=2); open(path, "a").write("\n")
+print(len(set(done) - listed), "runs added")
+PY
+```
+Note: `git add -A` also commits whatever the visualizer's working copy holds; when someone is editing `visualizer/`, add `outputs*/` and the manifest by path instead.
+
 ### Update the Acer's code
 ```bash
 cd ~/Documents/RFL_Lab
