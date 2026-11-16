@@ -4,7 +4,7 @@ The Netlify site is `https://rfl-lab-visualizer.netlify.app`.
 
 New training runs on the owner's workstation. The deployed site connects through the authenticated CPU bridge described in ONLINE_CPU.md. For a fully local interface, run `bash visualizer/scripts/dev.sh` from RFL_Lab and open `http://127.0.0.1:3000`. CPU is the default, including configurations loaded from historical GPU runs. The local API serializes workers and supports queued and active cancellation.
 
-Netlify runs with `RFL_ARCHIVE_ONLY=1`. It serves curated research results and captured CPU visualization traces. Load captured visualization opens a trace. Next operation advances inspection. Play animation animates the current transfer. With RFL_BACKEND_URL configured, custom training uses the authenticated CPU bridge.
+Netlify runs with `RFL_ARCHIVE_ONLY=1`. It serves curated research results and captured CPU visualization traces. Load captured visualization opens a trace. Next operation advances inspection. Play animation animates the current transfer. The local bridge opens a browser session connected to its current HTTPS endpoint. Custom training requests pass through the same-origin Netlify proxy with the owner’s private CPU key.
 
 Continuous deployment uses the existing private GitHub repository, its main branch, a read-only Netlify deploy key and the GitHub push webhook. Build configuration is in `visualizer/frontend/netlify.toml`. The build runs `npm run build` in `visualizer/frontend`. The prebuild exporter reads the output folders selected in `frontend/research/history-manifest.json`. Additional local-only results present at initial publication are preserved in `frontend/research/additional-history.json`. New results need to be pushed to GitHub for hosted publication.
 

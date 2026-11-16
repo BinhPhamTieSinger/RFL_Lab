@@ -1,8 +1,13 @@
 import { chromium, expect } from "@playwright/test";
 import fs from "node:fs";
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 
 const base = process.env.RFL_TEST_URL ?? "http://127.0.0.1:3000";
+const hostname = new URL(base).hostname;
+const address = await dns.promises.lookup(hostname, { family: 4 });
 const browser = await chromium.launch({
+  args: [`--host-resolver-rules=MAP ${hostname} ${address.address}`],
   executablePath:
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true,
@@ -14,10 +19,17 @@ const key =
   process.env.RFL_TEST_CPU === "1"
     ? fs.readFileSync("../data/online-cpu/access-key", "utf8").trim()
     : "";
+const endpoint = key
+  ? JSON.parse(fs.readFileSync("../data/online-cpu/connection.json", "utf8"))
+      .endpoint
+  : "";
 if (key)
   await page.addInitScript(
-    (value) => sessionStorage.setItem("rfl-cpu-key", value),
-    key,
+    ({ key, endpoint }) => {
+      sessionStorage.setItem("rfl-cpu-key", key);
+      sessionStorage.setItem("rfl-cpu-url", endpoint);
+    },
+    { key, endpoint },
   );
 const history = await page.request
   .get(base + "/api/history")
@@ -76,7 +88,7 @@ if (key) {
   const response = await started;
   if (!response.ok()) throw Error(await response.text());
   runId = (await response.json()).id;
-  await expect(page.locator(".react-flow__node.client")).toHaveCount(4, {
+  await expect(page.locator('.react-flow__node[data-id^="c"]')).toHaveCount(4, {
     timeout: 90000,
   });
   const held = await page
@@ -90,14 +102,16 @@ if (key) {
   );
   const batch = await page.request
     .get(`${base}/api/experiments/${runId}/event-batch`, {
-      headers: { "X-RFL-Key": key },
+      headers: { "X-RFL-Key": key, "X-RFL-Endpoint": endpoint },
     })
     .then((r) => r.json());
   const initialized = batch.events.find((e) => e.type === "initialized");
   if (initialized.clients.length !== 4 || initialized.attackers.length !== 1)
     throw Error("Runtime configuration differs from sidebar");
   const detail = await page.request
-    .get(`${base}/api/experiments/${runId}`, { headers: { "X-RFL-Key": key } })
+    .get(`${base}/api/experiments/${runId}`, {
+      headers: { "X-RFL-Key": key, "X-RFL-Endpoint": endpoint },
+    })
     .then((r) => r.json());
   if (
     detail.config.overrides["data.alpha"] !== 0.05 ||

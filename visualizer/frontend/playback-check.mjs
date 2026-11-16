@@ -1,7 +1,12 @@
 import { chromium } from "@playwright/test";
 import fs from "node:fs";
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 const base = process.env.RFL_TEST_URL ?? "http://127.0.0.1:3000";
+const hostname = new URL(base).hostname;
+const address = await dns.promises.lookup(hostname, { family: 4 });
 const browser = await chromium.launch({
+  args: [`--host-resolver-rules=MAP ${hostname} ${address.address}`],
   executablePath:
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true,

@@ -12,15 +12,43 @@ async function handle(request: Request, context: Context) {
     }
   }
 
-  const local = process.env.RFL_ARCHIVE_ONLY !== "1";
-  const remote = !local && Boolean(process.env.RFL_BACKEND_URL);
+  const connection = request.headers.get("x-rfl-endpoint");
+  let backend = process.env.RFL_BACKEND_URL;
+  if (connection) {
+    try {
+      const endpoint = new URL(connection);
+      if (
+        endpoint.protocol !== "https:" ||
+        !endpoint.hostname.endsWith(".trycloudflare.com") ||
+        endpoint.port ||
+        endpoint.username ||
+        endpoint.password ||
+        endpoint.pathname !== "/" ||
+        endpoint.search ||
+        endpoint.hash
+      )
+        throw Error("Invalid endpoint");
+      backend = endpoint.origin;
+    } catch {
+      return Response.json(
+        {
+          detail:
+            "Enter the HTTPS trycloudflare.com address from your CPU bridge.",
+        },
+        { status: 400 },
+      );
+    }
+  }
+  const local = process.env.RFL_ARCHIVE_ONLY !== "1" && !connection;
+  const remote = !local && Boolean(backend);
   if (route === "capabilities") {
     let online = local;
     if (remote) {
       try {
         online = (
-          await fetch(`${process.env.RFL_BACKEND_URL}/health`, {
+          await fetch(`${backend}/health`, {
             cache: "no-store",
+            redirect: "error",
             signal: AbortSignal.timeout(4000),
           })
         ).ok;
@@ -67,9 +95,10 @@ async function handle(request: Request, context: Context) {
   if (local || (remote && path[0] === "experiments")) {
     try {
       const upstream = await fetch(
-        `${process.env.RFL_BACKEND_URL ?? "http://127.0.0.1:8000"}/${route}${new URL(request.url).search}`,
+        `${backend ?? "http://127.0.0.1:8000"}/${route}${new URL(request.url).search}`,
         {
           method: request.method,
+          redirect: "error",
           headers: {
             "Content-Type": "application/json",
             ...(remote

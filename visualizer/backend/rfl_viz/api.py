@@ -113,7 +113,7 @@ app = FastAPI(title="RFL Lab Visualizer", lifespan=lifespan)
 async def local_requests(request: Request, call_next):
     token = os.environ.get("RFL_VIZ_TOKEN")
     if token and request.url.path != "/health" and not secrets.compare_digest(
-        request.headers.get("authorization", ""), f"Bearer {token}"
+        request.headers.get("authorization", "").encode(), f"Bearer {token}".encode()
     ):
         from fastapi.responses import JSONResponse
 

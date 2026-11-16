@@ -50,11 +50,13 @@ type Event = {
 type Field = { key: string; default: any; options: any[] | null; type: string };
 async function api(path: string, body?: unknown) {
   const key = sessionStorage.getItem("rfl-cpu-key");
+  const endpoint = sessionStorage.getItem("rfl-cpu-url");
   const response = await fetch("/api" + path, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       "Content-Type": "application/json",
       ...(key ? { "X-RFL-Key": key } : {}),
+      ...(endpoint ? { "X-RFL-Endpoint": endpoint } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -137,6 +139,7 @@ export default function Workbench() {
   const [focus, setFocus] = useState("");
   const [historyTarget, setHistoryTarget] = useState("");
   const [cpuKey, setCpuKey] = useState("");
+  const [cpuEndpoint, setCpuEndpoint] = useState("");
   const pendingConfig = useRef<Record<string, any> | null>(null);
   const stream = useRef<{ close: () => void } | null>(null);
   const buffer = useRef<Event[]>([]);
@@ -147,12 +150,15 @@ export default function Workbench() {
       setHistoryTarget(target);
       if (target) setView("Experiment history");
       const key = new URLSearchParams(url.hash.slice(1)).get("cpu-key");
+      const endpoint = new URLSearchParams(url.hash.slice(1)).get("cpu-api");
+      if (endpoint) sessionStorage.setItem("rfl-cpu-url", endpoint);
       if (key) {
         sessionStorage.setItem("rfl-cpu-key", key);
         url.hash = "";
         window.history.replaceState(null, "", url);
       }
       setCpuKey(sessionStorage.getItem("rfl-cpu-key") ?? "");
+      setCpuEndpoint(sessionStorage.getItem("rfl-cpu-url") ?? "");
     };
     shared();
     window.addEventListener("popstate", shared);
@@ -699,14 +705,29 @@ export default function Workbench() {
               <button disabled={running || busy} onClick={() => loadCapture()}>
                 Load captured visualization
               </button>
-              {capabilities.requiresKey && (
+              {(capabilities.requiresKey || !capabilities.training) && (
                 <details open={!cpuKey}>
-                  <summary>{capabilities.mode}</summary>
+                  <summary>
+                    {capabilities.requiresKey
+                      ? capabilities.mode
+                      : "Connect your computer CPU"}
+                  </summary>
+                  <label>
+                    CPU bridge address
+                    <input
+                      type="url"
+                      value={cpuEndpoint}
+                      disabled={running}
+                      placeholder="https://…trycloudflare.com"
+                      onChange={(e) => setCpuEndpoint(e.target.value)}
+                    />
+                  </label>
                   <label>
                     CPU access key
                     <input
                       type="password"
                       autoComplete="off"
+                      disabled={running}
                       value={cpuKey}
                       onChange={(e) => {
                         setCpuKey(e.target.value);
@@ -714,6 +735,22 @@ export default function Workbench() {
                       }}
                     />
                   </label>
+                  <button
+                    disabled={running}
+                    onClick={() => {
+                      if (cpuEndpoint.trim())
+                        sessionStorage.setItem(
+                          "rfl-cpu-url",
+                          cpuEndpoint.trim(),
+                        );
+                      else sessionStorage.removeItem("rfl-cpu-url");
+                      api("/capabilities")
+                        .then(setCapabilities)
+                        .catch((e) => setError(e.message));
+                    }}
+                  >
+                    Connect CPU
+                  </button>
                   <small>
                     The local bridge opens a connected browser tab. The key is
                     stored for this tab’s session.
@@ -1241,7 +1278,9 @@ export default function Workbench() {
                 }
                 loadConfig={(config: any) => {
                   if (running) {
-                    setError("Wait for the current visualization to finish or cancel it before loading another configuration.");
+                    setError(
+                      "Wait for the current visualization to finish or cancel it before loading another configuration.",
+                    );
                     return;
                   }
                   stream.current?.close();
