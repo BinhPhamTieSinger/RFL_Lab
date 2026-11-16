@@ -1,18 +1,18 @@
 # Operations guide
 
-How to set up a machine, run experiments, move results between the Mac and the Acer, and publish. Commands are meant to be pasted as they are. Paths assume the repository is at `~/Documents/AI_researching/Robust_Federated_Learning/RFL_Lab` on the Mac and `~/Documents/RFL_Lab` on the Acer.
+How to set up a machine, run experiments, move results between the Mac, the Acer and the lab GPU server, and publish. Commands are meant to be pasted as they are. Paths assume the repository is at `~/Documents/AI_researching/Robust_Federated_Learning/RFL_Lab` on the Mac and `~/Documents/RFL_Lab` on the Acer.
 
-## 1. The two machines
+## 1. The machines
 
-| | Mac | Acer |
-|---|---|---|
-| Hardware | MacBook Pro, Apple M5, 32 GB | Acer Swift, Core Ultra 5 226V, Intel Arc 130V, 16 GB |
-| PyTorch device | `mps` | `xpu` |
-| Speed | about 25 s per round | about 25 s per round |
-| Role | source of truth for the repository; pushes to GitHub | second runner; results are pulled to the Mac |
-| Reach | local | `ssh tiesinger@100.117.221.19` (Tailscale) |
+| | Mac | Acer | Lab GPU server |
+|---|---|---|---|
+| Hardware | MacBook Pro, Apple M5, 32 GB | Acer Swift, Core Ultra 5 226V, Intel Arc 130V, 16 GB | 4 x NVIDIA RTX PRO 4500 (32 GB each), Slurm |
+| PyTorch device | `mps` | `xpu` | `cuda` |
+| Speed | about 25 s per round | about 25 s per round | measured by the pilot |
+| Role | source of truth for the repository; pushes to GitHub | second runner; results are pulled to the Mac | main runner from now on; pushes its results to GitHub |
+| Reach | local | `ssh tiesinger@100.117.221.19` (Tailscale) | your SSH session only; code and results through GitHub |
 
-**Rule:** a comparison is only valid within one machine. The same seed gives slightly different numbers on Apple and Intel GPUs, so every sweep file states which machine it belongs to (the machine whose earlier runs it is compared against). Each run records its device in `metrics.json`.
+**Rule:** a comparison is only valid within one machine. The same seed gives slightly different numbers on Apple, Intel and NVIDIA GPUs, so every sweep file states which machine it belongs to (the machine whose earlier runs it is compared against). Each run records its device in `metrics.json`.
 
 ## 2. One-time setup
 
@@ -47,19 +47,70 @@ Benchmark: `time python scripts/run.py configs/cifar100_fedhep_defended.yaml --s
 
 Make `(rfl)` activate automatically on the Acer: `echo 'source ~/venvs/rfl/bin/activate' >> ~/.bashrc`.
 
-### Lab GPU (NVIDIA A1000)
+### Lab GPU server (4 x NVIDIA RTX PRO 4500)
+Slurm schedules the GPUs; code runs inside the lab's PyTorch container (Apptainer) with a small virtual environment on top (`qsetup`, `qshell`, `qbatch`; the lab's guide explains them). Only you can reach the server; code arrives and results leave through GitHub (`git pull`, `git push`).
+
+**One-time setup.** In your SSH session (replace `<project>` with the project directory you were given):
 ```bash
-nvidia-smi                                   # note the "CUDA Version" in the top right
-git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git && cd RFL_Lab
-python3 -m venv .venv && source .venv/bin/activate
-# pick the wheel matching the driver's CUDA version (cu121, cu124 or cu126); cu124 shown:
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-pip install -e ".[dev]"
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+cd /scratch/projects/<project>
+ls -A                                   # should be empty, or hold only what qsetup made
+# empty directory:
+git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git .
+# not empty (qsetup already ran): the repository's files win, qsetup's folders stay
+#   git init -b main && git remote add origin https://github.com/BinhPhamTieSinger/RFL_Lab.git
+#   git fetch origin && git checkout -f -B main origin/main
+git config user.name "BinhPhamTieSinger" && git config user.email "<the address you use on GitHub>"
+qsetup                                  # wait for "Python environment prepared."
+git status --short                      # if qsetup replaced requirements.txt: git checkout requirements.txt && qsetup
 ```
-Copy the CIFAR-100 folder next to the repository (`../Paper_Reproduction/data`), then time one round:
-`time python scripts/run.py configs/cifar100_fedhep_defended.yaml --set run.rounds=2 run.eval_every=2 name=bench run.output_dir=outputs_bench`.
-The A1000 is a third machine: its results are compared only with each other, so every A1000 sweep carries its own baselines (`a1000_*.yaml`).
+`requirements.txt` lists only small packages: PyTorch comes from the container and must not be installed with pip.
+
+**CIFAR-100.** On the server prompt (not inside a job; compute nodes may have no internet):
+```bash
+mkdir -p data && curl -L https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz | tar xz -C data
+ls data/cifar-100-python                # meta  test  train
+```
+Every command below passes `--set data.root=data`.
+
+**Check the environment** (about 5 minutes):
+```bash
+qshell --gpus 1 --cpus 4 --mem 16G --time 00:30:00
+python -c 'import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))'
+python -m pytest -q tests/test_benchmark_harness.py      # must pass
+exit
+```
+
+**Pilot: how many runs fit on one GPU** (three 1-GPU jobs at once, about 15 minutes):
+```bash
+for p in 1 2 4; do
+  qbatch --gpus 1 --cpus 8 --mem 32G --time 01:00:00 scripts/gpu_sweep.py configs/sweeps/gpu_pilot.yaml \
+      --procs $p --set data.root=data run.output_dir=outputs_pilot/p$p
+done
+squeue -u "$USER"                       # PD = waiting, R = running
+tail -n 3 logs/qbatch-*.out             # each job ends with "finished in X min"
+```
+Then push the pilot (below). Choose `--procs` from it: the most runs per hour while peak GPU memory stays under about 28 GB of the 32 GB.
+
+**A sweep on all four GPUs:**
+```bash
+qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/gpu_d1_signals.yaml --procs 3 --set data.root=data
+```
+Several sweep files can follow each other in one job (list them in order). Resubmitting the same command after a time limit or a crash resumes: finished runs are skipped. Do not run two jobs on the same sweep file at once. For the one-week option on two GPUs: `--gpus 2 --time 7-00:00:00` (check the longest time the lab allows).
+
+**Watch and stop:** `squeue -u "$USER"`, `tail -f logs/qbatch-<job>.out`, worker logs in `logs/gpu_sweep_<job>_w*.log`, `ls outputs | grep -c g1__` for finished runs, `scancel <job>` to stop.
+
+**Push results** (any time, also while a job runs; only finished runs have `metrics.json`):
+```bash
+git add outputs/ outputs_pilot/ outputs_env/
+git commit -m "GPU server results"
+git pull --rebase && git push
+```
+`outputs_env/` holds one file per job: commit, container image, PyTorch, CUDA and GPU names, for the paper's reproducibility section. Then on the Mac: `git pull`.
+
+**Update the server's code** with `git pull --rebase` when no job is running: a job reloads the code at the start of each sweep file, so pulling mid-job can mix two code versions in one batch.
+
+The GPU server is a third machine: its results are compared only with each other, so every sweep run there carries its own baselines (`gpu_*.yaml`).
 
 ## 3. Running experiments
 

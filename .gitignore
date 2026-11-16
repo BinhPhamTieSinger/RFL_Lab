@@ -13,3 +13,9 @@ outputs_export/
 outputs_smoke/
 # model checkpoints or anything large in run folders (only metrics.json and config.yaml are tracked)
 outputs*/**/*.pt
+# lab GPU server (qsetup / qbatch): environment, settings, Slurm logs, the dataset copy
+.quickstart/
+quickstart.toml
+logs/
+output/
+data/

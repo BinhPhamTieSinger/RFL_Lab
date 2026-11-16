@@ -1,0 +1,14 @@
+# Pilot for the lab GPU server: how many runs fit on one GPU at once. Four identical short runs of rung R3 (the
+# heaviest common configuration, exit guard on), 5 rounds each. Submit it three times, each on its own GPU, with
+# --procs 1, 2 and 4 and a separate run.output_dir (commands in OPERATIONS.md). Compare minutes per run and peak GPU
+# memory; matching seeds across the three output folders also checks that running in parallel changes no result.
+seeds: [42, 123, 7, 2026]
+common:
+  data.alpha: 0.5
+  run.rounds: 5
+  run.eval_every: 5
+  fedhep.exit_guard: true
+axes:
+  - pilot__r3: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}

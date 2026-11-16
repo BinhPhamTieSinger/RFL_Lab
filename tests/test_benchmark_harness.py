@@ -148,6 +148,19 @@ def test_sweep_runs_every_combination_once_and_summary_aggregates_seeds(tmp_path
     assert "krum__sign" in to_markdown(list(rows.values()))
 
 
+def test_sweep_shards_split_the_grid_without_overlap_and_extra_overrides_every_run(tmp_path):
+    from rfl.experiment.sweep import expand, run_sweep
+
+    spec = {"seeds": [1, 2, 3],
+            "common": {"data.alpha": 0.5},
+            "axes": [{"a": {"method": "fedavg"}, "b": {"method": "multikrum", "data.alpha": 0.1}}]}
+    extra = {"run.output_dir": str(tmp_path), "data.alpha": 0.3}
+    assert {c.data.alpha for _, c in expand(spec, extra)} == {0.3}
+    shards = [run_sweep(spec, dry_run=True, extra=extra, shard=(i, 4)) for i in range(4)]
+    every = [f for s in shards for f in s]
+    assert sorted(every) == sorted(run_sweep(spec, dry_run=True, extra=extra)) and len(set(every)) == 6
+
+
 @given(st.integers(0, 10_000), st.integers(2, 5), st.sets(st.integers(0, 14), max_size=8))
 def test_spread_caps_attackers_per_parent(seed, k, chosen):
     after = spread(random_assignment(15, k, seed), chosen, k)

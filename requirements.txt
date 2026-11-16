@@ -1,0 +1,7 @@
+# Packages added to the lab GPU server's container (qsetup installs them). PyTorch and torchvision come from the
+# container image and must not be listed here: a pip copy would replace the image's CUDA build.
+numpy>=1.24
+pyyaml>=6.0
+scikit-learn>=1.3
+pytest>=8
+hypothesis==6.170.14
