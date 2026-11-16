@@ -91,8 +91,21 @@ try {
     .getByRole("button", { name: "Show selected (2)", exact: true })
     .click();
   await expect(page.locator(".experiment-entry")).toHaveCount(2);
+  expect(new URL(page.url()).searchParams.has("experiments")).toBe(false);
   await page.reload();
   await expect(page.locator(".experiment-entry")).toHaveCount(2);
+  const legacyUrl = new URL(page.url());
+  const savedSelection = await page.evaluate(() => {
+    const ids = localStorage.getItem("rfl-selected-experiments");
+    localStorage.removeItem("rfl-selected-experiments");
+    return ids;
+  });
+  legacyUrl.searchParams.set("experiments", savedSelection);
+  await page.goto(legacyUrl.toString());
+  await expect(page.locator(".experiment-entry")).toHaveCount(2);
+  expect(new URL(page.url()).searchParams.has("experiments")).toBe(false);
+  expect(await page.evaluate(() => localStorage.getItem("rfl-selected-experiments")))
+    .toBe(savedSelection);
   let downloads = 0;
   page.on("request", (request) => {
     if (/\/research\/archive-.*\.json/.test(request.url())) downloads++;

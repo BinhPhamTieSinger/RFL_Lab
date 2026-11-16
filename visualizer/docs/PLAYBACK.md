@@ -4,7 +4,7 @@ The Live Workbench visualizes captured execution events and local Python trainin
 
 1. Choose a visualization capture by model and attack setting.
 2. Load it. The configuration rail and graph are populated together from that capture.
-3. Play animation advances automatically through recorded operations. Pause holds the current operation. Previous operation and Next operation each move one step and pause. Animation speed controls playback pacing and packet motion. Each operation retains its original captured timestamp and duration.
+3. Play animation advances automatically through recorded operations. Pause holds the current operation. Previous operation and Next operation each move one step and pause. At 1×, individual forward/backward operations advance after 90 ms, other events after 600 ms, and weight packets traverse a link in 350 ms. Every speed setting scales these intervals. Each operation retains its original captured timestamp and duration.
 4. Select a timeline event to inspect a particular calculation. Phase buttons navigate to the corresponding part of the round.
 5. Enable Follow camera to focus on the active client, transfer endpoints or processing server.
 

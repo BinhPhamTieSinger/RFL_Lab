@@ -430,6 +430,8 @@ export default function Workbench() {
   const nextPlayback = events.findIndex(
     (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
   );
+  const playbackDelay =
+    events[cursor ?? 0]?.type === "operation_completed" ? 90 : 600;
   useEffect(() => {
     if (!playing) return;
     const next = nextPlayback;
@@ -438,9 +440,9 @@ export default function Workbench() {
         setPlaying(false);
       return;
     }
-    const timer = setTimeout(() => setCursor(next), 1800 / speed);
+    const timer = setTimeout(() => setCursor(next), playbackDelay / speed);
     return () => clearTimeout(timer);
-  }, [playing, cursor, nextPlayback, speed, status]);
+  }, [playing, cursor, nextPlayback, playbackDelay, speed, status]);
   function seek(index: number) {
     setPlaying(false);
     setCursor(index);

@@ -708,15 +708,19 @@ export function ExperimentHistory({
   useEffect(() => {
     const url = new URL(window.location.href);
     setQuery(url.searchParams.get("q") ?? "");
-    setSelected(
-      (
-        url.searchParams.get("experiments") ??
-        localStorage.getItem("rfl-selected-experiments") ??
-        ""
-      )
-        .split(",")
-        .filter(Boolean),
-    );
+    const ids = (
+      url.searchParams.get("experiments") ??
+      localStorage.getItem("rfl-selected-experiments") ??
+      ""
+    )
+      .split(",")
+      .filter(Boolean);
+    setSelected(ids);
+    if (url.searchParams.has("experiments")) {
+      localStorage.setItem("rfl-selected-experiments", ids.join(","));
+      url.searchParams.delete("experiments");
+      window.history.replaceState(null, "", url);
+    }
     setOnlySelected(url.searchParams.get("onlySelected") === "1");
   }, []);
   function updateSelection(ids: string[], only: boolean) {
@@ -724,8 +728,7 @@ export function ExperimentHistory({
     setOnlySelected(only);
     localStorage.setItem("rfl-selected-experiments", ids.join(","));
     const url = new URL(window.location.href);
-    if (ids.length) url.searchParams.set("experiments", ids.join(","));
-    else url.searchParams.delete("experiments");
+    url.searchParams.delete("experiments");
     if (only) {
       url.searchParams.set("onlySelected", "1");
       url.searchParams.delete("experiment");

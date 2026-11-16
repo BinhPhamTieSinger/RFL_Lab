@@ -29,7 +29,7 @@ export function WeightEdge(props: EdgeProps) {
             <animateMotion
               key={String(props.data?.sequence)}
               path={path}
-              dur={`${1 / Number(props.data?.speed ?? 1)}s`}
+              dur={`${0.35 / Number(props.data?.speed ?? 1)}s`}
               repeatCount="indefinite"
             />
           )}
