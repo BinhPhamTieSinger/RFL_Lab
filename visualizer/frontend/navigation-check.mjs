@@ -15,6 +15,16 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 try {
   await page.goto(base);
+  const toolbar = await page
+    .locator(".sticky-workbench-controls")
+    .boundingBox();
+  const settings = await page
+    .getByRole("button", { name: "Hide settings", exact: true })
+    .boundingBox();
+  expect(settings.y + settings.height).toBeLessThanOrEqual(
+    toolbar.y + toolbar.height,
+  );
+
   await page
     .getByLabel("Visualization capture", { exact: true })
     .selectOption("fedhep_plus-label_flip");
@@ -22,6 +32,12 @@ try {
     .getByRole("button", { name: "Load captured visualization", exact: true })
     .click();
   await page.locator(".round-walkthrough").waitFor();
+  const center = await page.locator(".center").boundingBox();
+  const canvas = await page.locator(".center .canvas").boundingBox();
+  expect(
+    Math.abs(center.y + center.height - canvas.y - canvas.height),
+  ).toBeLessThan(2);
+  await page.screenshot({ path: "/tmp/rfl-layout.png" });
   await page.locator(".sticky-trace > summary").click();
   await page
     .getByRole("button", { name: /r1 · attack executed/ })
@@ -62,6 +78,38 @@ try {
   await page
     .getByRole("button", { name: "Pause animation", exact: true })
     .click();
+  await page
+    .getByRole("button", { name: "Play animation", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Documentation", exact: true })
+    .click();
+  const hiddenStep = new URL(page.url()).searchParams.get("step");
+  await page.waitForTimeout(700);
+  expect(new URL(page.url()).searchParams.get("step")).toBe(hiddenStep);
+  await page
+    .getByRole("button", { name: "Live Workbench", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Play animation", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Play animation", exact: true })
+    .click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(
+    page.getByRole("button", { name: "Play animation", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    delete document.hidden;
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
   const paused = await slider.inputValue();
   await page.waitForTimeout(700);
   await expect(slider).toHaveValue(paused);
@@ -104,8 +152,20 @@ try {
   await page.goto(legacyUrl.toString());
   await expect(page.locator(".experiment-entry")).toHaveCount(2);
   expect(new URL(page.url()).searchParams.has("experiments")).toBe(false);
-  expect(await page.evaluate(() => localStorage.getItem("rfl-selected-experiments")))
-    .toBe(savedSelection);
+  expect(
+    await page.evaluate(() => localStorage.getItem("rfl-selected-experiments")),
+  ).toBe(savedSelection);
+  await page
+    .getByRole("button", { name: "Copy selected link", exact: true })
+    .click();
+  const shareUrl = await page
+    .getByLabel("Selected experiments link", { exact: true })
+    .inputValue();
+  expect(shareUrl.length).toBeLessThan(legacyUrl.href.length);
+  const professorPage = await browser.newPage();
+  await professorPage.goto(shareUrl);
+  await expect(professorPage.locator(".experiment-entry")).toHaveCount(2);
+  await professorPage.close();
   let downloads = 0;
   page.on("request", (request) => {
     if (/\/research\/archive-.*\.json/.test(request.url())) downloads++;

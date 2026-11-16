@@ -705,10 +705,30 @@ export function ExperimentHistory({
   const [limit, setLimit] = useState(25);
   const [selected, setSelected] = useState<string[]>([]);
   const [onlySelected, setOnlySelected] = useState(false);
+  const [shareLink, setShareLink] = useState("");
   useEffect(() => {
     const url = new URL(window.location.href);
     setQuery(url.searchParams.get("q") ?? "");
+    let sharedIds: string | null = null;
+    const encoded = url.searchParams.get("selection");
+    if (encoded) {
+      try {
+        const hex = Array.from(
+          atob(encoded.replace(/-/g, "+").replace(/_/g, "/")),
+        )
+          .map((byte) => byte.charCodeAt(0).toString(16).padStart(2, "0"))
+          .join("");
+        if (hex.length && hex.length % 24 === 0)
+          sharedIds = hex
+            .match(/.{24}/g)!
+            .map((id) => `archive-${id}`)
+            .join(",");
+      } catch {
+        /* Ignore malformed shared selections. */
+      }
+    }
     const ids = (
+      sharedIds ??
       url.searchParams.get("experiments") ??
       localStorage.getItem("rfl-selected-experiments") ??
       ""
@@ -716,24 +736,48 @@ export function ExperimentHistory({
       .split(",")
       .filter(Boolean);
     setSelected(ids);
-    if (url.searchParams.has("experiments")) {
+    if (sharedIds !== null || url.searchParams.has("experiments")) {
       localStorage.setItem("rfl-selected-experiments", ids.join(","));
       url.searchParams.delete("experiments");
+      url.searchParams.delete("selection");
       window.history.replaceState(null, "", url);
     }
     setOnlySelected(url.searchParams.get("onlySelected") === "1");
   }, []);
   function updateSelection(ids: string[], only: boolean) {
     setSelected(ids);
+    setShareLink("");
     setOnlySelected(only);
     localStorage.setItem("rfl-selected-experiments", ids.join(","));
     const url = new URL(window.location.href);
     url.searchParams.delete("experiments");
+    url.searchParams.delete("selection");
     if (only) {
       url.searchParams.set("onlySelected", "1");
       url.searchParams.delete("experiment");
     } else url.searchParams.delete("onlySelected");
     window.history.replaceState(null, "", url);
+  }
+  async function shareSelection() {
+    const hex = selected.map((id) => id.replace(/^archive-/, "")).join("");
+    const bytes = hex
+      .match(/../g)!
+      .map((pair) => String.fromCharCode(parseInt(pair, 16)))
+      .join("");
+    const encoded = btoa(bytes)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("tab", "Experiment history");
+    url.searchParams.set("onlySelected", "1");
+    url.searchParams.set("selection", encoded);
+    setShareLink(url.href);
+    try {
+      await navigator.clipboard.writeText(url.href);
+    } catch {
+      /* The visible field supports manual copying. */
+    }
   }
   function select(id: string) {
     updateSelection(
@@ -784,12 +828,26 @@ export function ExperimentHistory({
             ? "Show all experiments"
             : `Show selected (${selected.length})`}
         </button>
+        <button disabled={!selected.length} onClick={shareSelection}>
+          Copy selected link
+        </button>
         {selected.length > 0 && (
           <button onClick={() => updateSelection([], false)}>
             Clear selection
           </button>
         )}
       </div>
+      {shareLink && (
+        <label>
+          Share these selected experiments
+          <input
+            aria-label="Selected experiments link"
+            readOnly
+            value={shareLink}
+            onFocus={(event) => event.target.select()}
+          />
+        </label>
+      )}
       {target && !onlySelected && (
         <ResultDetails
           key={target.id}

@@ -110,7 +110,7 @@ nav button[aria-current="page"] {
 .workbench {
   display: grid;
   grid-template-columns: 260px minmax(380px, 1fr) 300px;
-  min-height: 690px;
+  min-height: max(690px, calc(100dvh - 190px));
 }
 aside {
   padding: 23px 20px;
@@ -127,6 +127,8 @@ aside {
 }
 .center {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 h1 {
   font-size: 26px;
@@ -213,7 +215,8 @@ small {
   color: var(--muted);
 }
 .canvas {
-  height: 440px;
+  flex: 1;
+  min-height: 440px;
   position: relative;
 }
 .empty {
@@ -788,6 +791,7 @@ details:not([open]) > :not(summary) {
 
 .sticky-workbench-controls {
   position: sticky;
+  display: flow-root;
   top: 0;
   z-index: 30;
   background: var(--bg);

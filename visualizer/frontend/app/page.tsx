@@ -149,6 +149,7 @@ export default function Workbench() {
   const [captureId, setCaptureId] = useState("fedhep_plus-sign_flip");
   const [captureMode, setCaptureMode] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [followCamera, setFollowCamera] = useState(true);
   const [focus, setFocus] = useState("");
@@ -320,7 +321,9 @@ export default function Workbench() {
         setStatus(batch.status);
         if (
           batch.more ||
-          ["running", "cancelling", "queued", "pending"].includes(batch.status)
+          ["running", "paused", "cancelling", "queued", "pending"].includes(
+            batch.status,
+          )
         )
           timer = setTimeout(poll, batch.more ? 0 : 1000);
       } catch (e) {
@@ -412,6 +415,7 @@ export default function Workbench() {
     }
   }
   function navigate(next: string) {
+    if (next !== "Live Workbench") setPlaying(false);
     setView(next);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
@@ -427,13 +431,37 @@ export default function Workbench() {
     url.searchParams.set("step", String(cursor));
     window.history.replaceState(null, "", url);
   }, [id, cursor]);
+  useEffect(() => {
+    const visibility = () => {
+      setPageVisible(!document.hidden);
+      if (document.hidden) setPlaying(false);
+    };
+    document.addEventListener("visibilitychange", visibility);
+    visibility();
+    return () => document.removeEventListener("visibilitychange", visibility);
+  }, []);
+  useEffect(() => {
+    if (view === "Live Workbench" && pageVisible) return;
+    setPlaying(false);
+    if (
+      !captureMode &&
+      id &&
+      ["running", "queued", "pending"].includes(status)
+    ) {
+      void api(`/experiments/${id}/pause`, {})
+        .then((run) => setStatus(run.status))
+        .catch((error) =>
+          setError(`Could not pause local training. ${error.message}`),
+        );
+    }
+  }, [view, pageVisible, captureMode, id, status]);
   const nextPlayback = events.findIndex(
     (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
   );
   const playbackDelay =
     events[cursor ?? 0]?.type === "operation_completed" ? 90 : 600;
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || view !== "Live Workbench" || !pageVisible) return;
     const next = nextPlayback;
     if (next < 0) {
       if (!["running", "pending", "queued", "cancelling"].includes(status))
@@ -442,7 +470,16 @@ export default function Workbench() {
     }
     const timer = setTimeout(() => setCursor(next), playbackDelay / speed);
     return () => clearTimeout(timer);
-  }, [playing, cursor, nextPlayback, playbackDelay, speed, status]);
+  }, [
+    playing,
+    cursor,
+    nextPlayback,
+    playbackDelay,
+    speed,
+    status,
+    view,
+    pageVisible,
+  ]);
   function seek(index: number) {
     setPlaying(false);
     setCursor(index);
@@ -706,6 +743,7 @@ export default function Workbench() {
   const running = [
     "running",
     "starting",
+    "paused",
     "cancelling",
     "queued",
     "pending",
@@ -1077,6 +1115,17 @@ export default function Workbench() {
                           Configure a new visualization
                         </button>
                       )}
+                    {status === "paused" && !captureMode && (
+                      <button
+                        onClick={() =>
+                          api(`/experiments/${id}/resume`, {})
+                            .then((run) => setStatus(run.status))
+                            .catch((error) => setError(error.message))
+                        }
+                      >
+                        Resume execution
+                      </button>
+                    )}
                     {running && (
                       <button
                         onClick={() =>

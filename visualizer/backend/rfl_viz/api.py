@@ -5,13 +5,14 @@ import fcntl
 import json
 import os
 import secrets
+import signal
 import sqlite3
 import subprocess
 import sys
 import threading
 import time
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -89,7 +90,7 @@ class RunRequest(BaseModel):
 async def lifespan(app):
     # A worker's output pipe closes if the API exits. Recover interrupted metadata on restart.
     with db() as con:
-        con.execute("UPDATE runs SET status='interrupted' WHERE status IN ('running','cancelling')")
+        con.execute("UPDATE runs SET status='interrupted' WHERE status IN ('running','paused','cancelling')")
     stop = threading.Event()
 
     def schedule():
@@ -103,7 +104,9 @@ async def lifespan(app):
     scheduler.join(timeout=2)
     for process in list(processes.values()):
         if process.poll() is None:
-            process.terminate()
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGCONT)
+                os.killpg(process.pid, signal.SIGTERM)
 
 
 app = FastAPI(title="RFL Lab Visualizer", lifespan=lifespan)
@@ -196,6 +199,7 @@ def dispatch():
                 text=True,
                 env=env,
                 pass_fds=(lock.fileno(),),
+                start_new_session=True,
             )
         except Exception as error:
             status(id, "failed")
@@ -250,6 +254,45 @@ def detail(id: str):
     }
 
 
+@app.post("/experiments/{id}/pause")
+def pause(id: str):
+    detail(id)
+    with mutex:
+        process = processes.get(id)
+        if process and process.poll() is None:
+            with db() as con:
+                changed = con.execute(
+                    "UPDATE runs SET status='paused' WHERE id=? AND status='running'", (id,)
+                ).rowcount
+            if changed:
+                try:
+                    os.killpg(process.pid, signal.SIGSTOP)
+                except ProcessLookupError:
+                    pass
+                push(id, {"type": "execution_paused"})
+        else:
+            with db() as con:
+                con.execute("UPDATE runs SET status='paused' WHERE id=? AND status IN ('queued','pending')", (id,))
+    return {"status": detail(id)["status"]}
+
+
+@app.post("/experiments/{id}/resume")
+def resume(id: str):
+    detail(id)
+    with mutex:
+        if detail(id)["status"] == "paused":
+            process = processes.get(id)
+            if process and process.poll() is None:
+                status(id, "running")
+                with suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGCONT)
+                push(id, {"type": "execution_resumed"})
+            elif process is None:
+                status(id, "queued")
+    dispatch()
+    return {"status": detail(id)["status"]}
+
+
 @app.post("/experiments/{id}/cancel")
 def cancel(id: str):
     run = detail(id)
@@ -260,18 +303,24 @@ def cancel(id: str):
             changed = con.execute(
                 "UPDATE runs SET status='cancelled' WHERE id=? AND status IN ('pending','queued')", (id,)
             ).rowcount
+        if not changed and id not in processes:
+            with db() as con:
+                changed = con.execute("UPDATE runs SET status='cancelled' WHERE id=? AND status='paused'", (id,)).rowcount
         if changed:
             push(id, {"type": "worker_stopped", "status": "cancelled"})
         process = processes.get(id)
         if process and process.poll() is None:
             status(id, "cancelling")
-            process.terminate()
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGCONT)
+                os.killpg(process.pid, signal.SIGTERM)
 
             def kill_later():
                 try:
                     process.wait(timeout=10)
                 except subprocess.TimeoutExpired:
-                    process.kill()
+                    with suppress(ProcessLookupError):
+                        os.killpg(process.pid, signal.SIGKILL)
 
             threading.Thread(target=kill_later, daemon=True).start()
     return {"status": detail(id)["status"]}
@@ -293,7 +342,7 @@ async def events(id: str, request: Request, after: int = 0):
                 cursor = row["seq"]
                 yield f"id: {cursor}\ndata: {row['payload']}\n\n"
             if not rows:
-                if detail(id)["status"] not in ("running", "cancelling", "queued", "pending"):
+                if detail(id)["status"] not in ("running", "paused", "cancelling", "queued", "pending"):
                     break
                 yield ": heartbeat\n\n"
                 await asyncio.sleep(0.25)

@@ -22,6 +22,14 @@ def test_execution_replay_queue_and_cancellation():
         id = response.json()["id"]
         queued = client.post("/experiments", json={}).json()
         assert queued["status"] == "queued"
+        assert client.post(f"/experiments/{queued['id']}/pause").json()["status"] == "paused"
+        assert client.post(f"/experiments/{id}/pause").json()["status"] == "paused"
+        assert client.post(f"/experiments/{id}/pause").json()["status"] == "paused"
+        from rfl_viz.api import processes
+        import subprocess
+        state = subprocess.check_output(["ps", "-o", "stat=", "-p", str(processes[id].pid)], text=True)
+        assert "T" in state, state
+        assert client.post(f"/experiments/{id}/resume").json()["status"] == "running"
         assert client.post(f"/experiments/{queued['id']}/cancel").json()["status"] == "cancelled"
         deadline = time.monotonic() + 90
         while client.get("/experiments/" + id).json()["status"] == "running" and time.monotonic() < deadline:
@@ -45,6 +53,7 @@ def test_execution_replay_queue_and_cancellation():
         assert result["result"]["final"]["pooled"] >= 0
         response = client.post("/experiments", json={"overrides": {"run.rounds": 100}})
         id = response.json()["id"]
+        assert client.post(f"/experiments/{id}/pause").json()["status"] == "paused"
         client.post(f"/experiments/{id}/cancel")
         deadline = time.monotonic() + 15
         while client.get("/experiments/" + id).json()["status"] == "cancelling" and time.monotonic() < deadline:
