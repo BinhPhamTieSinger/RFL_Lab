@@ -34,8 +34,13 @@ for (const selection of manifest) {
     config = fs.existsSync(configPath)
       ? (YAML.parse(fs.readFileSync(configPath, "utf8")) ?? {})
       : {};
+    // Python writes NaN/Infinity for undefined diagnostics; JSON has no such values, so publish null.
     result = fs.existsSync(resultPath)
-      ? JSON.parse(fs.readFileSync(resultPath, "utf8"))
+      ? JSON.parse(
+          fs
+            .readFileSync(resultPath, "utf8")
+            .replace(/([:,[]\s*)-?(?:NaN|Infinity)(?=\s*[,\]}])/g, "$1null"),
+        )
       : null;
   } catch (e) {
     error = e.message;
@@ -90,6 +95,25 @@ fs.writeFileSync(
   JSON.stringify(entries),
 );
 console.log(`Exported ${entries.length} research experiments`);
+// The manifest is curated by hand, so name completed runs it does not list yet.
+const unlisted = fs
+  .readdirSync(root)
+  .filter((name) => name.startsWith("outputs"))
+  .flatMap((name) =>
+    fs
+      .readdirSync(path.join(root, name), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${name}/${entry.name}`),
+  )
+  .filter(
+    (source) =>
+      !selectedSources.has(source) &&
+      fs.existsSync(path.join(root, source, "metrics.json")),
+  );
+if (unlisted.length)
+  console.warn(
+    `${unlisted.length} completed runs are not in research/history-manifest.json: ${unlisted.join(", ")}`,
+  );
 
 const captureRoot = path.resolve("research/captures");
 fs.mkdirSync(path.join(destination, "captures"), { recursive: true });

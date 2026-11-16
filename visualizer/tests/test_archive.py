@@ -46,3 +46,30 @@ def test_partition_images_are_real_and_read_only(monkeypatch):
     assert torch.equal(state, torch.random.get_rng_state())
     assert description["histogram"][2] == 1
     assert description["r_skew"] == 0
+
+
+def test_archive_serves_results_with_nan_as_null(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from rfl_viz.api import app
+
+    folder = tmp_path / "outputs" / "nan-run"
+    folder.mkdir(parents=True)
+    (folder / "config.yaml").write_text("method: fedhep\n")
+    (folder / "metrics.json").write_text('{"final":{"pooled":1.0},"diagnostics":[{"member_agreement":NaN}]}')
+    monkeypatch.setattr(archive, "LAB", tmp_path)
+    entry = archive.history(refresh=True)[0]
+    response = TestClient(app).get(f"/experiments/{entry['id']}")
+    assert response.status_code == 200
+    assert response.json()["result"]["diagnostics"][0]["member_agreement"] is None
+
+
+def test_archive_is_not_empty_soon_after_boot(tmp_path, monkeypatch):
+    import importlib
+
+    fresh = importlib.reload(archive)
+    folder = tmp_path / "outputs" / "run"
+    folder.mkdir(parents=True)
+    (folder / "config.yaml").write_text("method: fedavg\n")
+    monkeypatch.setattr(fresh, "LAB", tmp_path)
+    monkeypatch.setattr(fresh.time, "monotonic", lambda: 5.0)
+    assert len(fresh.history()) == 1

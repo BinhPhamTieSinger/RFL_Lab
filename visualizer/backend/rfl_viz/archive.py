@@ -10,7 +10,13 @@ import yaml
 from rfl_viz.catalog import LAB
 
 _lock = threading.Lock()
-_cached = (0.0, {})
+# Start expired: time.monotonic() counts from boot, so 0.0 would look fresh for 15 minutes after a reboot.
+_cached = (float("-inf"), {})
+
+
+def _load(path):
+    """Read a metrics file; NaN and Infinity (valid in Python's json, not in a JSON response) become null."""
+    return json.loads(path.read_text(), parse_constant=lambda _: None)
 
 
 def flatten(config):
@@ -39,7 +45,7 @@ def index(refresh=False):
                 config_path = folder / "config.yaml"
                 try:
                     config = yaml.safe_load(config_path.read_text()) if config_path.exists() else {}
-                    result = json.loads(metrics.read_text()) if metrics.exists() else None
+                    result = _load(metrics) if metrics.exists() else None
                     config = config or {}
                     method = config.get("method", (result or {}).get("method", "unknown"))
                     entries[id] = {
@@ -82,7 +88,7 @@ def detail(id):
     result_path = folder / "metrics.json"
     result = None
     try:
-        result = json.loads(result_path.read_text()) if result_path.exists() else None
+        result = _load(result_path) if result_path.exists() else None
     except (OSError, ValueError):
         pass
     logs = []

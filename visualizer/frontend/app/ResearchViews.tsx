@@ -26,10 +26,12 @@ export function Series({
   rows,
   keys,
   title,
+  domain,
 }: {
   rows: RecordValue[];
   keys: string[];
   title: string;
+  domain?: [number, number];
 }) {
   if (!rows.length) return null;
   return (
@@ -39,7 +41,7 @@ export function Series({
         <LineChart data={rows}>
           <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
           <XAxis dataKey="round" stroke="var(--muted)" />
-          <YAxis stroke="var(--muted)" />
+          <YAxis stroke="var(--muted)" domain={domain} />
           <Tooltip
             contentStyle={{
               background: "var(--surface)",
@@ -624,6 +626,13 @@ function ResultDetails({
                 rows={result.history ?? []}
                 keys={["pooled_acc", "mean_client_acc", "bottom10"]}
               />
+              {result.history?.some((r: any) => r.asr != null) && (
+                <Series
+                  title="Backdoor success rate (%)"
+                  rows={result.history}
+                  keys={["asr"]}
+                />
+              )}
               <Series
                 title="MAD and screening scale per round"
                 rows={mad}
@@ -632,6 +641,7 @@ function ResultDetails({
               <Series
                 title="Detection rates (0–1)"
                 rows={result.detection ?? []}
+                domain={[0, 1]}
                 keys={["precision", "recall", "false_isolation_rate"]}
               />
               <h3>Saved evaluation table</h3>
@@ -643,6 +653,7 @@ function ResultDetails({
                       <th>Pooled accuracy %</th>
                       <th>Mean client %</th>
                       <th>Bottom 10% %</th>
+                      <th>Backdoor success %</th>
                       <th>Elapsed s</th>
                     </tr>
                   </thead>
@@ -653,6 +664,7 @@ function ResultDetails({
                         <td>{r.pooled_acc?.toFixed(3)}</td>
                         <td>{r.mean_client_acc?.toFixed(3)}</td>
                         <td>{r.bottom10?.toFixed(3)}</td>
+                        <td>{r.asr?.toFixed(2) ?? "–"}</td>
                         <td>{r.elapsed_s?.toFixed(2)}</td>
                       </tr>
                     ))}
