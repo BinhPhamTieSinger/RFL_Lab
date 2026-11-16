@@ -1,0 +1,28 @@
+# Campaign stage C4, the ladder on D2 (alpha 0.2, 20 clients, 4 attackers) on CUDA, with the two whole-model
+# signals: fixes the gate value and the signal at strong heterogeneity (predictions P2, P3 at D2). Baselines rerun
+# here because CUDA results are compared only with each other. GPU server. 120 runs.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.2
+  data.num_clients: 20
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - g2__fedhep: {config: configs/cifar100_fedhep.yaml}
+    g2__defended: {config: configs/cifar100_fedhep_defended.yaml}
+    g2__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true}
+    g2__l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm,
+             robust.assumed_attackers: 4}
+    g2__r3g8: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                   plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3,
+                   plus.exclusion_patience: 3, plus.global_rule: arc_nnm_tm, plus.global_f: 4, plus.gap_gate: 8}
+    g2__r3g12: {<<: *r3, plus.gap_gate: 12}
+    g2__r3w: {<<: *r3, plus.signal: weights}
+    g2__r3c: {<<: *r3, plus.signal: critical}
+  - clean: {}
+    sign4: {attack.kind: sign_flip, attack.count: 4}
+    backdoor4: {attack.kind: backdoor, attack.count: 4}
+    alie4: {attack.kind: alie, attack.count: 4, attack.knowledge: colluders, attack.alie_z: 0.43}
+    minmax4: {attack.kind: min_max, attack.count: 4, attack.knowledge: omniscient}

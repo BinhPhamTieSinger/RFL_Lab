@@ -45,7 +45,7 @@ So the open problem is narrow: **see the backdoor without reintroducing false is
 **What.** When a client is isolated, rewind the shared layers to the stored Global model from before its first suspicious round and continue without it (variant a), or also replay stored honest updates (b).
 **Evidence.** FedEraser (IWQoS 2021) and FedRecover (S&P 2023) recover models by replaying history without the removed clients. Our stop test makes this necessary: the backdoor grows after poisoning stops.
 **Cost.** 0.2 GB per 30-round run to keep the Global models (6.9 MB each); about 4 GB to keep all client updates for replay at 20 clients.
-**Status.** Not implemented. Wait for `followup_backdoor_heads` (which head carries the backdoor) to decide what to rewind: the whole trunk, or only some layers.
+**Status.** Variant (a) implemented and tested (`plus.rewind: trunk | trunk_root | all`, `plus.rewind_window`): on a new isolation the Global model and every parent return, on the chosen coordinates, to the stored model from the start of the client's first suspicious round; that round aggregates nothing. The per-head results say what to rewind: the trunk and the root head. Sweep `gpu_c5_recovery` (36 runs) and the 100-round `gpu_c6_durability`.
 
 ## 5. Output-space signals on a probe set
 
@@ -81,7 +81,7 @@ So the open problem is narrow: **see the backdoor without reintroducing false is
 **New?** The mechanism (a local classifier resists backdoors) is published. Using the disagreement between a shared head and personal heads as a per-input backdoor signal inside a hierarchical ensemble is not, as far as we found.
 **Cost.** None at training time; at prediction time, a comparison of three outputs the model already computes.
 **Risks.** (a) The local head is the weakest head on data unlike the client's own, so overruling the root head may cost accuracy on rare classes; the bottom-10% metric will show it. (b) Natural-feature triggers (Bad-PFL, DCInject) are learned by the personal heads too, so the signal vanishes against them. Both are stated as predictions P11 and P12 in `PREDICTIONS.md`.
-**Status.** Not implemented. About an hour: the runner already computes per-head predictions for `asr_heads`.
+**Status.** Implemented and tested (`head_agreement_logits` in `rfl.client.fedhep`; `fedhep.head_agreement: true` records `history[].head_agreement` = pooled accuracy, bottom-10%, backdoor success and the overrule rate, with the main metrics unchanged). On in every GPU campaign sweep.
 
 ## Order of work
 

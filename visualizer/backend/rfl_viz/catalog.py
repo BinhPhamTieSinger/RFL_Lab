@@ -30,11 +30,12 @@ OPTIONS = {
     ],
     "attack.placement": ["random", "concentrated", "spread"],
     "attack.knowledge": ["colluders", "omniscient"],
-    "plus.signal": ["root_head", "weights"],
+    "plus.signal": ["root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap"],
     "plus.reference": ["mean_direction", "median"],
     "plus.population": ["kept", "all"],
     "plus.drill_mode": ["exclude", "evidence"],
     "plus.global_rule": ["sccf", "arc_nnm_tm"],
+    "plus.rewind": ["none", "trunk", "trunk_root", "all"],
     "fedhep.similarity_on": ["full", "weights"],
     "robust.rule": ["median", "trimmed_mean", "bulyan", "flame", "fltrust", "arc_nnm_tm"],
     "robust.flame_on": ["models", "updates"],
@@ -164,6 +165,10 @@ def validate(method, overrides):
         raise ValueError("Backdoor target exceeds dataset class range")
     if c.plus.global_rule == "arc_nnm_tm" and c.data.num_clients <= 2 * c.plus.global_f:
         raise ValueError("ARC/NNM trimmed mean requires n > 2f")
+    if c.plus.rewind != "none" and c.plus.rewind_window < 1:
+        raise ValueError("Rewind window must be at least one round")
+    if (c.fedhep.exit_guard or c.fedhep.head_agreement) and not method.startswith("fedhep"):
+        raise ValueError("Exit guard and head-agreement inference need a FedHEP-family method")
     return c
 
 
@@ -353,3 +358,119 @@ FORMULAS.extend(
         },
     ]
 )
+
+FORMULAS.extend(
+    [
+        {
+            "name": "Two-sided screen and gap gate",
+            "method": "fedhep_plus",
+            "latex": (
+                r"z_i^{\pm}=-|z_i|\ \text{(two_sided)},\qquad"
+                r"g=\frac{\max_k(s_{(k+1)}-s_{(k)})}{\operatorname{median}_k(s_{(k+1)}-s_{(k)})},\quad"
+                r"g<\gamma\Rightarrow z_i\leftarrow\max(z_i,0)"
+            ),
+            "explanation": (
+                "s_(k) are the sorted cosine scores. With two_sided, a client far above the others (ALIE, Min-Max "
+                "colluders sitting on the reference) is treated like one far below. The gap gate gamma is "
+                "gap_gate: unless the largest gap between neighbouring scores is gamma times the median gap, "
+                "the round's scores do not split and nobody collects bad evidence. gap_ratio is logged in "
+                "score_stats of every round."
+            ),
+            "source": "defense/screening.py",
+        },
+        {
+            "name": "L0 · influence bound (ARC, NNM, trimmed mean)",
+            "method": "fedhep_plus",
+            "latex": (
+                r"k=\lfloor 2\tfrac{f}{n}(n-f)\rfloor,\quad"
+                r"\mathrm{ARC}:\ \text{clip the }k\text{ largest updates to the }(k{+}1)\text{-th norm},\quad"
+                r"\mathrm{NNM}:\ \tilde\Delta_i=\tfrac{1}{n-f}\sum_{j\in N_{n-f}(i)}\Delta_j,\quad"
+                r"\Delta=\mathrm{TM}_f(\tilde\Delta)"
+            ),
+            "explanation": (
+                "global_rule arc_nnm_tm. f is global_f minus the clients already excluded this round (or global_f "
+                "itself with global_f_fixed), never more than (n-1)/2. "
+                "N_{n-f}(i) are the n-f nearest neighbours of "
+                "update i. Every kept client then has equal Global trust 1/n. Robust FedHEP applies the same rule "
+                "without the screen."
+            ),
+            "source": "defense/classic.py",
+        },
+        {
+            "name": "Critical-layer and sign-alignment signals",
+            "method": "fedhep_plus",
+            "latex": (
+                r"\text{critical: } L^*=\operatorname{top}_k\ "
+                r"\mathrm{Var}_i\cos(\Delta_i^{(\ell)},\bar\Delta^{(\ell)}),"
+                r"\ s_i=\tfrac1k\sum_{\ell\in L^*}\cos(\Delta_i^{(\ell)},\bar\Delta^{(\ell)});\qquad"
+                r"\text{sign\_align: } s_i=\tfrac{1}{|T_i|}\sum_{j\in T_i}\mathbb 1[\operatorname{sgn}\Delta_{ij}"
+                r"=\operatorname{sgn}\bar\Delta_j]"
+            ),
+            "explanation": (
+                "plus.signal critical scores each client on the critical_k shared layers where clients disagree "
+                "most this round (after FedSurrogate); the personal heads are never screened layer by layer. "
+                "sign_align is AlignIns' MPSA: the share of the client's top "
+                "sign_topk coordinates whose sign agrees "
+                "with the reference. The two output-space signals (probe_logits, head_gap) compare each uploaded "
+                "model's predictions on probe_size server images with the median prediction."
+            ),
+            "source": "defense/screening.py",
+        },
+        {
+            "name": "Head-agreement inference",
+            "method": "fedhep",
+            "latex": (
+                r"\hat y=\begin{cases}\arg\max(z_{parent}+z_{local})&\arg\max z_{parent}=\arg\max z_{local}"
+                r"\neq\arg\max z_{ens}\\\arg\max z_{ens}&\text{otherwise}\end{cases}"
+            ),
+            "explanation": (
+                "fedhep.head_agreement, evaluation only. A backdoor is "
+                "learned by the shared trunk and mapped to its "
+                "target by the shared root head, while the parent and local "
+                "heads, trained on clean data, keep the "
+                "true label; where the two personal heads agree against the "
+                "ensemble, they decide. Each evaluation "
+                "records pooled accuracy, bottom-10%, backdoor success and the share of inputs overruled under "
+                "history[].head_agreement; the main metrics are unchanged."
+            ),
+            "source": "client/fedhep.py",
+        },
+        {
+            "name": "Rewind on isolation",
+            "method": "fedhep_plus",
+            "latex": (
+                r"t^*=\min_{c\in I_{new}}\ \text{first } t\le r\text{ with "
+                r"} z_{c,t'}<-z_{cut}\ \forall t'\in[t,r],"
+                r"\qquad w_r\leftarrow M\odot w_{t^*}+(1-M)\odot w_r"
+            ),
+            "explanation": (
+                "plus.rewind (H8, variant a). When clients I_new are "
+                "isolated in round r, the Global model and every "
+                "parent return, on the coordinates selected by M (trunk, "
+                "trunk and root head, or all), to the stored "
+                "model from the start of t*, the earliest round of their unbroken suspicious trail within "
+                "rewind_window rounds; no aggregation happens that round. rewind_target is logged in the round's "
+                "diagnostics."
+            ),
+            "source": "server/fedhep_plus_server.py",
+        },
+        {
+            "name": "Depth-exit guard",
+            "method": "fedhep",
+            "latex": (
+                r"e_d=\operatorname{softmax}(W_d\,\mathrm{pool}(h_d(x))),\ d\in\{res1,layer2,layer3\};\quad"
+                r"\text{flag if } \tfrac13\sum_d e_d[\hat y]<\tau_{95}"
+            ),
+            "explanation": (
+                "fedhep.exit_guard, evaluation only (after Orion, IJCAI "
+                "2023). Each honest client fits three linear "
+                "exits on pooled trunk features of its own training images; "
+                "tau is the 5th percentile of support on "
+                "its 20% held-out split. A flagged input takes the exits' vote. history[].guarded records the "
+                "guarded accuracy, bottom-10%, backdoor success and the clean flag rate."
+            ),
+            "source": "defense/exit_guard.py",
+        },
+    ]
+)
+

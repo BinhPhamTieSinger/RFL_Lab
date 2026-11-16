@@ -263,10 +263,17 @@ export function RoundWalkthrough({
           "Learning rate",
         ]
       : phase === "Screening"
-        ? ["Screening scale", "Temporal evidence"]
+        ? [
+            "Screening scale",
+            "Two-sided screen and gap gate",
+            "Critical-layer and sign-alignment signals",
+            "Temporal evidence",
+            "Rewind on isolation",
+          ]
         : [
             "Sample-weighted mean",
             "SCCF aggregation",
+            "L0 · influence bound (ARC, NNM, trimmed mean)",
             "TTT · temporal trust tracking",
           ];
   const selectedFormulas = formulas.filter(

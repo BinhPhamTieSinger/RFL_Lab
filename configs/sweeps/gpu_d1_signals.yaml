@@ -11,6 +11,7 @@ common:
   data.alpha: 0.5
   run.rounds: 30
   fedhep.exit_guard: true
+  fedhep.head_agreement: true   # idea 9, evaluation only (prediction P11); main metrics unchanged
 axes:
   - g1__fedhep: {config: configs/cifar100_fedhep.yaml}
     g1__defended: {config: configs/cifar100_fedhep_defended.yaml}

@@ -23,6 +23,7 @@ from rfl.core.types import ClientData, DetectionResult, RoundReport
 from rfl.defense.classic import arc_nnm_trimmed_mean_rule
 from rfl.defense.probe import probe_outputs
 from rfl.defense.screening import (
+    PERSONAL_HEADS,
     EvidenceTracker,
     ScreenOptions,
     apply_cap,
@@ -43,8 +44,16 @@ class FedHEPPlusServer(DefendedFedHEPServer):
     def __init__(self, model: MultiHeadResNet9, clients: Sequence[ClientData], trainer: FedHEPTrainer,
                  grouping: SimilarityGrouping, screen: ScreenOptions, regroup: bool = False,
                  attack: Attack | None = None, attackers: frozenset[int] = frozenset(),
-                 global_rule: str = "sccf", global_f: int = 3, probe: torch.Tensor | None = None) -> None:
+                 global_rule: str = "sccf", global_f: int = 3, probe: torch.Tensor | None = None,
+                 global_f_fixed: bool = False, rewind: str = "none", rewind_window: int = 10) -> None:
         super().__init__(model, clients, trainer, grouping, attack=attack, attackers=attackers)
+        if rewind not in ("none", "trunk", "trunk_root", "all"):
+            raise ValueError(f"unknown rewind {rewind!r}")
+        self.global_f_fixed = global_f_fixed
+        self.rewind, self.rewind_window = rewind, rewind_window
+        self.rewind_mask = self._rewind_mask(rewind)   # which coordinates a rewind restores
+        self.stored: dict[int, torch.Tensor] = {}      # round -> Global model at the start of that round
+        self.rewound: list[dict[str, int]] = []        # (round, target) of every rewind, for the diagnostics
         self.screen = screen
         self.regroup = regroup
         if global_rule not in ("sccf", "arc_nnm_tm"):
@@ -59,11 +68,50 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         self.exclusion_streak: dict[int, int] = {}
         self.banned: set[int] = set()  # non-finite uploads: out for good, even with readmission
 
+    def _rewind_mask(self, rewind: str) -> torch.Tensor | None:
+        """Coordinates a rewind restores: the trunk (no head), the trunk and the shared root head, or all."""
+        if rewind == "none":
+            return None
+        heads: tuple[str, ...] = ("fc2_root",) + PERSONAL_HEADS
+        exclude = {"trunk": heads, "trunk_root": PERSONAL_HEADS, "all": ()}[rewind]
+        keep = torch.ones(self.global_vec.numel(), dtype=torch.bool)
+        offset = 0
+        for name, value in self.template.items():
+            if name.startswith(exclude):
+                keep[offset:offset + value.numel()] = False
+            offset += value.numel()
+        return keep
+
+    def _first_suspicious(self, client: int, round_idx: int) -> int:
+        """Earliest stored round from which the client's logged z stayed below -z_cut up to now (its evidence
+        trail), else this round."""
+        first = round_idx
+        for d in reversed(self.diagnostics):
+            r, z = int(d["round"]), dict(d["z"])  # type: ignore[call-overload]
+            if r < round_idx - self.rewind_window or z.get(client, 0.0) >= -self.screen.z_cut:
+                break
+            first = r
+        return first
+
+    def _rewind_to(self, target: int) -> None:
+        """Restore the chosen coordinates of the Global model and of every parent to the Global model stored at
+        the start of `target` (H8, variant a: FedEraser-style rollback without replay)."""
+        old = self.stored[target]
+        assert self.rewind_mask is not None
+        self.global_vec = torch.where(self.rewind_mask, old, self.global_vec)
+        for g in self.parents:
+            self.parents[g] = torch.where(self.rewind_mask, old, self.parents[g])
+
     def run_round(self, round_idx: int) -> None:
         start = self.global_vec.clone()
+        if self.rewind != "none":
+            self.stored[round_idx] = start.clone()
+            for r in [r for r in self.stored if r < round_idx - self.rewind_window]:
+                del self.stored[r]
         ids = list(range(len(self.clients)))
         to_global, to_parent = self._train_all(start, round_idx)
 
+        before = set(self.evidence.isolated)
         isolated = self.evidence.isolated
         for c in ids:  # sentinel, as in Defended FedHEP
             if not (torch.isfinite(to_global[c]).all() and torch.isfinite(to_parent[c]).all()):
@@ -146,9 +194,19 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                 self.parents[g] = ref + step
 
         global_trust: dict[int, float] = {}
+        rewind_target = None
+        new_isolated = set(self.evidence.isolated) - before
+        if self.rewind != "none" and new_isolated:
+            # H8: the newly isolated clients' updates since their first suspicious round are in the shared model.
+            # Go back to the stored model from before the earliest of those rounds instead of aggregating.
+            rewind_target = max(min(self.stored), min(self._first_suspicious(c, round_idx) for c in new_isolated))
+            self._rewind_to(rewind_target)
+            self.rewound.append({"round": round_idx, "target": rewind_target})
+            kept = []
         if kept and self.global_rule == "arc_nnm_tm":
             # Layer L0 under the screen: the attackers still assumed present are those not yet excluded.
-            f = max(0, min(self.global_f - len(excluded), (len(kept) - 1) // 2))
+            f = self.global_f if self.global_f_fixed else self.global_f - len(excluded)
+            f = max(0, min(f, (len(kept) - 1) // 2))
             step = arc_nnm_trimmed_mean_rule(torch.stack([to_global[c] - start for c in kept]), f).update
             self.global_vec = start + step
             global_trust = {c: 1.0 / len(kept) for c in kept}
@@ -167,7 +225,8 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                                  "excluded": sorted(excluded), "group_z": parent_z,
                                  "flagged_groups": sorted(flagged_groups), "align_z": align_z,
                                  "evidence": dict(self.evidence.evidence), "global_trust": global_trust,
-                                 "regroup": event.value, "groups": dict(self.grouping.assignment)})
+                                 "regroup": event.value, "groups": dict(self.grouping.assignment),
+                                 "rewind_target": rewind_target})
 
     def _probe_scores(self, uploads: dict[int, torch.Tensor], scored: list[int], in_ref: torch.Tensor
                       ) -> torch.Tensor:

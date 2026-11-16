@@ -55,6 +55,8 @@ class FedHEPConfig:
     similarity_on: str = "full"          # what grouping compares: "full" flat update (authors) or "weights" only
     exit_guard: bool = False             # evaluation only: also score with the depth-exit guard (rfl.defense.
                                          # exit_guard); the main metrics stay the unguarded ones
+    head_agreement: bool = False         # evaluation only: also score with head-agreement inference (idea 9:
+                                         # the personal heads overrule the ensemble when they agree against it)
 
 
 @dataclass(frozen=True)
@@ -87,6 +89,11 @@ class PlusConfig:
     gap_gate: float = 0.0              # > 0: bad evidence only in rounds whose scores split (max gap / median gap)
     global_rule: str = "sccf"          # Global step over kept clients: "sccf" (trust-weighted mean) | "arc_nnm_tm"
     global_f: int = 3                  # f for arc_nnm_tm before screening; reduced by the clients excluded
+    global_f_fixed: bool = False       # keep f at global_f after exclusions (ALIE puzzle, candidate c)
+    rewind: str = "none"               # H8: when a client is isolated, rewind the shared model to before its first
+                                       # suspicious round: "none" | "trunk" | "trunk_root" (trunk and root head) |
+                                       # "all" (every shared coordinate, personal heads included)
+    rewind_window: int = 10            # Global models kept for the rewind (one per round)
 
 
 

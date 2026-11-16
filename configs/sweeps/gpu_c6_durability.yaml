@@ -1,0 +1,25 @@
+# Campaign stage C6, durability at 100 rounds (prediction P13; BackFed's lifespan metric). Backdoor for the
+# first 50 rounds, then the attackers train honestly: how long does success stay above 50% under each defense,
+# and does the rewind end it. GPU server. 21 runs of 100 rounds.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 100
+  run.eval_every: 5
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  attack.kind: backdoor
+  attack.count: 3
+  attack.stop_round: 50
+axes:
+  - c6__fedhep: {config: configs/cifar100_fedhep.yaml}
+    c6__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true}
+    c6__l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm,
+             robust.assumed_attackers: 3}
+    c6__r3g8: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}
+    c6__r3w: {<<: *r3, plus.signal: weights}
+    c6__r3w_tr: {<<: *r3, plus.signal: weights, plus.rewind: trunk_root}
+    c6__r3_tr: {<<: *r3, plus.rewind: trunk_root}

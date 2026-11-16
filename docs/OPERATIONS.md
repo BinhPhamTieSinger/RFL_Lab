@@ -96,6 +96,16 @@ tail -n 3 logs/qbatch-*.out             # each job ends with "finished in X min"
 ```
 Then push the pilot (below). Choose `--procs` from it: the most runs per hour while peak GPU memory stays under about 28 GB of the 32 GB.
 
+**The campaign, in order** (each line one job; submit the next when the previous has finished, or list several files in one job):
+```bash
+qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/gpu_d1_signals.yaml configs/sweeps/gpu_c2_alie.yaml --procs 3 --set data.root=data
+qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/gpu_c4_d2.yaml configs/sweeps/gpu_c5_recovery.yaml --procs 3 --set data.root=data
+qbatch --gpus 4 --cpus 16 --mem 96G --time 24:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/gpu_c6_durability.yaml --procs 3 --set data.root=data
+```
+
 **A sweep on all four GPUs:**
 ```bash
 qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \

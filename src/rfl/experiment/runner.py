@@ -156,6 +156,19 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
                     row["asr_heads"] = {h: attack_success_rate(partial(server.predict_head, h), clients, trigger,
                                                                cfg.attack.backdoor_target, exclude=attackers)
                                         for h in ("root", "parent", "local")}
+            if cfg.fedhep.head_agreement:
+                if not hasattr(server, "predict_agree"):
+                    raise ValueError(f"fedhep.head_agreement needs a FedHEP-family method, not {cfg.method}")
+                hep: Any = server
+                hep.overruled = hep.seen = 0
+                a_rep = evaluate_clients(hep.predict_agree, clients,
+                                         exclude=getattr(server, "unscored", frozenset()))
+                row["head_agreement"] = {"pooled_acc": a_rep.pooled, "bottom10": a_rep.bottom10,
+                                         "overrule_rate": hep.overruled / max(1, hep.seen)}
+                if trigger is not None:
+                    row["head_agreement"]["asr"] = attack_success_rate(hep.predict_agree, clients, trigger,
+                                                                       cfg.attack.backdoor_target,
+                                                                       exclude=attackers)
             if guard is not None:
                 guard.fit(server, clients, frozenset(attackers))
                 guarded = partial(guard.predict, server)

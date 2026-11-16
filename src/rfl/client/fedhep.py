@@ -212,3 +212,26 @@ def ensemble_logits(model: MultiHeadResNet9, images: torch.Tensor, memory: HeadM
     if memory.active_mask is not None:
         z = z.masked_fill(~memory.active_mask.to(z.device).unsqueeze(0), -1e4)
     return z
+
+
+def head_agreement_logits(model: MultiHeadResNet9, images: torch.Tensor, memory: HeadMemory
+                          ) -> tuple[torch.Tensor, int]:
+    """Idea 9 (docs/IDEAS.md): the ensemble prediction, except where the client's two personal heads agree with
+    each other and disagree with it; there the personal heads decide. A backdoor is learned by the shared trunk
+    and mapped to its target by the shared root head, while the parent and local heads, trained on clean data,
+    keep the true label (per-head success in docs/figures/phase6_backdoor_heads.png). Returns the logits and how
+    many inputs were overruled. Evaluation only; training is unchanged."""
+    z = ensemble_logits(model, images, memory)
+    _, z_parent, z_local = model(images)
+    if memory.active_mask is not None:
+        keep = memory.active_mask.to(z.device).unsqueeze(0)
+        z_parent = z_parent.masked_fill(~keep, -1e4)
+        z_local = z_local.masked_fill(~keep, -1e4)
+    p_parent, p_local, p_ens = z_parent.argmax(1), z_local.argmax(1), z.argmax(1)
+    overrule = (p_parent == p_local) & (p_parent != p_ens)
+    if not overrule.any():
+        return z, 0
+    personal = z_local / max(1e-6, z_local.std().item()) + z_parent / max(1e-6, z_parent.std().item())
+    personal = personal * (z.std().item() / max(1e-6, personal.std().item()))
+    return torch.where(overrule.unsqueeze(1), personal, z), int(overrule.sum().item())
+

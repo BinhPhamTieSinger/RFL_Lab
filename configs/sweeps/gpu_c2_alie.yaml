@@ -1,0 +1,27 @@
+# Campaign stage C2, the ALIE accuracy puzzle (docs/PREDICTIONS.md, section 2): isolating the ALIE attackers under
+# R3 costs 1.0-2.3 points against L0 alone, which isolates nobody. Three candidates, one variant each:
+# (a) regrouping after an isolation reshuffles parents: plus.regroup false; (c) f falls to 0 after the isolations,
+# so L0 degenerates to a plain mean: plus.global_f_fixed; (b) the attackers' data is lost: what remains after
+# (a) and (c). Baselines g1__r3 and g1__l0 under clean and alie3 come from gpu_d1_signals. Also gate 12, the
+# D1 winner on the Mac, on CUDA. GPU server. 24 runs.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - c2__r3_noregroup: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: false, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}
+    c2__r3_ffixed: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.global_f_fixed: true}
+    c2__r3_noregroup_ffixed: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: false, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.global_f_fixed: true}
+    c2__r3g12: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 12}
+  - clean: {}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}

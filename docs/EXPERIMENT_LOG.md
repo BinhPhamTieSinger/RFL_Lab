@@ -1042,3 +1042,16 @@ The nine backdoor runs of R2, R3 gate 8 and R3 gate 12 (D1, Mac) record success 
 | R3, gate 12 | 71 | 45 | 22 | 62 |
 
 Qin et al. (KDD 2023) report the same mechanism in FedRep: the shared trunk learns the trigger features, but a classifier trained only on clean local data never maps them to the target label. Two consequences, both now written as predictions in `PREDICTIONS.md` before the GPU runs: (1) a zero-cost prediction-time defense, letting the personal heads overrule the root head when they disagree (idea 9 in `IDEAS.md`); (2) recovery (H8) should rewind the trunk and the root head, not the trunk alone. `PREDICTIONS.md` also states the expected outcome of every queued experiment, the ALIE accuracy puzzle's three candidate explanations with the run that separates them, the model we expect to publish, and a 2,700-run campaign plan ordered so that method decisions come before scale.
+
+## 2026-11-16 · Run plan for the lab GPU server (campaign C1–C6, 351 runs)
+Written into the code today, all tested (104 tests pass): head-agreement inference (`fedhep.head_agreement`, idea 9), the rewind on isolation (`plus.rewind`, H8 variant a), and `plus.global_f_fixed` for the ALIE puzzle. Sweeps, to be submitted in this order with `scripts/gpu_sweep.py` once the pilot has set `--procs`:
+
+| Order | Sweep | Runs | Tests |
+|---|---|---|---|
+| 1 | `gpu_d1_signals` | 150 | P1–P7, P11: the six signals, the exit guard and head-agreement inference on fresh CUDA baselines |
+| 2 | `gpu_c2_alie` | 24 | the ALIE puzzle: regrouping off, f held fixed, both, and gate 12 |
+| 3 | `gpu_c4_d2` | 120 | the D2 ladder on CUDA with the whole-model signals |
+| 4 | `gpu_c5_recovery` | 36 | P8–P10: rewind trunk / trunk + root head / all, with the backdoor on and stopped at round 10 |
+| 5 | `gpu_c6_durability` | 21 | P13: 100 rounds, backdoor stopped at round 50; lifespan |
+
+Every run also records the depth-exit guard and head-agreement metrics, so no separate runs are needed for them. Results are compared only with other CUDA runs. The predictions each sweep is checked against are in `PREDICTIONS.md`.

@@ -319,3 +319,67 @@ def test_new_signals_run_end_to_end_and_leave_out_sign_flippers(tmp_path, signal
     z1 = result["diagnostics"][0]["z"]
     assert {int(c) for c in sorted(z1, key=z1.get)[:2]} == attackers
     assert all(attackers <= set(d["flagged"]) for d in result["detection"][1:])
+
+
+def test_head_agreement_overrules_only_where_the_personal_heads_agree_against_the_ensemble():
+    from rfl.client.fedhep import HeadMemory, ensemble_logits, head_agreement_logits
+
+    torch.manual_seed(0)
+    model = MultiHeadResNet9(3, 10, base_channels=8).eval()
+    memory = HeadMemory(r_skew=0.5)
+    x = torch.randn(32, 3, 32, 32)
+    with torch.no_grad():
+        z, overruled = head_agreement_logits(model, x, memory)
+        plain = ensemble_logits(model, x, memory)
+        _, zp, zl = model(x)
+    agree = (zp.argmax(1) == zl.argmax(1)) & (zp.argmax(1) != plain.argmax(1))
+    assert overruled == int(agree.sum())
+    assert torch.equal(z[~agree], plain[~agree])                      # untouched where no overrule
+    assert torch.equal(z[agree].argmax(1), zp[agree].argmax(1))        # overruled inputs follow the personal heads
+
+
+def test_head_agreement_metrics_are_recorded_and_training_is_unchanged(tmp_path):
+    base = run_experiment(_cfg(tmp_path, **{"plus.reference": "median"}))
+    on = run_experiment(_cfg(tmp_path, name="plus_agree", **{"plus.reference": "median",
+                                                              "fedhep.head_agreement": True}))
+    assert on["history"][-1]["pooled_acc"] == base["history"][-1]["pooled_acc"]   # main metrics unchanged
+    extra = on["history"][-1]["head_agreement"]
+    assert set(extra) == {"pooled_acc", "bottom10", "overrule_rate"} and 0.0 <= extra["overrule_rate"] <= 1.0
+    with pytest.raises(ValueError):
+        run_experiment(load_config(overrides={"name": "avg_agree", "method": "fedavg", "data.dataset": "synthetic",
+                                              "run.rounds": 1, "run.device": "cpu",
+                                              "run.output_dir": str(tmp_path), "fedhep.head_agreement": True}))
+
+
+def test_rewind_mask_covers_the_named_layers():
+    from rfl.data.clients import build_clients
+    from rfl.data.partition import make_partitioner
+    from rfl.experiment.registry import METHODS
+    from rfl.experiment.runner import synthetic_data
+
+    cfg = _cfg(".", **{"plus.rewind": "trunk_root"})
+    torch.manual_seed(0)
+    model = MultiHeadResNet9(3, 10, base_channels=8)
+    x_tr, y_tr, x_te, y_te = synthetic_data(600, 300, 10, 3, torch.device("cpu"))
+    clients = build_clients(x_tr, y_tr, x_te, y_te, make_partitioner(0.5), 6, 3)
+    server = METHODS["fedhep_plus"](cfg, model, clients)
+    sizes = {k: v.numel() for k, v in server.template.items()}
+    total = sum(sizes.values())
+    personal = sum(n for k, n in sizes.items() if k.startswith(("fc2_parent", "fc2_local")))
+    root = sizes["fc2_root.weight"] + sizes["fc2_root.bias"]
+    assert int(server.rewind_mask.sum()) == total - personal
+    assert int(server._rewind_mask("trunk").sum()) == total - personal - root
+    assert int(server._rewind_mask("all").sum()) == total
+    with pytest.raises(ValueError):
+        METHODS["fedhep_plus"](_cfg(".", **{"plus.rewind": "heads"}), model, clients)
+
+
+def test_rewind_restores_the_stored_model_once_per_isolation(tmp_path):
+    over = {"plus.reference": "median", "plus.rewind": "trunk_root", "plus.rewind_window": 5, "run.rounds": 4,
+            "run.eval_every": 4}
+    result = run_experiment(_cfg(tmp_path, name="plus_rewind", **over))
+    rounds = [d["rewind_target"] for d in result["diagnostics"]]
+    done = [(d["round"], d["rewind_target"]) for d in result["diagnostics"] if d["rewind_target"] is not None]
+    assert len(done) == 1 and done[0][1] <= done[0][0]            # the two flippers isolated together: one rewind
+    assert rounds.count(None) == len(rounds) - 1
+    assert set(result["attackers"]) <= set(result["detection"][-1]["flagged"])

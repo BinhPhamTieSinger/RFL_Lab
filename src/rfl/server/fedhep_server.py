@@ -23,7 +23,7 @@ import torch
 from rfl.aggregation.fedavg import FedAvg
 from rfl.aggregation.momentum import adaptive_momentum_beta
 from rfl.attacks.adaptive import CoordinatedAttack
-from rfl.client.fedhep import FedHEPTrainer, HeadMemory, ensemble_logits
+from rfl.client.fedhep import FedHEPTrainer, HeadMemory, ensemble_logits, head_agreement_logits
 from rfl.core.interfaces import Attack
 from rfl.core.state import flatten, unflatten
 from rfl.core.types import ClientData, ClientUpdate, DetectionResult, RoundReport
@@ -57,6 +57,7 @@ class FedHEPServer:
         self.parents = {g: self.global_vec.clone() for g in range(grouping.num_groups)}
         self.memory = [HeadMemory() for _ in clients]
         self.trained: list[torch.Tensor] = [self.global_vec.clone() for _ in clients]  # each client's last model
+        self.overruled = self.seen = 0   # head-agreement inference counters (predict_agree)
         self.report: RoundReport | None = None
         self.diagnostics: list[dict[str, object]] = []  # per round: grouping event, agreement, parent rule used
 
@@ -135,6 +136,16 @@ class FedHEPServer:
         self._load(self.trained[client_id])
         self.model.eval()
         return ensemble_logits(self.model, images, self.memory[client_id])
+
+    @torch.no_grad()
+    def predict_agree(self, client_id: int, images: torch.Tensor) -> torch.Tensor:
+        """Head-agreement inference (idea 9); counts overruled inputs in `self.overruled` and `self.seen`."""
+        self._load(self.trained[client_id])
+        self.model.eval()
+        z, n = head_agreement_logits(self.model, images, self.memory[client_id])
+        self.overruled += n
+        self.seen += images.shape[0]
+        return z
 
     @torch.no_grad()
     def predict_head(self, head: str, client_id: int, images: torch.Tensor) -> torch.Tensor:

@@ -136,7 +136,8 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
     if p.signal in ("probe_logits", "head_gap"):
         probe = _probe_set(cfg, clients, p.probe_size)
     return FedHEPPlusServer(hep, clients, trainer, grouping, screen, regroup=p.regroup, attack=attack,
-                            attackers=attackers, global_rule=p.global_rule, global_f=p.global_f, probe=probe)
+                            attackers=attackers, global_rule=p.global_rule, global_f=p.global_f, probe=probe,
+                            global_f_fixed=p.global_f_fixed, rewind=p.rewind, rewind_window=p.rewind_window)
 
 
 def _probe_set(cfg: ExperimentConfig, clients: Sequence[ClientData], size: int) -> torch.Tensor:
