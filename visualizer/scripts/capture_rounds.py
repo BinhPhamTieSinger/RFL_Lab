@@ -1,5 +1,6 @@
 """Capture controlled, real CIFAR-100 visualization rounds outside curated research history."""
 
+import argparse
 import json
 import os
 import subprocess
@@ -11,7 +12,14 @@ VIZ = Path(__file__).resolve().parents[1]
 LAB = VIZ.parent
 OUT = VIZ / "frontend/research/captures"
 OUT.mkdir(parents=True, exist_ok=True)
-methods = sys.argv[1:] or [
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("methods", nargs="*")
+parser.add_argument(
+    "--attack",
+    choices=["label_flip", "sign_flip", "gradient_ascent", "random_noise", "backdoor", "alie", "min_max", "clean"],
+)
+args = parser.parse_args()
+methods = args.methods or [
     "fedavg",
     "fedprox",
     "scaffold",
@@ -25,6 +33,8 @@ methods = sys.argv[1:] or [
 ]
 for method in methods:
     variants = ["sign_flip", None] if method == "fedhep_plus" else ["sign_flip"]
+    if args.attack:
+        variants = [None if args.attack == "clean" else args.attack]
     for attack in variants:
         capture_id = f"{method}-{attack or 'clean'}"
         destination = OUT / f"{capture_id}.json"

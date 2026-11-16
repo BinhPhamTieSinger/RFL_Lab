@@ -11,7 +11,11 @@ export default function Documentation() {
   const [selected, setSelected] = useState("docs/ARCHITECTURE.md");
   const [error, setError] = useState("");
   useEffect(() => {
-    fetch("/api/documentation")
+    setSelected(
+      new URL(window.location.href).searchParams.get("document") ??
+        "docs/ARCHITECTURE.md",
+    );
+    fetch("/research/documentation.json")
       .then(async (response) => {
         if (!response.ok) throw Error("Documentation could not be loaded");
         setDocuments(await response.json());
@@ -33,7 +37,12 @@ export default function Documentation() {
         Research document
         <select
           value={document?.path ?? selected}
-          onChange={(e) => setSelected(e.target.value)}
+          onChange={(e) => {
+            setSelected(e.target.value);
+            const url = new URL(window.location.href);
+            url.searchParams.set("document", e.target.value);
+            window.history.replaceState(null, "", url);
+          }}
         >
           {documents.map((item) => (
             <option key={item.path} value={item.path}>

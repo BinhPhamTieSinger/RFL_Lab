@@ -350,17 +350,26 @@ def observed(emit):
                         kind=kind,
                         clean_norm=float((trained - start).norm()),
                         sent_norm=float((result - start).norm()),
+                        clean_update=(trained[:8] - start[:8]).tolist(),
+                        sent_update=(result[:8] - start[:8]).tolist(),
+                        scope="first eight captured update coordinates",
                     ),
                 )
             if kind == "label_flip":
                 wrap(
                     server.attack,
                     "poison_labels",
-                    after=lambda result, seconds, labels, *a: event(
+                    after=lambda result, seconds, labels, num_classes: event(
                         "attack_executed",
                         client=state["client"],
                         kind=kind,
                         changed_labels=int((result != labels).sum()),
+                        num_classes=num_classes,
+                        labels_before=labels[:12].tolist(),
+                        labels_after=result[:12].tolist(),
+                        histogram_before=torch.bincount(labels, minlength=num_classes).tolist(),
+                        histogram_after=torch.bincount(result, minlength=num_classes).tolist(),
+                        scope="first twelve training targets and full target histograms",
                     ),
                 )
             if kind == "backdoor":

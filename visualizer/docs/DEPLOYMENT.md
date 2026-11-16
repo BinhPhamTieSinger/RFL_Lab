@@ -4,7 +4,7 @@ The Netlify site is `https://rfl-lab-visualizer.netlify.app`.
 
 New training runs on the owner's workstation. The deployed site connects through the authenticated CPU bridge described in ONLINE_CPU.md. For a fully local interface, run `bash visualizer/scripts/dev.sh` from RFL_Lab and open `http://127.0.0.1:3000`. CPU is the default, including configurations loaded from historical GPU runs. The local API serializes workers and supports queued and active cancellation.
 
-Netlify runs with `RFL_ARCHIVE_ONLY=1`. It serves curated research results and captured CPU visualization traces. Load captured visualization opens a trace. Next operation advances inspection. Play animation animates the current transfer. The local bridge opens a browser session connected to its current HTTPS endpoint. Custom training requests pass through the same-origin Netlify proxy with the owner’s private CPU key.
+Netlify runs with `RFL_ARCHIVE_ONLY=1`. It serves curated research results and captured CPU visualization traces. Load captured visualization opens a trace. Next operation advances inspection. Play animation advances through recorded operations and animates transfers. The local bridge opens a browser session connected to its current HTTPS endpoint. Custom training requests pass through the same-origin Netlify proxy with the owner’s private CPU key.
 
 Continuous deployment uses the existing private GitHub repository, its main branch, a read-only Netlify deploy key and the GitHub push webhook. Build configuration is in `visualizer/frontend/netlify.toml`. The build runs `npm run build` in `visualizer/frontend`. The prebuild exporter reads the output folders selected in `frontend/research/history-manifest.json`. Additional local-only results present at initial publication are preserved in `frontend/research/additional-history.json`. New results need to be pushed to GitHub for hosted publication.
 
@@ -14,7 +14,7 @@ The visualization capture JSON files and additional history are intentional publ
 
 ## Workbench playback and curated history
 
-The hosted Live Workbench opens directly. Select a model's captured visualization, load it and use Play animation, Pause animation, Next operation or the event timeline. Animation speed is adjustable. Each result waits for explicit navigation. Recorded computation durations remain visible. Reduced-motion mode shows static transfer markers.
+The hosted Live Workbench opens directly. Select a model's captured visualization, load it and use Play animation, Pause animation, Next operation or the event timeline. Animation speed is adjustable. Pause holds the current result for inspection. Recorded computation durations remain visible. Reduced-motion mode shows static transfer markers.
 
 New training uses the connected computer CPU. Hosted capture playback uses captured real events. Every capture hydrates its own configuration before its topology appears, including attack settings. The hierarchy, attack roles and loaded sidebar always refer to the same execution.
 

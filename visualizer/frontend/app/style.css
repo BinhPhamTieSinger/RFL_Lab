@@ -785,3 +785,70 @@ details:not([open]) > :not(summary) {
   table-layout: fixed;
   overflow-wrap: anywhere;
 }
+
+.sticky-workbench-controls {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+}
+.sticky-workbench-controls > button {
+  float: right;
+  margin: 5px;
+}
+.sticky-workbench-controls .playback-controls {
+  border: 0;
+  padding: 0;
+}
+.sticky-trace {
+  clear: both;
+  padding: 6px 0;
+}
+.sticky-trace .timeline {
+  max-height: 220px;
+  overflow: auto;
+  padding: 8px 0;
+}
+.workbench.sidebar-hidden {
+  grid-template-columns: minmax(380px, 1fr) 300px;
+}
+.selection-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 0 0;
+}
+.selection-control input {
+  margin: 0;
+}
+@media (max-width: 1150px) {
+  .workbench.sidebar-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .sticky-workbench-controls .playback-controls span,
+  .sticky-workbench-controls .playback-controls label {
+    display: none;
+  }
+  .sticky-workbench-controls button {
+    padding: 6px;
+    font-size: 12px;
+  }
+}
+meter {
+  width: 110px;
+  accent-color: #888;
+}
+meter::-webkit-meter-bar {
+  background: var(--field);
+  border: 1px solid var(--border);
+}
+meter::-webkit-meter-optimum-value {
+  background: #888;
+}
+meter::-moz-meter-bar {
+  background: #888;
+}

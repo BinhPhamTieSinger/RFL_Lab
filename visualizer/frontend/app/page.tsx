@@ -49,14 +49,29 @@ type Event = {
 };
 type Field = { key: string; default: any; options: any[] | null; type: string };
 async function api(path: string, body?: unknown) {
-  const key = sessionStorage.getItem("rfl-cpu-key");
-  const endpoint = sessionStorage.getItem("rfl-cpu-url");
-  const response = await fetch("/api" + path, {
+  const key =
+    localStorage.getItem("rfl-cpu-key") ??
+    sessionStorage.getItem("rfl-cpu-key");
+  const endpoint =
+    localStorage.getItem("rfl-cpu-url") ??
+    sessionStorage.getItem("rfl-cpu-url");
+  const resource = path.split("?")[0];
+  const staticPath =
+    resource === "/history"
+      ? "/research/history.json"
+      : resource === "/documentation"
+        ? "/research/documentation.json"
+        : resource === "/live/captures"
+          ? "/research/captures.json"
+          : resource.startsWith("/live/captures/")
+            ? `/research/captures/${resource.split("/").at(-1)}.json`
+            : null;
+  const response = await fetch(staticPath ?? "/api" + path, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(key ? { "X-RFL-Key": key } : {}),
-      ...(endpoint ? { "X-RFL-Endpoint": endpoint } : {}),
+      ...(!staticPath && key ? { "X-RFL-Key": key } : {}),
+      ...(!staticPath && endpoint ? { "X-RFL-Endpoint": endpoint } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -137,6 +152,7 @@ export default function Workbench() {
   const [speed, setSpeed] = useState(1);
   const [followCamera, setFollowCamera] = useState(true);
   const [focus, setFocus] = useState("");
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [historyTarget, setHistoryTarget] = useState("");
   const [cpuKey, setCpuKey] = useState("");
   const [cpuEndpoint, setCpuEndpoint] = useState("");
@@ -149,34 +165,90 @@ export default function Workbench() {
       const url = new URL(window.location.href);
       const target = url.searchParams.get("experiment") ?? "";
       setHistoryTarget(target);
-      if (target) setView("Experiment history");
+      const tab = url.searchParams.get("tab");
+      setView(
+        [
+          "Live Workbench",
+          "Architecture",
+          "Mathematical inspection",
+          "Experiment history",
+          "Documentation",
+        ].includes(tab ?? "")
+          ? tab!
+          : target
+            ? "Experiment history"
+            : "Live Workbench",
+      );
       const key = new URLSearchParams(url.hash.slice(1)).get("cpu-key");
       const endpoint = new URLSearchParams(url.hash.slice(1)).get("cpu-api");
-      if (endpoint && key) sessionStorage.setItem("rfl-cpu-url", endpoint);
+      if (endpoint && key) {
+        sessionStorage.setItem("rfl-cpu-url", endpoint);
+        localStorage.setItem("rfl-cpu-url", endpoint);
+      }
       if (key) {
         sessionStorage.setItem("rfl-cpu-key", key);
+        localStorage.setItem("rfl-cpu-key", key);
         url.hash = "";
         window.history.replaceState(null, "", url);
       }
-      setCpuKey(sessionStorage.getItem("rfl-cpu-key") ?? "");
-      setCpuEndpoint(sessionStorage.getItem("rfl-cpu-url") ?? "");
+      setCpuKey(
+        localStorage.getItem("rfl-cpu-key") ??
+          sessionStorage.getItem("rfl-cpu-key") ??
+          "",
+      );
+      setCpuEndpoint(
+        localStorage.getItem("rfl-cpu-url") ??
+          sessionStorage.getItem("rfl-cpu-url") ??
+          "",
+      );
+      const storedKey =
+        localStorage.getItem("rfl-cpu-key") ??
+        sessionStorage.getItem("rfl-cpu-key");
+      const storedEndpoint =
+        localStorage.getItem("rfl-cpu-url") ??
+        sessionStorage.getItem("rfl-cpu-url");
+      if (storedKey && storedEndpoint) {
+        localStorage.setItem("rfl-cpu-key", storedKey);
+        localStorage.setItem("rfl-cpu-url", storedEndpoint);
+      }
     };
     shared();
-    installConfiguration({ method: "fedhep_plus", overrides: {} }).catch((e) =>
-      setError(e.message),
-    );
+    const initialUrl = new URL(window.location.href);
+    const savedCapture = initialUrl.searchParams.get("capture");
+    const savedRun = initialUrl.searchParams.get("run");
+    if (savedRun)
+      api(`/experiments/${savedRun}`)
+        .then(async (run) => {
+          await installConfiguration(run.config);
+          setStatus(run.status);
+          connect(run.id, Number(initialUrl.searchParams.get("step") ?? 0));
+        })
+        .catch((error) => setError(error.message));
+    else if (savedCapture)
+      loadCapture(
+        savedCapture,
+        Number(initialUrl.searchParams.get("step") ?? 0),
+        initialUrl.searchParams.get("tab") ?? "Live Workbench",
+      );
+    else
+      installConfiguration({ method: "fedhep_plus", overrides: {} }).catch(
+        (e) => setError(e.message),
+      );
+    setSidebarHidden(localStorage.getItem("rfl-sidebar-hidden") === "true");
     window.addEventListener("popstate", shared);
     api("/capabilities")
       .then((c) => {
         setCapabilities(c);
       })
       .catch((e) => setError(e.message));
-    Promise.all([api("/models"), api("/formulas"), api("/history")])
-      .then(([m, f, h]) => {
+    Promise.all([api("/models"), api("/formulas")])
+      .then(([m, f]) => {
         setModels(m);
         setFormulas(f);
-        setHistory(h);
       })
+      .catch((e) => setError(e.message));
+    api("/history")
+      .then(setHistory)
       .catch((e) => setError(e.message));
     api("/live/captures")
       .then(setCaptures)
@@ -217,11 +289,15 @@ export default function Workbench() {
     }, 100);
     return () => clearInterval(timer);
   }, []);
-  function connect(runId: string) {
+  function connect(runId: string, restoredStep = 0) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("run", runId);
+    url.searchParams.delete("capture");
+    window.history.replaceState(null, "", url);
     stream.current?.close();
     buffer.current = [];
     setEvents([]);
-    setCursor(0);
+    setCursor(Math.max(0, restoredStep));
     setClearAt(0);
     setId(runId);
     let closed = false;
@@ -296,7 +372,11 @@ export default function Workbench() {
       if (request === configurationRequest.current) setSchemaLoading(false);
     }
   }
-  async function loadCapture(selectedId = captureId) {
+  async function loadCapture(
+    selectedId = captureId,
+    restoredStep?: number,
+    restoredView = "Live Workbench",
+  ) {
     setBusy(true);
     setError("");
     stream.current?.close();
@@ -305,18 +385,25 @@ export default function Workbench() {
       const capture = await api(`/live/captures/${selectedId}`);
       if (!(await installConfiguration(capture.config))) return;
       setCaptureMode(true);
+      setCaptureId(selectedId);
       setPlaying(false);
       setEvents(capture.events);
       setId(capture.id);
       setCursor(
         Math.max(
           0,
-          capture.events.findIndex((e: Event) => e.type === "initialized"),
+          restoredStep === undefined
+            ? capture.events.findIndex((e: Event) => e.type === "initialized")
+            : Math.min(restoredStep, capture.events.length - 1),
         ),
       );
       setClearAt(0);
       setStatus("Visualization playback");
-      setView("Live Workbench");
+      navigate(restoredView);
+      const url = new URL(window.location.href);
+      url.searchParams.set("capture", selectedId);
+      url.searchParams.delete("run");
+      window.history.replaceState(null, "", url);
       setFocus("");
     } catch (e) {
       setError((e as Error).message);
@@ -324,13 +411,47 @@ export default function Workbench() {
       setBusy(false);
     }
   }
-  // Arriving results accumulate independently. Only the researcher advances inspection.
+  function navigate(next: string) {
+    setView(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", next);
+    if (next !== "Experiment history") {
+      url.searchParams.delete("experiment");
+      url.searchParams.delete("section");
+    }
+    window.history.pushState(null, "", url);
+  }
+  useEffect(() => {
+    if (!id || cursor === null) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("step", String(cursor));
+    window.history.replaceState(null, "", url);
+  }, [id, cursor]);
+  const nextPlayback = events.findIndex(
+    (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+  );
+  useEffect(() => {
+    if (!playing) return;
+    const next = nextPlayback;
+    if (next < 0) {
+      if (!["running", "pending", "queued", "cancelling"].includes(status))
+        setPlaying(false);
+      return;
+    }
+    const timer = setTimeout(() => setCursor(next), 1800 / speed);
+    return () => clearTimeout(timer);
+  }, [playing, cursor, nextPlayback, speed, status]);
   function seek(index: number) {
     setPlaying(false);
     setCursor(index);
     if (followCamera && events[index]) setFocus(eventFocus(events[index]));
   }
   function resetInspection() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("capture");
+    url.searchParams.delete("run");
+    url.searchParams.delete("step");
+    window.history.replaceState(null, "", url);
     stream.current?.close();
     buffer.current = [];
     setEvents([]);
@@ -641,7 +762,7 @@ export default function Workbench() {
             <button
               key={item}
               aria-current={view === item ? "page" : undefined}
-              onClick={() => setView(item)}
+              onClick={() => navigate(item)}
             >
               {item}
             </button>
@@ -654,256 +775,55 @@ export default function Workbench() {
           </div>
         )}
         {view === "Live Workbench" ? (
-          <main className="workbench">
-            <aside className="configuration">
-              <h2>Experiment setup</h2>
-              <p>Parameters are passed to the research implementation.</p>
-              {schemaLoading && <p role="status">Loading model settings…</p>}
-              <label>
-                Method
-                <select
-                  aria-label="Method"
-                  value={method}
-                  disabled={locked}
-                  onChange={(e) => {
-                    resetInspection();
-                    setMethod(e.target.value);
-                    installConfiguration({
-                      method: e.target.value,
-                      overrides: {},
-                    }).catch((error) => setError(error.message));
-                  }}
-                >
-                  {models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {titles[m.id]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Visualization capture
-                <select
-                  aria-label="Visualization capture"
-                  value={captureId}
-                  disabled={running}
-                  onChange={(e) => setCaptureId(e.target.value)}
-                >
-                  {captures.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {titles[c.method]} · {c.attack ?? "clean"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button disabled={running || busy} onClick={() => loadCapture()}>
-                Load captured visualization
+          <>
+            <div className="sticky-workbench-controls">
+              <button
+                aria-expanded={!sidebarHidden}
+                onClick={() => {
+                  setSidebarHidden(!sidebarHidden);
+                  localStorage.setItem(
+                    "rfl-sidebar-hidden",
+                    String(!sidebarHidden),
+                  );
+                }}
+              >
+                {sidebarHidden ? "Show settings" : "Hide settings"}
               </button>
-              {(capabilities.requiresKey || !capabilities.training) && (
-                <details open={!cpuKey}>
-                  <summary>
-                    {capabilities.requiresKey
-                      ? capabilities.mode
-                      : "Connect your computer CPU"}
-                  </summary>
-                  <label>
-                    CPU bridge address
-                    <input
-                      type="url"
-                      value={cpuEndpoint}
-                      disabled={running}
-                      placeholder="https://…trycloudflare.com"
-                      onChange={(e) => setCpuEndpoint(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    CPU access key
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      disabled={running}
-                      value={cpuKey}
-                      onChange={(e) => {
-                        setCpuKey(e.target.value);
-                        sessionStorage.setItem("rfl-cpu-key", e.target.value);
-                      }}
-                    />
-                  </label>
-                  <button
-                    disabled={running}
-                    onClick={() => {
-                      if (cpuEndpoint.trim())
-                        sessionStorage.setItem(
-                          "rfl-cpu-url",
-                          cpuEndpoint.trim(),
-                        );
-                      else sessionStorage.removeItem("rfl-cpu-url");
-                      api("/capabilities")
-                        .then(setCapabilities)
-                        .catch((e) => setError(e.message));
-                    }}
-                  >
-                    Connect CPU
-                  </button>
-                  <small>
-                    The local bridge opens a connected browser tab. The key is
-                    stored for this tab’s session.
-                  </small>
-                </details>
-              )}
-              <div className="launch">
-                <button
-                  className="primary"
-                  disabled={
-                    busy ||
-                    running ||
-                    !fields.length ||
-                    !capabilities.training ||
-                    !capabilities.online ||
-                    (capabilities.requiresKey && !cpuKey)
-                  }
-                  onClick={start}
-                >
-                  {busy ? "Validating…" : "Run visualization"}
-                </button>
-                {(captureMode || (initialized && !running)) &&
-                  capabilities.training && (
-                    <button onClick={resetInspection}>
-                      Configure a new visualization
-                    </button>
-                  )}
-                {running && (
-                  <button
-                    onClick={() =>
-                      api(`/experiments/${id}/cancel`, {})
-                        .then(() => setStatus("cancelling"))
-                        .catch((e) => setError(e.message))
-                    }
-                  >
-                    Cancel execution
-                  </button>
-                )}
-                <small>
-                  {captureMode
-                    ? "Editing a setting starts a new configuration. Run visualization to compute its results."
-                    : capabilities.training
-                      ? "Run these settings on your computer’s CPU. Results wait for Next operation."
-                      : "Choose a captured execution to inspect its actual computations."}
-                </small>
-              </div>
-              {sections.map((section) => (
-                <details
-                  key={section}
-                  open={["data", "train", "run"].includes(section)}
-                >
-                  <summary>
-                    {section === "plus" ? "FedHEP+ screening" : section}
-                  </summary>
-                  {fields
-                    .filter(
-                      (f) => f.key.startsWith(section + ".") && displayField(f),
-                    )
-                    .map((f) => (
-                      <label key={f.key}>
-                        {f.key
-                          .split(".")
-                          .slice(1)
-                          .join(" ")
-                          .replaceAll("_", " ")}
-                        {f.options ? (
-                          <select
-                            disabled={locked}
-                            value={
-                              values[f.key] === null
-                                ? "null"
-                                : String(values[f.key])
-                            }
-                            onChange={(e) =>
-                              editValues({
-                                ...values,
-                                [f.key]:
-                                  e.target.value === "null"
-                                    ? null
-                                    : e.target.value,
-                              })
-                            }
-                          >
-                            {f.options
-                              .filter(
-                                (v) =>
-                                  !capabilities.requiresKey ||
-                                  f.key !== "run.device" ||
-                                  v === "cpu",
-                              )
-                              .map((v) => (
-                                <option key={String(v)} value={String(v)}>
-                                  {v === null
-                                    ? "Disabled"
-                                    : v === "synthetic"
-                                      ? "Synthetic (test fixture)"
-                                      : v}
-                                </option>
-                              ))}
-                          </select>
-                        ) : f.type === "boolean" ? (
-                          <input
-                            type="checkbox"
-                            disabled={locked}
-                            checked={!!values[f.key]}
-                            onChange={(e) =>
-                              editValues({
-                                ...values,
-                                [f.key]: e.target.checked,
-                              })
-                            }
-                          />
-                        ) : (
-                          <input
-                            disabled={locked}
-                            type={f.type === "number" ? "number" : "text"}
-                            step="any"
-                            placeholder={
-                              f.key === "data.alpha" ? "Blank = IID" : undefined
-                            }
-                            value={values[f.key] ?? ""}
-                            onChange={(e) =>
-                              editValues({
-                                ...values,
-                                [f.key]:
-                                  e.target.value === ""
-                                    ? null
-                                    : f.type === "number"
-                                      ? Number(e.target.value)
-                                      : e.target.value,
-                              })
-                            }
-                          />
-                        )}
-                      </label>
-                    ))}
-                </details>
-              ))}
-            </aside>
-            <section className="center">
-              <div className="canvas-heading">
-                <div>
-                  <h1>Live topology</h1>
-                  <p>
-                    {initialized
-                      ? "Select a component to inspect its recorded state."
-                      : "Load a visualization to reveal its actual initialization."}
-                  </p>
-                </div>
-                <span>
-                  {clients.length
-                    ? `${clients.length} clients`
-                    : "Awaiting initialization"}
-                </span>
-              </div>
               {initialized && (
                 <div className="playback-controls">
-                  <button onClick={() => setPlaying(!playing)}>
+                  <button
+                    onClick={() => {
+                      if (
+                        !playing &&
+                        !events.some(
+                          (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
+                        )
+                      )
+                        setCursor(
+                          Math.max(
+                            0,
+                            events.findIndex((e) => e.type === "initialized"),
+                          ),
+                        );
+                      setPlaying(!playing);
+                    }}
+                  >
                     {playing ? "Pause animation" : "Play animation"}
+                  </button>
+                  <button
+                    disabled={
+                      !events.some(
+                        (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
+                      )
+                    }
+                    onClick={() => {
+                      const previous = events.findLastIndex(
+                        (e, i) => i < (cursor ?? 0) && isPlaybackStep(e),
+                      );
+                      if (previous >= 0) seek(previous);
+                    }}
+                  >
+                    Previous operation
                   </button>
                   <button
                     disabled={
@@ -942,7 +862,7 @@ export default function Workbench() {
                     Follow camera
                   </label>
                   <span>
-                    Waiting for your Next click ·{" "}
+                    {playing ? "Automatic playback" : "Paused"} ·{" "}
                     {
                       events.filter(
                         (e, i) => i > (cursor ?? -1) && isPlaybackStep(e),
@@ -952,265 +872,559 @@ export default function Workbench() {
                   </span>
                 </div>
               )}
-              <div className="canvas">
-                {initialized ? (
-                  <ReactFlow
-                    key={id}
-                    edgeTypes={edgeTypes}
-                    nodes={graph.nodes}
-                    edges={graph.edges}
-                    fitView
-                    fitViewOptions={{ padding: 0.2 }}
-                    minZoom={0.15}
-                    onNodeClick={(_, node) => setSelected(node.id)}
-                    nodesDraggable={false}
-                    colorMode={dark ? "dark" : "light"}
-                  >
-                    <AutoFit focus={focus} />
-                    <Background color={dark ? "#303030" : "#ddd"} gap={22} />
-                    <Controls />
-                    <MiniMap
-                      nodeColor="#888"
-                      maskColor={dark ? "#111111bb" : "#ffffffbb"}
+              {initialized && (
+                <details className="sticky-trace">
+                  <summary>Execution trace</summary>{" "}
+                  <section className="timeline" aria-label="Execution timeline">
+                    <div>
+                      <h3>Execution trace</h3>
+                      <button
+                        onClick={() => {
+                          setPlaying(false);
+                          setCursor(Math.max(0, events.length - 1));
+                        }}
+                      >
+                        Inspect latest available
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      aria-label="Execution event"
+                      min={0}
+                      max={Math.max(0, events.length - 1)}
+                      value={cursor ?? Math.max(0, events.length - 1)}
+                      onChange={(e) => seek(Number(e.target.value))}
                     />
-                  </ReactFlow>
-                ) : (
-                  <div className="empty">
-                    <h2>Inspect a real execution.</h2>
-                    <p>
-                      Choose a model and attack capture, then load the
-                      visualization. Play its training operations, weight
-                      transfers and server decisions. Local Python execution is
-                      also available on your workstation.
-                    </p>
-                    <span>ResNet-9 · Real execution · Persisted events</span>
-                  </div>
-                )}
-              </div>
-            </section>
-            <motion.aside
-              className="inspector"
-              key={selected}
-              initial={{ opacity: 0.6 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
+                    <div className="event-strip">
+                      {events
+                        .filter(
+                          (e) =>
+                            ![
+                              "log",
+                              "upload_ready",
+                              "operation_completed",
+                              "optimizer_step",
+                              "loss_backward_completed",
+                            ].includes(e.type),
+                        )
+                        .slice(-100)
+                        .map((e, i) => (
+                          <button
+                            key={i}
+                            onClick={() => seek(events.indexOf(e))}
+                            title={pretty(e)}
+                          >
+                            r{e.round ?? "—"} · {e.type.replaceAll("_", " ")}
+                            {e.head ? ` · ${e.head} head` : ""}
+                          </button>
+                        ))}
+                    </div>
+                  </section>
+                </details>
+              )}
+            </div>
+            <main
+              className={`workbench ${sidebarHidden ? "sidebar-hidden" : ""}`}
             >
-              <h2>
-                {selectedClient
-                  ? `Client ${clientId}`
-                  : selected === "global"
-                    ? "Global inspection"
-                    : `Parent ${selected.slice(1)}`}
-              </h2>
-              <p>Values captured by the execution adapter</p>
-              {selectedClient ? (
-                <>
-                  <ClientDistribution
-                    client={selectedClient}
-                    malicious={initialized?.attackers.includes(clientId)}
-                    parent={groups[clientId!]}
-                  />
-                  <h3>Latest local training</h3>
-                  <pre>
-                    {clientEvent
-                      ? pretty(clientEvent)
-                      : "No completed training captured."}
-                  </pre>
-                  <details>
-                    <summary>Captured local operations</summary>
-                    {visible
-                      .filter(
-                        (e) =>
-                          e.client === clientId &&
-                          [
-                            "operation_completed",
-                            "optimizer_step",
-                            "loss_backward_completed",
-                          ].includes(e.type),
-                      )
-                      .slice(-90)
-                      .map((e, i) => (
-                        <details key={i}>
-                          <summary>
-                            {e.operation ?? "Optimizer step"} {e.module ?? ""}
-                          </summary>
-                          <pre>{pretty(e)}</pre>
-                        </details>
-                      ))}
-                  </details>
-                  <h3>Screening record</h3>
-                  <pre>
-                    {pretty({
-                      score: diagnostics.scores?.[clientId!],
-                      z: diagnostics.z?.[clientId!],
-                      evidence: diagnostics.evidence?.[clientId!],
-                    })}
-                  </pre>
-                </>
-              ) : (
-                <>
-                  {selected.startsWith("p") && (
-                    <>
-                      <h3>Parent aggregation</h3>
-                      <pre>
-                        {pretty(
-                          [...visible]
-                            .reverse()
-                            .find(
-                              (e) =>
-                                e.type === "aggregation_completed" &&
-                                e.parent === Number(selected.slice(1)),
-                            ) ?? "No aggregation recorded.",
-                        )}
-                      </pre>
-                    </>
+              {!sidebarHidden && (
+                <aside className="configuration">
+                  <h2>Experiment setup</h2>
+                  <p>Parameters are passed to the research implementation.</p>
+                  {schemaLoading && (
+                    <p role="status">Loading model settings…</p>
                   )}
-                  <h3>Round diagnostics</h3>
-                  <pre>
-                    {Object.keys(diagnostics).length
-                      ? pretty(diagnostics)
-                      : "No round diagnostics captured."}
-                  </pre>
-                </>
-              )}
-              <details>
-                <summary>Actual module architecture</summary>
-                <pre>
-                  {initialized?.architecture ??
-                    "Available after initialization."}
-                </pre>
-              </details>
-              <details>
-                <summary>Selected execution event</summary>
-                <pre>{last ? pretty(last) : "No event selected."}</pre>
-              </details>
-            </motion.aside>
-            <section className="execution-progress">
-              <label htmlFor="round-progress">
-                Completed rounds ·{" "}
-                {events.filter((e) => e.type === "round_completed").length}/
-                {initialized?.configured_rounds ?? values["run.rounds"] ?? 1}
-              </label>
-              <progress
-                id="round-progress"
-                max={
-                  initialized?.configured_rounds ?? values["run.rounds"] ?? 1
-                }
-                value={
-                  events.filter((e) => e.type === "round_completed").length
-                }
-              />
-            </section>
-            <ExecutionAnimation
-              event={animationEvent}
-              sequence={animationIndex}
-              initialized={initialized}
-              formulas={formulas}
-            />
-            <RoundWalkthrough
-              events={visible}
-              currentEvent={animationEvent}
-              initialized={initialized}
-              formulas={formulas}
-              jump={(phase: string) => {
-                const index = events.findIndex(
-                  (e) =>
-                    e.round === (round || 1) &&
-                    eventPhase(e) === phase &&
-                    e.type !== "initialized",
-                );
-                if (index >= 0) seek(index);
-              }}
-              focus={(id) => {
-                setSelected(id);
-                setFocus(id);
-              }}
-            />
-            <section className="timeline" aria-label="Execution timeline">
-              <div>
-                <h3>Execution trace</h3>
-                <button
-                  onClick={() => {
-                    setPlaying(false);
-                    setCursor(Math.max(0, events.length - 1));
-                  }}
-                >
-                  Inspect latest available
-                </button>
-              </div>
-              <input
-                type="range"
-                aria-label="Execution event"
-                min={0}
-                max={Math.max(0, events.length - 1)}
-                value={cursor ?? Math.max(0, events.length - 1)}
-                onChange={(e) => seek(Number(e.target.value))}
-              />
-              <div className="event-strip">
-                {events
-                  .filter(
-                    (e) =>
-                      ![
-                        "log",
-                        "upload_ready",
-                        "operation_completed",
-                        "optimizer_step",
-                        "loss_backward_completed",
-                      ].includes(e.type),
-                  )
-                  .slice(-100)
-                  .map((e, i) => (
-                    <button
-                      key={i}
-                      onClick={() => seek(events.indexOf(e))}
-                      title={pretty(e)}
-                    >
-                      r{e.round ?? "—"} · {e.type.replaceAll("_", " ")}
-                    </button>
-                  ))}
-              </div>
-            </section>
-            <section className="metrics" aria-label="Evaluation metrics">
-              <div className="metrics-heading">
-                <h3>Evaluation</h3>
-                <span>Accuracy % · all evaluated clients</span>
-              </div>
-              {metrics.length ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={metrics}>
-                    <CartesianGrid
-                      stroke={dark ? "#333" : "#ddd"}
-                      vertical={false}
-                    />
-                    <XAxis dataKey="round" stroke="#888" />
-                    <YAxis domain={[0, 100]} stroke="#888" />
-                    <Tooltip
-                      contentStyle={{
-                        background: dark ? "#222" : "#fff",
-                        border: "1px solid #888",
-                        color: dark ? "#fff" : "#111",
+                  <label>
+                    Method
+                    <select
+                      aria-label="Method"
+                      value={method}
+                      disabled={locked}
+                      onChange={(e) => {
+                        resetInspection();
+                        setMethod(e.target.value);
+                        installConfiguration({
+                          method: e.target.value,
+                          overrides: {},
+                        }).catch((error) => setError(error.message));
                       }}
-                    />
-                    <Line
-                      name="Pooled accuracy"
-                      dataKey="accuracy"
-                      stroke={dark ? "#fff" : "#111"}
-                      isAnimationActive={false}
-                    />
-                    <Line
-                      name="Bottom 10%"
-                      dataKey="bottom10"
-                      stroke="#888"
-                      strokeDasharray="4 4"
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <p>Metrics appear when the configured evaluation completes.</p>
+                    >
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {titles[m.id]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Visualization capture
+                    <select
+                      aria-label="Visualization capture"
+                      value={captureId}
+                      disabled={running}
+                      onChange={(e) => setCaptureId(e.target.value)}
+                    >
+                      {captures.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {titles[c.method]} · {c.attack ?? "clean"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    disabled={running || busy}
+                    onClick={() => loadCapture()}
+                  >
+                    Load captured visualization
+                  </button>
+                  {(capabilities.requiresKey || !capabilities.training) && (
+                    <details open={!cpuKey}>
+                      <summary>
+                        {capabilities.requiresKey
+                          ? capabilities.mode
+                          : "Connect your computer CPU"}
+                      </summary>
+                      <label>
+                        CPU bridge address
+                        <input
+                          type="url"
+                          value={cpuEndpoint}
+                          disabled={running}
+                          placeholder="https://…trycloudflare.com"
+                          onChange={(e) => setCpuEndpoint(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        CPU access key
+                        <input
+                          type="password"
+                          autoComplete="off"
+                          disabled={running}
+                          value={cpuKey}
+                          onChange={(e) => {
+                            setCpuKey(e.target.value);
+                            sessionStorage.setItem(
+                              "rfl-cpu-key",
+                              e.target.value,
+                            );
+                            localStorage.setItem("rfl-cpu-key", e.target.value);
+                          }}
+                        />
+                      </label>
+                      <button
+                        disabled={running}
+                        onClick={() => {
+                          for (const storage of [
+                            sessionStorage,
+                            localStorage,
+                          ]) {
+                            if (cpuEndpoint.trim())
+                              storage.setItem(
+                                "rfl-cpu-url",
+                                cpuEndpoint.trim(),
+                              );
+                            else storage.removeItem("rfl-cpu-url");
+                          }
+                          api("/capabilities")
+                            .then(setCapabilities)
+                            .catch((e) => setError(e.message));
+                        }}
+                      >
+                        Connect CPU
+                      </button>
+                      <button
+                        disabled={running}
+                        onClick={() => {
+                          for (const storage of [
+                            localStorage,
+                            sessionStorage,
+                          ]) {
+                            storage.removeItem("rfl-cpu-key");
+                            storage.removeItem("rfl-cpu-url");
+                          }
+                          setCpuKey("");
+                          setCpuEndpoint("");
+                          api("/capabilities").then(setCapabilities);
+                        }}
+                      >
+                        Forget CPU connection
+                      </button>
+                      <small>
+                        The local bridge opens a connected browser tab. The key
+                        is remembered in this browser.
+                      </small>
+                    </details>
+                  )}
+                  <div className="launch">
+                    <button
+                      className="primary"
+                      disabled={
+                        busy ||
+                        running ||
+                        !fields.length ||
+                        !capabilities.training ||
+                        !capabilities.online ||
+                        (capabilities.requiresKey && !cpuKey)
+                      }
+                      onClick={start}
+                    >
+                      {busy ? "Validating…" : "Run visualization"}
+                    </button>
+                    {(captureMode || (initialized && !running)) &&
+                      capabilities.training && (
+                        <button onClick={resetInspection}>
+                          Configure a new visualization
+                        </button>
+                      )}
+                    {running && (
+                      <button
+                        onClick={() =>
+                          api(`/experiments/${id}/cancel`, {})
+                            .then(() => setStatus("cancelling"))
+                            .catch((e) => setError(e.message))
+                        }
+                      >
+                        Cancel execution
+                      </button>
+                    )}
+                    <small>
+                      {captureMode
+                        ? "Editing a setting starts a new configuration. Run visualization to compute its results."
+                        : capabilities.training
+                          ? "Run these settings on your computer’s CPU. Results wait for Next operation."
+                          : "Choose a captured execution to inspect its actual computations."}
+                    </small>
+                  </div>
+                  {sections.map((section) => (
+                    <details
+                      key={section}
+                      open={["data", "train", "run"].includes(section)}
+                    >
+                      <summary>
+                        {section === "plus" ? "FedHEP+ screening" : section}
+                      </summary>
+                      {fields
+                        .filter(
+                          (f) =>
+                            f.key.startsWith(section + ".") && displayField(f),
+                        )
+                        .map((f) => (
+                          <label key={f.key}>
+                            {f.key
+                              .split(".")
+                              .slice(1)
+                              .join(" ")
+                              .replaceAll("_", " ")}
+                            {f.options ? (
+                              <select
+                                disabled={locked}
+                                value={
+                                  values[f.key] === null
+                                    ? "null"
+                                    : String(values[f.key])
+                                }
+                                onChange={(e) =>
+                                  editValues({
+                                    ...values,
+                                    [f.key]:
+                                      e.target.value === "null"
+                                        ? null
+                                        : e.target.value,
+                                  })
+                                }
+                              >
+                                {f.options
+                                  .filter(
+                                    (v) =>
+                                      !capabilities.requiresKey ||
+                                      f.key !== "run.device" ||
+                                      v === "cpu",
+                                  )
+                                  .map((v) => (
+                                    <option key={String(v)} value={String(v)}>
+                                      {v === null
+                                        ? "Disabled"
+                                        : v === "synthetic"
+                                          ? "Synthetic (test fixture)"
+                                          : v}
+                                    </option>
+                                  ))}
+                              </select>
+                            ) : f.type === "boolean" ? (
+                              <input
+                                type="checkbox"
+                                disabled={locked}
+                                checked={!!values[f.key]}
+                                onChange={(e) =>
+                                  editValues({
+                                    ...values,
+                                    [f.key]: e.target.checked,
+                                  })
+                                }
+                              />
+                            ) : (
+                              <input
+                                disabled={locked}
+                                type={f.type === "number" ? "number" : "text"}
+                                step="any"
+                                placeholder={
+                                  f.key === "data.alpha"
+                                    ? "Blank = IID"
+                                    : undefined
+                                }
+                                value={values[f.key] ?? ""}
+                                onChange={(e) =>
+                                  editValues({
+                                    ...values,
+                                    [f.key]:
+                                      e.target.value === ""
+                                        ? null
+                                        : f.type === "number"
+                                          ? Number(e.target.value)
+                                          : e.target.value,
+                                  })
+                                }
+                              />
+                            )}
+                          </label>
+                        ))}
+                    </details>
+                  ))}
+                </aside>
               )}
-            </section>
-          </main>
+              <section className="center">
+                <div className="canvas-heading">
+                  <div>
+                    <h1>Live topology</h1>
+                    <p>
+                      {initialized
+                        ? "Select a component to inspect its recorded state."
+                        : "Load a visualization to reveal its actual initialization."}
+                    </p>
+                  </div>
+                  <span>
+                    {clients.length
+                      ? `${clients.length} clients`
+                      : "Awaiting initialization"}
+                  </span>
+                </div>
+                <div className="canvas">
+                  {initialized ? (
+                    <ReactFlow
+                      key={id}
+                      edgeTypes={edgeTypes}
+                      nodes={graph.nodes}
+                      edges={graph.edges}
+                      fitView
+                      fitViewOptions={{ padding: 0.2 }}
+                      minZoom={0.15}
+                      onNodeClick={(_, node) => setSelected(node.id)}
+                      nodesDraggable={false}
+                      colorMode={dark ? "dark" : "light"}
+                    >
+                      <AutoFit focus={focus} />
+                      <Background color={dark ? "#303030" : "#ddd"} gap={22} />
+                      <Controls />
+                      <MiniMap
+                        nodeColor="#888"
+                        maskColor={dark ? "#111111bb" : "#ffffffbb"}
+                      />
+                    </ReactFlow>
+                  ) : (
+                    <div className="empty">
+                      <h2>Inspect a real execution.</h2>
+                      <p>
+                        Choose a model and attack capture, then load the
+                        visualization. Play its training operations, weight
+                        transfers and server decisions. Local Python execution
+                        is also available on your workstation.
+                      </p>
+                      <span>ResNet-9 · Real execution · Persisted events</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+              <motion.aside
+                className="inspector"
+                key={selected}
+                initial={{ opacity: 0.6 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15 }}
+              >
+                <h2>
+                  {selectedClient
+                    ? `Client ${clientId}`
+                    : selected === "global"
+                      ? "Global inspection"
+                      : `Parent ${selected.slice(1)}`}
+                </h2>
+                <p>Values captured by the execution adapter</p>
+                {selectedClient ? (
+                  <>
+                    <ClientDistribution
+                      client={selectedClient}
+                      malicious={initialized?.attackers.includes(clientId)}
+                      parent={groups[clientId!]}
+                    />
+                    <h3>Latest local training</h3>
+                    <pre>
+                      {clientEvent
+                        ? pretty(clientEvent)
+                        : "No completed training captured."}
+                    </pre>
+                    <details>
+                      <summary>Captured local operations</summary>
+                      {visible
+                        .filter(
+                          (e) =>
+                            e.client === clientId &&
+                            [
+                              "operation_completed",
+                              "optimizer_step",
+                              "loss_backward_completed",
+                            ].includes(e.type),
+                        )
+                        .slice(-90)
+                        .map((e, i) => (
+                          <details key={i}>
+                            <summary>
+                              {e.operation ?? "Optimizer step"} {e.module ?? ""}
+                            </summary>
+                            <pre>{pretty(e)}</pre>
+                          </details>
+                        ))}
+                    </details>
+                    <h3>Screening record</h3>
+                    <pre>
+                      {pretty({
+                        score: diagnostics.scores?.[clientId!],
+                        z: diagnostics.z?.[clientId!],
+                        evidence: diagnostics.evidence?.[clientId!],
+                      })}
+                    </pre>
+                  </>
+                ) : (
+                  <>
+                    {selected.startsWith("p") && (
+                      <>
+                        <h3>Parent aggregation</h3>
+                        <pre>
+                          {pretty(
+                            [...visible]
+                              .reverse()
+                              .find(
+                                (e) =>
+                                  e.type === "aggregation_completed" &&
+                                  e.parent === Number(selected.slice(1)),
+                              ) ?? "No aggregation recorded.",
+                          )}
+                        </pre>
+                      </>
+                    )}
+                    <h3>Round diagnostics</h3>
+                    <pre>
+                      {Object.keys(diagnostics).length
+                        ? pretty(diagnostics)
+                        : "No round diagnostics captured."}
+                    </pre>
+                  </>
+                )}
+                <details>
+                  <summary>Actual module architecture</summary>
+                  <pre>
+                    {initialized?.architecture ??
+                      "Available after initialization."}
+                  </pre>
+                </details>
+                <details>
+                  <summary>Selected execution event</summary>
+                  <pre>{last ? pretty(last) : "No event selected."}</pre>
+                </details>
+              </motion.aside>
+              <section className="execution-progress">
+                <label htmlFor="round-progress">
+                  Completed rounds ·{" "}
+                  {events.filter((e) => e.type === "round_completed").length}/
+                  {initialized?.configured_rounds ?? values["run.rounds"] ?? 1}
+                </label>
+                <progress
+                  id="round-progress"
+                  max={
+                    initialized?.configured_rounds ?? values["run.rounds"] ?? 1
+                  }
+                  value={
+                    events.filter((e) => e.type === "round_completed").length
+                  }
+                />
+              </section>
+              <ExecutionAnimation
+                event={animationEvent}
+                sequence={animationIndex}
+                initialized={initialized}
+                formulas={formulas}
+              />
+              <RoundWalkthrough
+                events={visible}
+                currentEvent={animationEvent}
+                initialized={initialized}
+                formulas={formulas}
+                jump={(phase: string) => {
+                  const index = events.findIndex(
+                    (e) =>
+                      e.round === (round || 1) &&
+                      eventPhase(e) === phase &&
+                      e.type !== "initialized",
+                  );
+                  if (index >= 0) seek(index);
+                }}
+                focus={(id) => {
+                  setSelected(id);
+                  setFocus(id);
+                }}
+              />
+              <section className="metrics" aria-label="Evaluation metrics">
+                <div className="metrics-heading">
+                  <h3>Evaluation</h3>
+                  <span>Accuracy % · all evaluated clients</span>
+                </div>
+                {metrics.length ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={metrics}>
+                      <CartesianGrid
+                        stroke={dark ? "#333" : "#ddd"}
+                        vertical={false}
+                      />
+                      <XAxis dataKey="round" stroke="#888" />
+                      <YAxis domain={[0, 100]} stroke="#888" />
+                      <Tooltip
+                        contentStyle={{
+                          background: dark ? "#222" : "#fff",
+                          border: "1px solid #888",
+                          color: dark ? "#fff" : "#111",
+                        }}
+                      />
+                      <Line
+                        name="Pooled accuracy"
+                        dataKey="accuracy"
+                        stroke={dark ? "#fff" : "#111"}
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        name="Bottom 10%"
+                        dataKey="bottom10"
+                        stroke="#888"
+                        strokeDasharray="4 4"
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p>
+                    Metrics appear when the configured evaluation completes.
+                  </p>
+                )}
+              </section>
+            </main>
+          </>
         ) : (
           <section className="document-view">
             {view === "Mathematical inspection" ? (
@@ -1286,13 +1500,13 @@ export default function Workbench() {
                   } catch (error) {
                     setError((error as Error).message);
                   }
-                  setView("Live Workbench");
+                  navigate("Live Workbench");
                 }}
                 replay={async (run: any) => {
                   await installConfiguration(run.config);
                   setStatus(run.status);
                   connect(run.id);
-                  setView("Live Workbench");
+                  navigate("Live Workbench");
                 }}
                 cancel={(runId: string) =>
                   api(`/experiments/${runId}/cancel`, {})

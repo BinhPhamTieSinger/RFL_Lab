@@ -10,7 +10,7 @@ From RFL_Lab, run the following command with the existing research environment.
 ../.venv/bin/python visualizer/scripts/online_cpu.py
 ```
 
-The script starts FastAPI and cloudflared, then opens a browser tab with the tunnel address and private CPU key in its URL fragment. The page removes the fragment and stores the connection in sessionStorage. Re-running the command while the bridge is active opens another connected tab. The Netlify proxy accepts HTTPS trycloudflare.com endpoints and rejects redirects. Its requests carry the owner’s access key. Connection details belong to the browser session. Other browser sessions can inspect captures and history, and need the CPU access key to submit or inspect custom runs. The key is in `visualizer/data/online-cpu/access-key` with owner-only file permissions.
+The script starts FastAPI and cloudflared, then opens a browser tab with the tunnel address and private CPU key in its URL fragment. The page removes the fragment and remembers the connection in this browser. Re-running the command while the bridge is active opens another connected tab. The Netlify proxy accepts HTTPS trycloudflare.com endpoints and rejects redirects. Its requests carry the owner’s access key. The Forget CPU connection button clears the remembered address and access key. Tabs in the same browser profile use the remembered CPU connection. Other browsers need the private connection link to run training. The key is in `visualizer/data/online-cpu/access-key` with owner-only file permissions.
 
 Keep the process running while using the site. Ctrl-C stops the bridge and its API. Computer sleep, shutdown or loss of network makes custom execution unavailable. Restart the command to reconnect after reboot. Every fresh quick tunnel has a new hostname, and the newly opened browser tab uses that address. There is no login-item installation. `--no-open` suppresses the browser launch.
 
@@ -28,4 +28,4 @@ For a real one-round browser check against production, run the following command
 RFL_TEST_URL=https://rfl-lab-visualizer.netlify.app RFL_TEST_CPU=1 node config-check.mjs
 ```
 
-The check verifies the requested configuration, actual client identities, completed CPU execution, held inspection cursor, manual Next, shared historical configuration and exclusion from curated history. `node playback-check.mjs` additionally checks Markdown, formulas, animated transfer packets, held inspection, themes and the mobile layout.
+The check verifies the requested configuration, actual client identities, completed CPU execution, held inspection cursor, manual Next, shared historical configuration and exclusion from curated history. `node playback-check.mjs` additionally checks Markdown, formulas, animated transfer packets, autoplay, pause, themes and the mobile layout.

@@ -4,7 +4,9 @@ import dns from "node:dns";
 dns.setDefaultResultOrder("ipv4first");
 const base = process.env.RFL_TEST_URL ?? "http://127.0.0.1:3000";
 const hostname = new URL(base).hostname;
-const address = await dns.promises.lookup(hostname, { family: 4 });
+const address = process.env.RFL_TEST_IP
+  ? { address: process.env.RFL_TEST_IP }
+  : await dns.promises.lookup(hostname, { family: 4 });
 const browser = await chromium.launch({
   args: [`--host-resolver-rules=MAP ${hostname} ${address.address}`],
   executablePath:
@@ -30,9 +32,9 @@ await page
   .getByRole("button", { name: "Experiment history", exact: true })
   .click();
 await page.locator(".experiment-entry").first().waitFor();
-const history = await page.request
-  .get(base + "/api/history")
-  .then((r) => r.json());
+const history = await page.evaluate(async () =>
+  (await fetch("/research/history.json")).json(),
+);
 if (
   history.some(
     (r) => r.recorded || r.purpose === "visualization" || !r.archived,
@@ -48,6 +50,7 @@ await page
   .first()
   .click();
 await page.locator(".round-walkthrough").waitFor();
+await page.locator(".sticky-trace > summary").click();
 const attack = await page
   .locator("label")
   .filter({ hasText: /^kind/ })
@@ -80,14 +83,6 @@ await page.getByRole("button", { name: "Play animation", exact: true }).click();
 const heldCursor = await page
   .getByLabel("Execution event", { exact: true })
   .inputValue();
-await page.waitForTimeout(1800);
-if (
-  (await page.getByLabel("Execution event", { exact: true }).inputValue()) !==
-  heldCursor
-)
-  throw Error(
-    "Inspection advanced without the researcher accepting the next step",
-  );
 await page
   .locator(".weight-packet animateMotion")
   .first()
@@ -98,6 +93,12 @@ await page.waitForTimeout(250);
 const after = await packet.boundingBox();
 if (before && after && before.x === after.x && before.y === after.y)
   throw Error("Weight packet did not move");
+await page.waitForTimeout(1900);
+if (
+  (await page.getByLabel("Execution event", { exact: true }).inputValue()) ===
+  heldCursor
+)
+  throw Error("Play did not advance automatically");
 await page
   .getByRole("button", { name: "Pause animation", exact: true })
   .click();

@@ -112,6 +112,10 @@ def test_attack_events_match_real_execution(tmp_path, monkeypatch, kind):
     with observed(events.append):
         result = run_experiment(cfg)
     assert any(e["type"] == "attack_executed" for e in events)
+    if kind == "label_flip":
+        for event in (e for e in events if e["type"] == "attack_executed"):
+            assert event["labels_after"] == [event["num_classes"] - 1 - label for label in event["labels_before"]]
+            assert sum(event["histogram_before"]) == sum(event["histogram_after"])
     assert len(result["attackers"]) == 2
     assert any(e["type"] == "operation_completed" and e["operation"] == "backward" for e in events)
 

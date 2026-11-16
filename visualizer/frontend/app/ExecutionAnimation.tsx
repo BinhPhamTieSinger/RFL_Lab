@@ -106,6 +106,7 @@ const names: Record<string, string> = {
   aggregation_completed: "Server applies the aggregated update",
   model_updated: "Global model updated",
   evaluation_completed: "Model evaluation",
+  attack_executed: "Attack transformation",
 };
 const value = (n: any) =>
   typeof n === "number" ? n.toPrecision(5) : n === undefined ? "—" : String(n);
@@ -116,6 +117,11 @@ export function ExecutionAnimation({
   formulas,
 }: any) {
   if (!event || !initialized) return null;
+  const clientData = initialized.clients.find(
+    (client: any) => client.id === event.client,
+  );
+  const labelName = (label: number) =>
+    `${label} · ${clientData?.class_names?.[label] ?? "class"}`;
   const tier =
     event.tier === "parent"
       ? event.parent === undefined
@@ -189,8 +195,138 @@ export function ExecutionAnimation({
               `gradient norm ${value(event.gradient_norm)}`}
           </p>
         )}
+        {event.type === "attack_executed" && (
+          <div className="attack-transformation">
+            <h3>{event.kind?.replaceAll("_", " ")}</h3>
+            {event.kind === "label_flip" && (
+              <>
+                <Formula>
+                  {
+                    "Implemented target mapping $y' = C - 1 - y$. Training uses the transformed targets. Client label statistics use the original labels."
+                  }
+                </Formula>
+                <p>
+                  {event.changed_labels} training targets changed. Source ·
+                  rfl/attacks/byzantine.py
+                </p>
+                {event.labels_before ? (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Training sample</th>
+                        <th>Original target</th>
+                        <th>Poisoned target</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {event.labels_before.map(
+                        (label: number, index: number) => (
+                          <tr key={index}>
+                            <td>{index + 1}</td>
+                            <td>{labelName(label)}</td>
+                            <td>→ {labelName(event.labels_after[index])}</td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p>
+                    This capture contains the changed-target count. A new run
+                    records individual before/after targets.
+                  </p>
+                )}
+                {event.histogram_before && (
+                  <details>
+                    <summary>
+                      Actual target distribution before and after the attack
+                    </summary>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Class</th>
+                          <th>Original count</th>
+                          <th>Poisoned count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {event.histogram_before.map(
+                          (count: number, label: number) => (
+                            <tr key={label}>
+                              <td>{label}</td>
+                              <td>
+                                <meter
+                                  min={0}
+                                  max={Math.max(...event.histogram_before)}
+                                  value={count}
+                                />{" "}
+                                {count}
+                              </td>
+                              <td>
+                                <meter
+                                  min={0}
+                                  max={Math.max(...event.histogram_after)}
+                                  value={event.histogram_after[label]}
+                                />{" "}
+                                {event.histogram_after[label]}
+                              </td>
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </details>
+                )}
+              </>
+            )}
+            {event.clean_norm !== undefined && (
+              <p>
+                Update norm before attack {value(event.clean_norm)} →
+                transmitted norm {value(event.sent_norm)}.
+              </p>
+            )}
+            {event.clean_update && (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Coordinate</th>
+                    <th>Trained update</th>
+                    <th>Transmitted update</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {event.clean_update.map((n: number, index: number) => (
+                    <tr key={index}>
+                      <td>{index}</td>
+                      <td>{value(n)}</td>
+                      <td>→ {value(event.sent_update[index])}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {event.kind === "backdoor" && (
+              <p>
+                Captured poisoned-data transformation · {event.changed_labels}{" "}
+                changed labels. Source · rfl/attacks/backdoor.py
+              </p>
+            )}
+            {event.clients && (
+              <p>
+                Coordinated attack participants · {event.clients.join(", ")}.
+                Captured duration {value(event.duration_s)} s.
+              </p>
+            )}
+          </div>
+        )}
         {event.type === "aclm_applied" && (
           <>
+            <p>
+              ACLM runs separately for the shared parent head and the client’s
+              personal local head. Each call masks its own logits before its
+              cross-entropy loss. This event shows the {event.head} head. The
+              root head uses all classes.
+            </p>
             <p>
               {event.head} head · {event.active_mask.filter(Boolean).length}/
               {event.active_mask.length} active classes. Root logits remain

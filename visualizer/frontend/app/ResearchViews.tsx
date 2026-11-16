@@ -476,24 +476,52 @@ ${f.explanation}`}</Formula>
   );
 }
 
+const resultCache = new Map<string, Promise<any>>();
+function fetchResult(id: string, refresh = false) {
+  if (refresh) resultCache.delete(id);
+  if (!resultCache.has(id))
+    resultCache.set(
+      id,
+      fetch(`/research/${id}.json`, { cache: refresh ? "reload" : "default" })
+        .then((response) => {
+          if (!response.ok) throw Error("Result could not be loaded");
+          return response.json();
+        })
+        .catch((error) => {
+          resultCache.delete(id);
+          throw error;
+        }),
+    );
+  return resultCache.get(id)!;
+}
+function RawResult({ result }: any) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>Full saved result and diagnostics</summary>
+      {open && <Values value={result} />}
+    </details>
+  );
+}
 function ResultDetails({
   run,
   loadConfig,
   replay,
   cancel,
   expanded = false,
+  checked = false,
+  select,
 }: any) {
   const [detail, setDetail] = useState<any>(null);
+  const [opened, setOpened] = useState(expanded);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  async function load() {
+  async function load(refresh = false) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/history/${run.id}`);
-      if (!response.ok) throw Error("Result could not be loaded");
-      setDetail(await response.json());
+      setDetail(await fetchResult(run.id, refresh));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -510,10 +538,22 @@ function ResultDetails({
       id={run.id}
       open={expanded || undefined}
       onToggle={(e) => {
+        setOpened(e.currentTarget.open);
         if (e.currentTarget.open && !detail && !loading && !error) load();
       }}
     >
       <summary>
+        <label
+          className="selection-control"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            aria-label={`Select ${run.name ?? run.id}`}
+            checked={checked}
+            onChange={() => select?.(run.id)}
+          />
+        </label>
         <strong>{run.name ?? run.config.method}</strong>
         <span>{run.status === "running" ? "in progress" : run.status}</span>
         <span>
@@ -522,121 +562,122 @@ function ResultDetails({
             : new Date(run.created * 1000).toLocaleString()}
         </span>
       </summary>
-      <div className="experiment-content">
-        {run.notes && <Formula>{run.notes}</Formula>}
-        <div className="section-actions">
-          <button onClick={() => loadConfig(run.config)}>
-            Load configuration · CPU
-          </button>
-          {!run.archived && (
-            <button onClick={() => replay(run)}>Replay events</button>
-          )}
-          {["pending", "queued", "running"].includes(run.status) && (
-            <button onClick={() => cancel(run.id)}>Cancel</button>
-          )}
-          <button onClick={load}>Reload results</button>
-          <a href={`?experiment=${encodeURIComponent(run.id)}&section=config`}>
-            Configuration link
-          </a>
-          <button
-            onClick={async () => {
-              const url = new URL(
-                window.location.pathname,
-                window.location.origin,
-              );
-              url.searchParams.set("experiment", run.id);
-              url.searchParams.set("section", "config");
-              try {
-                await navigator.clipboard.writeText(url.toString());
-                setCopied(true);
-              } catch {
-                setError(
-                  "Use the Configuration link to copy this experiment’s address.",
+      {opened && (
+        <div className="experiment-content">
+          {run.notes && <Formula>{run.notes}</Formula>}
+          <div className="section-actions">
+            <button onClick={() => loadConfig(run.config)}>
+              Load configuration · CPU
+            </button>
+            {!run.archived && (
+              <button onClick={() => replay(run)}>Replay events</button>
+            )}
+            {["pending", "queued", "running"].includes(run.status) && (
+              <button onClick={() => cancel(run.id)}>Cancel</button>
+            )}
+            <button onClick={() => load(true)}>Reload results</button>
+            <a
+              href={`?experiment=${encodeURIComponent(run.id)}&section=config`}
+            >
+              Configuration link
+            </a>
+            <button
+              onClick={async () => {
+                const url = new URL(
+                  window.location.pathname,
+                  window.location.origin,
                 );
-              }
-            }}
-          >
-            {copied ? "Link copied" : "Copy configuration link"}
-          </button>
-        </div>
-        {loading && <p>Loading saved result…</p>}
-        {error && <p role="alert">{error}</p>}
-        <details open={expanded || undefined}>
-          <summary>Configuration</summary>
-          <table>
-            <tbody>
-              {Object.entries(run.config.overrides).map(([key, value]) => (
-                <tr key={key}>
-                  <th>{key}</th>
-                  <td>{String(value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </details>
-        {result ? (
-          <>
-            <Series
-              title="Evaluation accuracy (%)"
-              rows={result.history ?? []}
-              keys={["pooled_acc", "mean_client_acc", "bottom10"]}
-            />
-            <Series
-              title="MAD and screening scale per round"
-              rows={mad}
-              keys={["mad", "scale", "median"]}
-            />
-            <Series
-              title="Detection rates (0–1)"
-              rows={result.detection ?? []}
-              keys={["precision", "recall", "false_isolation_rate"]}
-            />
-            <h3>Saved evaluation table</h3>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Round</th>
-                    <th>Pooled accuracy %</th>
-                    <th>Mean client %</th>
-                    <th>Bottom 10% %</th>
-                    <th>Elapsed s</th>
+                url.searchParams.set("experiment", run.id);
+                url.searchParams.set("section", "config");
+                try {
+                  await navigator.clipboard.writeText(url.toString());
+                  setCopied(true);
+                } catch {
+                  setError(
+                    "Use the Configuration link to copy this experiment’s address.",
+                  );
+                }
+              }}
+            >
+              {copied ? "Link copied" : "Copy configuration link"}
+            </button>
+          </div>
+          {loading && <p>Loading saved result…</p>}
+          {error && <p role="alert">{error}</p>}
+          <details open={expanded || undefined}>
+            <summary>Configuration</summary>
+            <table>
+              <tbody>
+                {Object.entries(run.config.overrides).map(([key, value]) => (
+                  <tr key={key}>
+                    <th>{key}</th>
+                    <td>{String(value)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(result.history ?? []).map((r: any) => (
-                    <tr key={r.round}>
-                      <td>{r.round}</td>
-                      <td>{r.pooled_acc?.toFixed(3)}</td>
-                      <td>{r.mean_client_acc?.toFixed(3)}</td>
-                      <td>{r.bottom10?.toFixed(3)}</td>
-                      <td>{r.elapsed_s?.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <details>
-              <summary>Full saved result and diagnostics</summary>
-              <Values value={result} />
-            </details>
-          </>
-        ) : (
-          detail && <p>No final metrics file is available for this entry.</p>
-        )}
-        {detail?.logs?.map((log: any) => (
-          <details key={log.name}>
-            <summary>{log.name}</summary>
-            <pre>{log.text}</pre>
+                ))}
+              </tbody>
+            </table>
           </details>
-        ))}
-        {run.archived && (
-          <p>
-            Source {run.source}. Date uses file modification time. Archived
-            event replay requires captured visualizer events.
-          </p>
-        )}
-      </div>
+          {result ? (
+            <>
+              <Series
+                title="Evaluation accuracy (%)"
+                rows={result.history ?? []}
+                keys={["pooled_acc", "mean_client_acc", "bottom10"]}
+              />
+              <Series
+                title="MAD and screening scale per round"
+                rows={mad}
+                keys={["mad", "scale", "median"]}
+              />
+              <Series
+                title="Detection rates (0–1)"
+                rows={result.detection ?? []}
+                keys={["precision", "recall", "false_isolation_rate"]}
+              />
+              <h3>Saved evaluation table</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Round</th>
+                      <th>Pooled accuracy %</th>
+                      <th>Mean client %</th>
+                      <th>Bottom 10% %</th>
+                      <th>Elapsed s</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(result.history ?? []).map((r: any) => (
+                      <tr key={r.round}>
+                        <td>{r.round}</td>
+                        <td>{r.pooled_acc?.toFixed(3)}</td>
+                        <td>{r.mean_client_acc?.toFixed(3)}</td>
+                        <td>{r.bottom10?.toFixed(3)}</td>
+                        <td>{r.elapsed_s?.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <RawResult result={result} />
+            </>
+          ) : (
+            detail && <p>No final metrics file is available for this entry.</p>
+          )}
+          {detail?.logs?.map((log: any) => (
+            <details key={log.name}>
+              <summary>{log.name}</summary>
+              <pre>{log.text}</pre>
+            </details>
+          ))}
+          {run.archived && (
+            <p>
+              Source {run.source}. Date uses file modification time. Archived
+              event replay requires captured visualizer events.
+            </p>
+          )}
+        </div>
+      )}
     </details>
   );
 }
@@ -650,10 +691,49 @@ export function ExperimentHistory({
 }: any) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(25);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [onlySelected, setOnlySelected] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    setQuery(url.searchParams.get("q") ?? "");
+    setSelected(
+      (
+        url.searchParams.get("experiments") ??
+        localStorage.getItem("rfl-selected-experiments") ??
+        ""
+      )
+        .split(",")
+        .filter(Boolean),
+    );
+    setOnlySelected(url.searchParams.get("onlySelected") === "1");
+  }, []);
+  function updateSelection(ids: string[], only: boolean) {
+    setSelected(ids);
+    setOnlySelected(only);
+    localStorage.setItem("rfl-selected-experiments", ids.join(","));
+    const url = new URL(window.location.href);
+    if (ids.length) url.searchParams.set("experiments", ids.join(","));
+    else url.searchParams.delete("experiments");
+    if (only) {
+      url.searchParams.set("onlySelected", "1");
+      url.searchParams.delete("experiment");
+    } else url.searchParams.delete("onlySelected");
+    window.history.replaceState(null, "", url);
+  }
+  function select(id: string) {
+    updateSelection(
+      selected.includes(id)
+        ? selected.filter((value) => value !== id)
+        : [...selected, id],
+      onlySelected,
+    );
+  }
+
   const target = history.find((r: any) => r.id === targetId);
   const filtered = history.filter(
     (r: any) =>
-      r.id !== targetId &&
+      (r.id !== targetId || onlySelected) &&
+      (!onlySelected || selected.includes(r.id)) &&
       `${r.name} ${r.config.method} ${r.status} ${r.source}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -674,15 +754,34 @@ export function ExperimentHistory({
           onChange={(e) => {
             setQuery(e.target.value);
             setLimit(25);
+            const url = new URL(window.location.href);
+            if (e.target.value) url.searchParams.set("q", e.target.value);
+            else url.searchParams.delete("q");
+            window.history.replaceState(null, "", url);
           }}
         />
         <button onClick={refresh}>Refresh history</button>
+        <button
+          disabled={!selected.length && !onlySelected}
+          onClick={() => updateSelection(selected, !onlySelected)}
+        >
+          {onlySelected
+            ? "Show all experiments"
+            : `Show selected (${selected.length})`}
+        </button>
+        {selected.length > 0 && (
+          <button onClick={() => updateSelection([], false)}>
+            Clear selection
+          </button>
+        )}
       </div>
-      {target && (
+      {target && !onlySelected && (
         <ResultDetails
           key={target.id}
           run={target}
           expanded
+          checked={selected.includes(target.id)}
+          select={select}
           {...{ loadConfig, replay, cancel }}
         />
       )}
@@ -692,7 +791,12 @@ export function ExperimentHistory({
         </p>
       )}
       {filtered.slice(0, limit).map((run: any) => (
-        <ResultDetails key={run.id} {...{ run, loadConfig, replay, cancel }} />
+        <ResultDetails
+          key={run.id}
+          checked={selected.includes(run.id)}
+          select={select}
+          {...{ run, loadConfig, replay, cancel }}
+        />
       ))}
       {filtered.length > limit && (
         <button onClick={() => setLimit(limit + 25)}>
