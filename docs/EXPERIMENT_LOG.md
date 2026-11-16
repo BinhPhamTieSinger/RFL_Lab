@@ -1029,3 +1029,16 @@ All 15 runs of each of `p6__r3g8` and `p6__r3g12` are done (Mac, MPS). D1: α = 
 - **Backdoor stays the open problem**: only R2 (no gate) keeps success near FedHEP+'s 21%, at the price of 4 honest isolations per run. Next steps unchanged: the whole-update and layer-level signals (`phase6_signal`, `a1000_d1_signals`) and recovery (H8).
 
 **Visualizer history check.** Every built history file was compared with its `metrics.json`: 794 entries, all completed, none differing. Fixed on the way: one run (`p2__fedhep__q40_sign_s42`, NaN in an undefined diagnostic) showed as unreadable on Netlify and returned an error locally; the local archive was empty for 15 minutes after a reboot; 23 finished Phase 6 runs were uncommitted and absent; 7 non-research entries (smoke tests, benchmark harness, a CPU timing test, two placeholders) were listed; and backdoor success was not charted on a run's page. Details in the commits of 2026-11-16.
+
+## 2026-11-16 · Where the backdoor lives: per-head success, and predictions for the GPU campaign
+The nine backdoor runs of R2, R3 gate 8 and R3 gate 12 (D1, Mac) record success per prediction head. In every run the shared root head carries the backdoor most, the parent head less, and the client's local head least:
+
+![Backdoor success per head](figures/phase6_backdoor_heads.png)
+
+| Rung | Root | Parent | Local | Ensemble |
+|---|---|---|---|---|
+| R2 (no gate) | 29 | 15 | 8 | 23 |
+| R3, gate 8 | 61 | 37 | 17 | 51 |
+| R3, gate 12 | 71 | 45 | 22 | 62 |
+
+Qin et al. (KDD 2023) report the same mechanism in FedRep: the shared trunk learns the trigger features, but a classifier trained only on clean local data never maps them to the target label. Two consequences, both now written as predictions in `PREDICTIONS.md` before the GPU runs: (1) a zero-cost prediction-time defense, letting the personal heads overrule the root head when they disagree (idea 9 in `IDEAS.md`); (2) recovery (H8) should rewind the trunk and the root head, not the trunk alone. `PREDICTIONS.md` also states the expected outcome of every queued experiment, the ALIE accuracy puzzle's three candidate explanations with the run that separates them, the model we expect to publish, and a 2,700-run campaign plan ordered so that method decisions come before scale.

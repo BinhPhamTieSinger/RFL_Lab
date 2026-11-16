@@ -124,6 +124,33 @@ def fig_n30(runs: dict) -> None:
     pr.save(fig, "followup_n30.png")
 
 
+def fig_backdoor_heads(runs: dict) -> None:
+    """Backdoor success per prediction head, by rung (mean over seeds): where the backdoor lives."""
+    rungs = [("p6__r2", "R2 (no gate)"), ("p6__r3g8", "R3, gate 8"), ("p6__r3g12", "R3, gate 12")]
+    heads = [("root", "Root head"), ("parent", "Parent head"), ("local", "Local head"), ("asr", "Ensemble")]
+    fig, ax = plt.subplots(figsize=(7.2, 3.4))
+    width = 0.2
+    for j, (head, label) in enumerate(heads):
+        ys, es = [], []
+        for prefix, _ in rungs:
+            rows = [r for name, rs in runs.items() if name.startswith(prefix + "__backdoor") for r in rs]
+            last = [r["history"][-1] for r in rows]
+            vals = [x["asr"] if head == "asr" else x["asr_heads"][head] for x in last]
+            m, s = pr.mean_sd(vals)
+            ys.append(m)
+            es.append(s)
+        xs = [i + (j - 1.5) * width for i in range(len(rungs))]
+        pr.bar_labels(ax, ax.bar(xs, ys, width * 0.92, yerr=es, color=pr.SLOT[j], label=label, capsize=2),
+                      fmt="{:.0f}", errors=es)
+    ax.set_xticks(range(len(rungs)), [label for _, label in rungs])
+    ax.set_ylabel("Backdoor success at round 30 (%)")
+    ax.set_ylim(0, 100)
+    ax.legend(ncol=4, frameon=False, loc="upper left", fontsize=8)
+    ax.set_title("D1 backdoor, 3 attackers: the root head carries the backdoor, the local head resists it",
+                 fontsize=10)
+    pr.save(fig, "phase6_backdoor_heads")
+
+
 def main() -> None:
     pr.style()
     runs = pr.load(Path(sys.argv[1]))
@@ -131,6 +158,7 @@ def main() -> None:
     fig_d2(runs)
     fig_backdoor_stop(runs)
     fig_n30(runs)
+    fig_backdoor_heads(runs)
 
 
 if __name__ == "__main__":

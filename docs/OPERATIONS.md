@@ -60,16 +60,21 @@ git clone https://github.com/BinhPhamTieSinger/RFL_Lab.git .
 #   git init -b main && git remote add origin https://github.com/BinhPhamTieSinger/RFL_Lab.git
 #   git fetch origin && git checkout -f -B main origin/main
 git config user.name "BinhPhamTieSinger" && git config user.email "<the address you use on GitHub>"
-qsetup                                  # wait for "Python environment prepared."
+PIP_DEFAULT_TIMEOUT=300 PIP_RETRIES=10 qsetup   # wait for "Python environment prepared."; the long timeout survives slow package downloads
 git status --short                      # if qsetup replaced requirements.txt: git checkout requirements.txt && qsetup
 ```
 `requirements.txt` lists only small packages: PyTorch comes from the container and must not be installed with pip.
 
 **CIFAR-100.** On the server prompt (not inside a job; compute nodes may have no internet):
 ```bash
-mkdir -p data && curl -L https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz | tar xz -C data
-ls data/cifar-100-python                # meta  test  train
+mkdir -p data && cd data
+until curl -L -C - --retry 10 --retry-delay 5 --connect-timeout 30 -o cifar-100-python.tar.gz \
+      https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz; do sleep 5; done   # resumes after each cut
+md5sum cifar-100-python.tar.gz          # eb9058c3a382ffc7106e4002c42a8d85
+tar xzf cifar-100-python.tar.gz && ls cifar-100-python && cd ..   # meta  test  train
 ```
+If the download never completes, copy the archive from a computer that reaches the server: `scp cifar-100-python.tar.gz <user>@<server>:/scratch/projects/<project>/data/`, then run the `md5sum` and `tar` lines.
+
 Every command below passes `--set data.root=data`.
 
 **Check the environment** (about 5 minutes):

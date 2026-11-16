@@ -37,6 +37,7 @@ FedHEP+ gives identical results under sign flip and label flip because it leaves
 | [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | Plain-language account of every stage so far, with the key charts. Start here. |
 | [`visualizer/docs/`](visualizer/docs/) | The RFL Lab visualizer (in progress): repository inventory and architecture. |
 | [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | How to set up either machine, run and queue sweeps, move results between the Mac and the Acer, and push. |
+| [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md) | Written before the GPU campaign: what each queued experiment is expected to show, the number that would refute it, the model we expect to publish, and the campaign plan. |
 | [`docs/IDEAS.md`](docs/IDEAS.md) | Ranked ideas for the next defense, with the evidence for each: layer-level and sign signals, depth exits, recovery, peer voting. |
 | [`docs/PAPER_PLAN.md`](docs/PAPER_PLAN.md) | Claims and their status, closest published work, paper outline with figures mapped to runs, experiments needed before submission. |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Literature review: aggregation rules, attacks, backdoor and distillation defenses, personalized and hierarchical FL, efficiency, privacy, evaluation standards, open gaps. |

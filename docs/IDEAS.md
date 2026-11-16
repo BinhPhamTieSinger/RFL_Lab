@@ -10,6 +10,7 @@
 | Clever attacks (ALIE, Min-Max) sit *inside* the consensus | one-sided screening isolated none of 9; two-sided isolates all 9 |
 | The gap gate fixes false isolations but hides the backdoor | R3: honest isolations 13 → 3; backdoor success 23% → 55% |
 | The backdoor lives in the trunk and outlives its attackers | stop test: success keeps rising after poisoning stops, with no defense |
+| The shared head carries it; the personal heads resist it | per-head success at D1 (9 runs): root 29–71%, parent 15–45%, local 8–22%; `figures/phase6_backdoor_heads.png` |
 | Root-head cosine cannot see the backdoor; whole-model cosine can | FLAME rejects backdoor attackers in 27–28 of 30 rounds; whole-update screening gave 0.3% success (Phase 3, seed 42) |
 
 So the open problem is narrow: **see the backdoor without reintroducing false isolations, and remove what got in before detection.**
@@ -73,11 +74,23 @@ So the open problem is narrow: **see the backdoor without reintroducing false is
 **Evidence.** CIFAR-100: 85% detection, 16% false positives. Needs no in-distribution data; CIFAR-10 images could serve as the out-of-distribution set for CIFAR-100. An attacker who first trains on clean data to erase the indicator lowers detection to 53%.
 **Status.** Not implemented; lower priority than 1–4.
 
+## 9. Head-agreement inference
+
+**What.** FedHEP already predicts with three heads on one trunk. When the root head's prediction is not supported by the parent and local heads, let the personal heads decide. It is the exit guard's decision rule applied to heads that already exist: no extra classifiers, no held-out split, no threshold to fit, one forward pass as before.
+**Evidence.** Our per-head numbers above. Qin et al. (KDD 2023) explain why: the shared trunk learns the trigger features, but a classifier trained only on clean local data never maps them to the target label (FedRep held BadNet below 10% where FedAvg reached 89%); re-initializing and retraining only the classifier locally cut success by 57% on average.
+**New?** The mechanism (a local classifier resists backdoors) is published. Using the disagreement between a shared head and personal heads as a per-input backdoor signal inside a hierarchical ensemble is not, as far as we found.
+**Cost.** None at training time; at prediction time, a comparison of three outputs the model already computes.
+**Risks.** (a) The local head is the weakest head on data unlike the client's own, so overruling the root head may cost accuracy on rare classes; the bottom-10% metric will show it. (b) Natural-feature triggers (Bad-PFL, DCInject) are learned by the personal heads too, so the signal vanishes against them. Both are stated as predictions P11 and P12 in `PREDICTIONS.md`.
+**Status.** Not implemented. About an hour: the runner already computes per-head predictions for `asr_heads`.
+
 ## Order of work
 
 1. GPU server, first batch: `gpu_d1_signals` (ideas 1, 2, 5 with fresh baselines) and the exit guard on the backdoor runs (idea 3).
-2. Then: idea 4, informed by the per-head results.
-3. Then: idea 6, if 1–4 leave a gap.
+2. Idea 9 (head-agreement inference), re-evaluating the same runs.
+3. Then: idea 4, rewinding the trunk and the root head, which the per-head results point at.
+4. Then: idea 6, if 1–4 and 9 leave a gap.
+
+The expected outcome of each step, with the number that would refute it, is in `PREDICTIONS.md`.
 
 ## Sources
 
@@ -88,4 +101,5 @@ So the open problem is narrow: **see the backdoor without reintroducing false is
 - CrowdGuard, NDSS 2024 — https://arxiv.org/pdf/2210.07714
 - FedREDefense, ICML 2024 — https://proceedings.mlr.press/v235/xie24c.html
 - BackdoorIndicator, USENIX Security 2024 — https://arxiv.org/html/2405.20862v1
+- Qin et al., Revisiting Personalized Federated Learning: Robustness Against Backdoor Attacks, KDD 2023 — https://arxiv.org/pdf/2302.01677
 - FedReview, BaFFLe, Basil, FedEraser, FedRecover, FLAME, Zhuang et al. (ICLR 2024): see `LITERATURE_REVIEW.md`
