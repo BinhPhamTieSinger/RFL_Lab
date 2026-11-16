@@ -140,7 +140,8 @@ export default function Workbench() {
   const [historyTarget, setHistoryTarget] = useState("");
   const [cpuKey, setCpuKey] = useState("");
   const [cpuEndpoint, setCpuEndpoint] = useState("");
-  const pendingConfig = useRef<Record<string, any> | null>(null);
+  const configurationRequest = useRef(0);
+  const [schemaLoading, setSchemaLoading] = useState(false);
   const stream = useRef<{ close: () => void } | null>(null);
   const buffer = useRef<Event[]>([]);
   useEffect(() => {
@@ -161,6 +162,9 @@ export default function Workbench() {
       setCpuEndpoint(sessionStorage.getItem("rfl-cpu-url") ?? "");
     };
     shared();
+    installConfiguration({ method: "fedhep_plus", overrides: {} }).catch((e) =>
+      setError(e.message),
+    );
     window.addEventListener("popstate", shared);
     api("/capabilities")
       .then((c) => {
@@ -197,32 +201,9 @@ export default function Workbench() {
       clearInterval(refresh);
       clearInterval(health);
       window.removeEventListener("popstate", shared);
+      configurationRequest.current += 1;
     };
   }, []);
-  useEffect(() => {
-    let current = true;
-    api(`/models/${method}/schema`)
-      .then((f) => {
-        if (current) {
-          setFields(f);
-          setValues(
-            Object.fromEntries(
-              f.map((x: Field) => [
-                x.key,
-                pendingConfig.current && x.key in pendingConfig.current
-                  ? pendingConfig.current[x.key]
-                  : x.default,
-              ]),
-            ),
-          );
-          pendingConfig.current = null;
-        }
-      })
-      .catch((e) => setError(e.message));
-    return () => {
-      current = false;
-    };
-  }, [method]);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("rfl-theme", dark ? "dark" : "light");
@@ -292,20 +273,28 @@ export default function Workbench() {
     }
   }
   async function installConfiguration(config: any) {
-    const schema = await api(`/models/${config.method}/schema`);
-    pendingConfig.current = config.method === method ? null : config.overrides;
-    setMethod(config.method);
-    setFields(schema);
-    setValues(
-      Object.fromEntries(
-        schema.map((field: Field) => [
-          field.key,
-          field.key in config.overrides
-            ? config.overrides[field.key]
-            : field.default,
-        ]),
-      ),
-    );
+    const request = ++configurationRequest.current;
+    setSchemaLoading(true);
+    setFields([]);
+    try {
+      const schema = await api(`/models/${config.method}/schema`);
+      if (request !== configurationRequest.current) return false;
+      setMethod(config.method);
+      setFields(schema);
+      setValues(
+        Object.fromEntries(
+          schema.map((field: Field) => [
+            field.key,
+            field.key in config.overrides
+              ? config.overrides[field.key]
+              : field.default,
+          ]),
+        ),
+      );
+      return true;
+    } finally {
+      if (request === configurationRequest.current) setSchemaLoading(false);
+    }
   }
   async function loadCapture(selectedId = captureId) {
     setBusy(true);
@@ -314,7 +303,7 @@ export default function Workbench() {
     buffer.current = [];
     try {
       const capture = await api(`/live/captures/${selectedId}`);
-      await installConfiguration(capture.config);
+      if (!(await installConfiguration(capture.config))) return;
       setCaptureMode(true);
       setPlaying(false);
       setEvents(capture.events);
@@ -598,7 +587,7 @@ export default function Workbench() {
     "queued",
     "pending",
   ].includes(status);
-  const locked = running || busy;
+  const locked = running || busy || schemaLoading;
   const sections = Array.from(new Set(fields.map((f) => f.key.split(".")[0])));
   function displayField(f: Field) {
     const attack = values["attack.kind"];
@@ -669,6 +658,7 @@ export default function Workbench() {
             <aside className="configuration">
               <h2>Experiment setup</h2>
               <p>Parameters are passed to the research implementation.</p>
+              {schemaLoading && <p role="status">Loading model settings…</p>}
               <label>
                 Method
                 <select
@@ -678,6 +668,10 @@ export default function Workbench() {
                   onChange={(e) => {
                     resetInspection();
                     setMethod(e.target.value);
+                    installConfiguration({
+                      method: e.target.value,
+                      overrides: {},
+                    }).catch((error) => setError(error.message));
                   }}
                 >
                   {models.map((m) => (
@@ -1276,39 +1270,26 @@ export default function Workbench() {
                     .then(setHistory)
                     .catch((e) => setError(e.message))
                 }
-                loadConfig={(config: any) => {
+                loadConfig={async (config: any) => {
                   if (running) {
                     setError(
                       "Wait for the current visualization to finish or cancel it before loading another configuration.",
                     );
                     return;
                   }
-                  stream.current?.close();
-                  buffer.current = [];
-                  setEvents([]);
-                  setId("");
-                  setCursor(null);
-                  setPlaying(false);
-                  setCaptureMode(false);
-                  setStatus("Ready");
-                  const next = { ...config.overrides, "run.device": "cpu" };
-                  if (config.method === method)
-                    setValues(
-                      Object.fromEntries(
-                        fields.map((f) => [
-                          f.key,
-                          f.key in next ? next[f.key] : f.default,
-                        ]),
-                      ),
-                    );
-                  else {
-                    pendingConfig.current = next;
-                    setMethod(config.method);
+                  resetInspection();
+                  try {
+                    await installConfiguration({
+                      method: config.method,
+                      overrides: { ...config.overrides, "run.device": "cpu" },
+                    });
+                  } catch (error) {
+                    setError((error as Error).message);
                   }
                   setView("Live Workbench");
                 }}
-                replay={(run: any) => {
-                  setMethod(run.config.method);
+                replay={async (run: any) => {
+                  await installConfiguration(run.config);
                   setStatus(run.status);
                   connect(run.id);
                   setView("Live Workbench");

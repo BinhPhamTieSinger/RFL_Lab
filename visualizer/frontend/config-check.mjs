@@ -5,7 +5,9 @@ dns.setDefaultResultOrder("ipv4first");
 
 const base = process.env.RFL_TEST_URL ?? "http://127.0.0.1:3000";
 const hostname = new URL(base).hostname;
-const address = await dns.promises.lookup(hostname, { family: 4 });
+const address = process.env.RFL_TEST_IP
+  ? { address: process.env.RFL_TEST_IP }
+  : await dns.promises.lookup(hostname, { family: 4 });
 const browser = await chromium.launch({
   args: [`--host-resolver-rules=MAP ${hostname} ${address.address}`],
   executablePath:
@@ -31,9 +33,20 @@ if (key)
     },
     { key, endpoint },
   );
-const history = await page.request
-  .get(base + "/api/history")
-  .then((r) => r.json());
+async function read(path, authenticated = false) {
+  return page.evaluate(
+    async ({ path, key, endpoint }) => {
+      const response = await fetch(path, {
+        headers: key ? { "X-RFL-Key": key, "X-RFL-Endpoint": endpoint } : {},
+      });
+      if (!response.ok) throw Error(`Request failed ${response.status}`);
+      return response.json();
+    },
+    { path, key: authenticated ? key : "", endpoint },
+  );
+}
+await page.goto(base);
+const history = await read("/api/history");
 const target = history.at(-1);
 await page.goto(`${base}/?experiment=${target.id}&section=config`);
 const entry = page.locator(`#${target.id}`);
@@ -62,7 +75,7 @@ await expect(page.getByLabel("num clients", { exact: true })).toHaveValue("6");
 await page.getByLabel("Method", { exact: true }).selectOption("fedhep_plus");
 await expect(page.getByLabel("num clients", { exact: true })).toHaveValue("6");
 let runId;
-if (key) {
+if (key || process.env.RFL_TEST_LOCAL === "1") {
   await page.getByLabel("num clients", { exact: true }).fill("4");
   await page.getByLabel("train subset", { exact: true }).fill("120");
   await page.getByLabel("test subset", { exact: true }).fill("60");
@@ -76,7 +89,11 @@ if (key) {
     .locator(".configuration summary")
     .filter({ hasText: /^attack$/ })
     .click();
-  await page.getByLabel("kind", { exact: true }).selectOption("sign_flip");
+  await page
+    .locator(".configuration label")
+    .filter({ hasText: /^kind/ })
+    .locator("select")
+    .selectOption("sign_flip");
   await page.getByLabel("count", { exact: true }).fill("1");
   const started = page.waitForResponse(
     (r) =>
@@ -86,11 +103,19 @@ if (key) {
     .getByRole("button", { name: "Run visualization", exact: true })
     .click();
   const response = await started;
+  const submitted = response.request().postDataJSON();
+  if (
+    submitted.overrides["data.num_clients"] !== 4 ||
+    submitted.overrides["data.train_subset"] !== 120 ||
+    submitted.overrides["data.alpha"] !== 0.05
+  )
+    throw Error("A schema response overwrote the edited configuration");
   if (!response.ok()) throw Error(await response.text());
   runId = (await response.json()).id;
   await expect(page.locator('.react-flow__node[data-id^="c"]')).toHaveCount(4, {
     timeout: 90000,
   });
+  await expect(page.locator('.react-flow__node[data-id^="p"]')).toHaveCount(2);
   const held = await page
     .getByLabel("Execution event", { exact: true })
     .inputValue();
@@ -100,19 +125,15 @@ if (key) {
   await expect(page.getByLabel("Execution event", { exact: true })).toHaveValue(
     held,
   );
-  const batch = await page.request
-    .get(`${base}/api/experiments/${runId}/event-batch`, {
-      headers: { "X-RFL-Key": key, "X-RFL-Endpoint": endpoint },
-    })
-    .then((r) => r.json());
+  const batch = await read(`/api/experiments/${runId}/event-batch`, true);
   const initialized = batch.events.find((e) => e.type === "initialized");
-  if (initialized.clients.length !== 4 || initialized.attackers.length !== 1)
+  if (
+    initialized.clients.length !== 4 ||
+    initialized.attackers.length !== 1 ||
+    initialized.clients.reduce((total, c) => total + c.train, 0) !== 120
+  )
     throw Error("Runtime configuration differs from sidebar");
-  const detail = await page.request
-    .get(`${base}/api/experiments/${runId}`, {
-      headers: { "X-RFL-Key": key, "X-RFL-Endpoint": endpoint },
-    })
-    .then((r) => r.json());
+  const detail = await read(`/api/experiments/${runId}`, true);
   if (
     detail.config.overrides["data.alpha"] !== 0.05 ||
     detail.config.overrides["fedhep.num_groups"] !== 2 ||
@@ -127,9 +148,7 @@ if (key) {
     held
   )
     throw Error("Next operation did not advance");
-  const currentHistory = await page.request
-    .get(base + "/api/history")
-    .then((r) => r.json());
+  const currentHistory = await read("/api/history");
   if (currentHistory.some((r) => r.id === runId))
     throw Error("Visualization run entered curated history");
 }

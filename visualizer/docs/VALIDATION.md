@@ -44,3 +44,13 @@ The expanded passive-observation tests validate ACLM's masked values and unchang
 The production build and TypeScript checks passed with the documentation reader, separate capture endpoints, manual history manifest and event-driven weight-transfer rendering. Documentation is exported from the current repository Markdown during builds, including its figures. GFM tables, lists and KaTeX are rendered in the reading view.
 
 Browser verification passed on the local workbench with zero page errors, 14 rendered Markdown documents, 783 curated history entries, consistent attack configuration, a clean capture with zero malicious nodes, measured SVG packet motion and no mobile document overflow. The real local one-round training browser test also passed after the playback changes.
+
+## CPU sessions and manual inspection — 2026-11-16
+
+The backend suite passes 33 tests, including authenticated bridge access, CPU-only validation and ordered event-batch pagination. The production build and TypeScript checks pass.
+
+A browser regression caught a late model-schema response overwriting freshly edited values. Configuration loading now uses a request generation and temporarily locks the fields. The regression submits the sidebar values after switching models and checks the actual worker initialization. The verified local run used FedHEP+, four clients, two parents, 120 CIFAR-100 training images, 60 test images, alpha 0.05, one sign-flip attacker and one CPU round. All requested values reached the worker. The actual run identifier is `fdc949ca3f834aaa9141a354937c3746`.
+
+Playback checks hold the inspection cursor while packets animate. The live-run check holds the cursor through completed training, then verifies that Next operation advances it. Actual training continues in the background. Curated history excludes these visualization runs.
+
+The deployed browser checks verify a configuration permalink beyond the first 25 history entries, its expanded saved configuration and its chart. The private CPU connection uses an authenticated, temporary Cloudflare tunnel through an allowlisted same-origin Netlify proxy. Local DNS and IPv6 routing were intermittent during verification. Browser checks support an explicitly verified IPv4 address through `RFL_TEST_IP`.
