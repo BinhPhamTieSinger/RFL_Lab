@@ -13,6 +13,7 @@ import threading
 import time
 import uuid
 from contextlib import asynccontextmanager, suppress
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -133,9 +134,25 @@ async def local_requests(request: Request, call_next):
     return await call_next(request)
 
 
+@lru_cache(maxsize=1)
+def detected_devices():
+    import torch
+    devices = ["cpu"]
+    for name, backend in (("mps", torch.backends.mps), ("cuda", torch.cuda), ("xpu", getattr(torch, "xpu", None))):
+        if backend is not None and backend.is_available():
+            devices.append(name)
+    return devices
+
+
+def available_devices():
+    if os.environ.get("RFL_VIZ_CPU_ONLY") == "1":
+        return ["cpu"]
+    return [*detected_devices(), "auto"]
+
+
 @app.get("/health")
 def health():
-    return {"online": True, "device": "cpu" if os.environ.get("RFL_VIZ_CPU_ONLY") == "1" else "configured"}
+    return {"online": True, "device": "cpu" if os.environ.get("RFL_VIZ_CPU_ONLY") == "1" else "configured", "devices": available_devices()}
 
 
 @app.get("/models")
@@ -160,6 +177,9 @@ def formulas():
 def check(body: RunRequest):
     if os.environ.get("RFL_VIZ_CPU_ONLY") == "1" and body.overrides.get("run.device", "cpu") != "cpu":
         raise HTTPException(422, "The online computer bridge uses CPU. Select cpu for run.device.")
+    device = body.overrides.get("run.device", "cpu")
+    if device not in available_devices():
+        raise HTTPException(422, f"Device {device} is unavailable on the connected computer. Available devices: {', '.join(available_devices())}")
     try:
         validate(body.method, body.overrides)
     except (ValueError, TypeError) as e:

@@ -69,7 +69,7 @@ def test_remote_cpu_authentication_and_device(monkeypatch):
     monkeypatch.setenv("RFL_VIZ_TOKEN", "test-private-key")
     monkeypatch.setenv("RFL_VIZ_CPU_ONLY", "1")
     with TestClient(app) as client:
-        assert client.get("/health").json() == {"online": True, "device": "cpu"}
+        assert client.get("/health").json() == {"online": True, "device": "cpu", "devices": ["cpu"]}
         assert client.get("/models").status_code == 401
         assert client.post("/experiments", json={}).status_code == 401
         client.headers["Authorization"] = "Bearer incorrect"
@@ -78,3 +78,12 @@ def test_remote_cpu_authentication_and_device(monkeypatch):
         assert client.get("/models").status_code == 200
         assert client.post("/experiments/validate", json={"overrides": {"run.device": "mps"}}).status_code == 422
         assert client.post("/experiments/validate", json={"overrides": {"run.device": "cpu"}}).status_code == 200
+
+
+def test_device_availability(monkeypatch):
+    monkeypatch.delenv("RFL_VIZ_CPU_ONLY", raising=False)
+    monkeypatch.setattr("rfl_viz.api.detected_devices", lambda: ["cpu", "mps"])
+    with TestClient(app) as client:
+        assert client.get("/health").json()["devices"] == ["cpu", "mps", "auto"]
+        assert client.post("/experiments/validate", json={"overrides": {"run.device": "mps"}}).status_code == 200
+        assert client.post("/experiments/validate", json={"overrides": {"run.device": "cuda"}}).status_code == 422

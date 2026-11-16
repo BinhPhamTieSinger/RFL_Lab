@@ -29,3 +29,17 @@ RFL_TEST_URL=https://rfl-lab-visualizer.netlify.app RFL_TEST_CPU=1 node config-c
 ```
 
 The check verifies the requested configuration, actual client identities, completed CPU execution, held inspection cursor, manual Next, shared historical configuration and exclusion from curated history. `node playback-check.mjs` additionally checks Markdown, formulas, animated transfer packets, autoplay, pause, themes and the mobile layout.
+
+## Local accelerators
+
+CPU remains the default. To expose accelerators through the hosted sidebar, stop the running bridge with Ctrl-C and restart it with the following command.
+
+```sh
+../.venv/bin/python visualizer/scripts/online_cpu.py --allow-accelerators
+```
+
+The connected Python environment reports its available devices. Select one under Run → device. CPU runs on the processor, MPS uses a supported Mac GPU, CUDA uses a GPU supported by the installed CUDA/ROCm PyTorch build, and XPU uses a supported Intel GPU. Auto follows the existing research order of CUDA, XPU, MPS, then CPU. Unavailable devices are rejected before training. Selecting an accelerator never changes the default for a new configuration.
+
+Intel Iris availability depends on the exact hardware, OS, drivers and PyTorch build. XPU is offered only when `torch.xpu.is_available()` succeeds. PyTorch's validated Intel GPU list should be checked for the target machine. The current bridge implementation uses POSIX process groups and file locks, so its supported host environments are macOS and Linux. Windows requires a compatible Linux/WSL environment and corresponding GPU support. [PyTorch Intel GPU setup](https://docs.pytorch.org/docs/2.15/notes/get_start_xpu.html)
+
+The local-only workbench launched with `visualizer/scripts/dev.sh` also discovers installed devices. Browser rendering uses the viewing computer's hardware. Training executes on the machine running the connected Python API.

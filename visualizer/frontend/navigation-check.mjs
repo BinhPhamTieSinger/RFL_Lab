@@ -110,6 +110,39 @@ try {
     delete document.hidden;
     document.dispatchEvent(new Event("visibilitychange"));
   });
+  for (const tab of [
+    "Architecture",
+    "Mathematical inspection",
+    "Experiment history",
+    "Documentation",
+  ]) {
+    await page.getByRole("button", { name: tab, exact: true }).click();
+    await page
+      .getByRole("button", { name: "Live Workbench", exact: true })
+      .click();
+    await expect
+      .poll(
+        () =>
+          page.locator(".center .react-flow").evaluate((flow) => {
+            const canvas = flow.getBoundingClientRect();
+            return Array.from(flow.querySelectorAll(".react-flow__node")).some(
+              (node) => {
+                const box = node.getBoundingClientRect();
+                return (
+                  box.width > 0 &&
+                  box.height > 0 &&
+                  box.right > canvas.left &&
+                  box.left < canvas.right &&
+                  box.bottom > canvas.top &&
+                  box.top < canvas.bottom
+                );
+              },
+            );
+          }),
+        { timeout: 4000 },
+      )
+      .toBe(true);
+  }
   const paused = await slider.inputValue();
   await page.waitForTimeout(700);
   await expect(slider).toHaveValue(paused);

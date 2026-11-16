@@ -12,6 +12,7 @@ import {
 import {
   ReactFlow,
   useReactFlow,
+  useNodesInitialized,
   Controls,
   Background,
   MiniMap,
@@ -85,6 +86,13 @@ async function api(path: string, body?: unknown) {
   return value;
 }
 const pretty = (value: unknown) => JSON.stringify(value, null, 2);
+const deviceLabels: Record<string, string> = {
+  cpu: "CPU",
+  mps: "MPS · Mac GPU",
+  cuda: "CUDA / ROCm GPU",
+  xpu: "XPU · Intel GPU",
+  auto: "Auto · available accelerator",
+};
 const titles: Record<string, string> = {
   fedavg: "FedAvg",
   fedprox: "FedProx",
@@ -98,7 +106,9 @@ const titles: Record<string, string> = {
   fedhep_robust: "Robust FedHEP",
 };
 function AutoFit({ focus }: { focus: string }) {
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes } = useReactFlow();
+  const nodesReady = useNodesInitialized();
+  const hasFitted = useRef(false);
   useEffect(() => {
     const onResize = () =>
       requestAnimationFrame(() => fitView({ padding: 0.2 }));
@@ -106,16 +116,24 @@ function AutoFit({ focus }: { focus: string }) {
     return () => window.removeEventListener("resize", onResize);
   }, [fitView]);
   useEffect(() => {
-    if (focus)
-      fitView({
-        nodes: focus.split("|").map((id) => ({ id })),
+    if (!nodesReady) return;
+    const frame = requestAnimationFrame(() => {
+      const ids = new Set(focus.split("|"));
+      const targets = getNodes().filter((node) => ids.has(node.id));
+      void fitView({
+        ...(targets.length ? { nodes: targets } : {}),
         maxZoom: 1.2,
-        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? 0
-          : 300,
-        padding: 0.4,
+        padding: 0.3,
+        duration:
+          hasFitted.current &&
+          !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? 300
+            : 0,
       });
-  }, [focus, fitView]);
+      hasFitted.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus, nodesReady, fitView, getNodes]);
   return null;
 }
 
@@ -124,6 +142,7 @@ export default function Workbench() {
     training: true,
     online: true,
     requiresKey: false,
+    devices: ["cpu"] as string[],
     mode: "Local Python execution",
   });
   const [method, setMethod] = useState("fedhep_plus"),
@@ -1021,10 +1040,10 @@ export default function Workbench() {
                       <summary>
                         {capabilities.requiresKey
                           ? capabilities.mode
-                          : "Connect your computer CPU"}
+                          : "Connect your computer"}
                       </summary>
                       <label>
-                        CPU bridge address
+                        Computer bridge address
                         <input
                           type="url"
                           value={cpuEndpoint}
@@ -1034,7 +1053,7 @@ export default function Workbench() {
                         />
                       </label>
                       <label>
-                        CPU access key
+                        Computer access key
                         <input
                           type="password"
                           autoComplete="off"
@@ -1069,7 +1088,7 @@ export default function Workbench() {
                             .catch((e) => setError(e.message));
                         }}
                       >
-                        Connect CPU
+                        Connect computer
                       </button>
                       <button
                         disabled={running}
@@ -1086,7 +1105,7 @@ export default function Workbench() {
                           api("/capabilities").then(setCapabilities);
                         }}
                       >
-                        Forget CPU connection
+                        Forget computer connection
                       </button>
                       <small>
                         The local bridge opens a connected browser tab. The key
@@ -1141,7 +1160,7 @@ export default function Workbench() {
                       {captureMode
                         ? "Editing a setting starts a new configuration. Run visualization to compute its results."
                         : capabilities.training
-                          ? "Run these settings on your computer’s CPU. Results wait for Next operation."
+                          ? "Run these settings on your connected computer using the selected device. Results wait for Next operation."
                           : "Choose a captured execution to inspect its actual computations."}
                     </small>
                   </div>
@@ -1186,17 +1205,20 @@ export default function Workbench() {
                                 {f.options
                                   .filter(
                                     (v) =>
-                                      !capabilities.requiresKey ||
                                       f.key !== "run.device" ||
-                                      v === "cpu",
+                                      (
+                                        capabilities.devices ?? ["cpu"]
+                                      ).includes(v),
                                   )
                                   .map((v) => (
                                     <option key={String(v)} value={String(v)}>
-                                      {v === null
-                                        ? "Disabled"
-                                        : v === "synthetic"
-                                          ? "Synthetic (test fixture)"
-                                          : v}
+                                      {f.key === "run.device"
+                                        ? deviceLabels[v]
+                                        : v === null
+                                          ? "Disabled"
+                                          : v === "synthetic"
+                                            ? "Synthetic (test fixture)"
+                                            : v}
                                     </option>
                                   ))}
                               </select>

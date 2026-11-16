@@ -42,16 +42,23 @@ async function handle(request: Request, context: Context) {
   const local = process.env.RFL_ARCHIVE_ONLY !== "1" && !connection;
   const remote = !local && Boolean(backend);
   if (route === "capabilities") {
-    let online = local;
-    if (remote) {
+    let online = false;
+    let devices: string[] = ["cpu"];
+    if (local || remote) {
       try {
-        online = (
-          await fetch(`${backend}/health`, {
+        const response = await fetch(
+          `${backend ?? "http://127.0.0.1:8000"}/health`,
+          {
             cache: "no-store",
             redirect: "error",
             signal: AbortSignal.timeout(4000),
-          })
-        ).ok;
+          },
+        );
+        online = response.ok;
+        if (online) {
+          const health = await response.json();
+          devices = health.devices ?? ["cpu"];
+        }
       } catch {
         online = false;
       }
@@ -60,10 +67,11 @@ async function handle(request: Request, context: Context) {
       training: local || remote,
       online,
       requiresKey: remote,
+      devices,
       mode: local
         ? "Local Python execution"
         : remote
-          ? `Computer CPU · ${online ? "online" : "offline"}`
+          ? `Connected computer · ${online ? "online" : "offline"}`
           : "Execution visualization and curated history",
     });
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Connect the hosted workbench to an authenticated, CPU-only local worker."""
+"""Connect the hosted workbench to an authenticated local worker (CPU by default)."""
 
 import argparse
 import fcntl
@@ -24,6 +24,7 @@ SITE = "https://rfl-lab-visualizer.netlify.app"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-open", action="store_true", help="Keep the connected browser tab closed")
+    parser.add_argument("--allow-accelerators", action="store_true", help="Offer available MPS, CUDA and XPU devices alongside CPU")
     args = parser.parse_args()
     STATE.mkdir(parents=True, exist_ok=True)
     bridge_lock = (STATE / "bridge.lock").open("a")
@@ -32,7 +33,10 @@ def main():
     except BlockingIOError:
         connection_file = STATE / "connection.json"
         if connection_file.exists() and not args.no_open:
-            endpoint = json.loads(connection_file.read_text())["endpoint"]
+            connection = json.loads(connection_file.read_text())
+            if args.allow_accelerators and not connection.get("allow_accelerators", False):
+                sys.exit("The running bridge is CPU-only. Stop it with Ctrl-C, then restart with --allow-accelerators.")
+            endpoint = connection["endpoint"]
             token = (STATE / "access-key").read_text().strip()
             webbrowser.open(f"{SITE}/#{urlencode({'cpu-api': endpoint, 'cpu-key': token})}")
         print("The CPU bridge is already running.")
@@ -51,7 +55,7 @@ def main():
         "RFL_VIZ_DATA": str(STATE / "runs"),
         "RFL_VIZ_LOCK_PATH": str(VIZ / "data/training.lock"),
         "RFL_VIZ_TOKEN": token,
-        "RFL_VIZ_CPU_ONLY": "1",
+        "RFL_VIZ_CPU_ONLY": "0" if args.allow_accelerators else "1",
         "PYTHONPATH": f"{VIZ / 'backend'}{os.pathsep}{VIZ.parent / 'src'}",
     }
     children = []
@@ -119,7 +123,7 @@ def main():
             else:
                 sys.exit("Tunnel did not become reachable.")
             (STATE / "connection.json").write_text(
-                json.dumps({"endpoint": endpoint, "site": SITE, "pid": os.getpid()})
+                json.dumps({"endpoint": endpoint, "site": SITE, "pid": os.getpid(), "allow_accelerators": args.allow_accelerators})
             )
             print(
                 "CPU bridge online. Keep this process running. The bridge opens a connected workbench tab.",
