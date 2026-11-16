@@ -125,6 +125,12 @@ try {
     delete document.hidden;
     document.dispatchEvent(new Event("visibilitychange"));
   });
+  const mountedGraph = await page
+    .locator(".center .react-flow")
+    .elementHandle();
+  const savedViewport = await page
+    .locator(".center .react-flow__viewport")
+    .getAttribute("style");
   for (const tab of [
     "Architecture",
     "Mathematical inspection",
@@ -132,9 +138,16 @@ try {
     "Documentation",
   ]) {
     await page.getByRole("button", { name: tab, exact: true }).click();
+    expect(await mountedGraph.evaluate((node) => node.isConnected)).toBe(true);
+    await expect(page.locator(".workbench-view")).toBeHidden();
     await page
       .getByRole("button", { name: "Live Workbench", exact: true })
       .click();
+    expect(await mountedGraph.evaluate((node) => node.isConnected)).toBe(true);
+    await expect(page.locator(".center .react-flow__viewport")).toHaveAttribute(
+      "style",
+      savedViewport,
+    );
     await expect
       .poll(
         () =>
