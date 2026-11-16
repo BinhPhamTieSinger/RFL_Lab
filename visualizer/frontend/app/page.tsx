@@ -152,7 +152,7 @@ export default function Workbench() {
       if (target) setView("Experiment history");
       const key = new URLSearchParams(url.hash.slice(1)).get("cpu-key");
       const endpoint = new URLSearchParams(url.hash.slice(1)).get("cpu-api");
-      if (endpoint) sessionStorage.setItem("rfl-cpu-url", endpoint);
+      if (endpoint && key) sessionStorage.setItem("rfl-cpu-url", endpoint);
       if (key) {
         sessionStorage.setItem("rfl-cpu-key", key);
         url.hash = "";
