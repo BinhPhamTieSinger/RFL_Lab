@@ -365,8 +365,8 @@ FORMULAS.extend(
             "name": "Two-sided screen and gap gate",
             "method": "fedhep_plus",
             "latex": (
-                r"z_i^{\pm}=-|z_i|\ \text{(two_sided)},\qquad"
-                r"g=\frac{\max_k(s_{(k+1)}-s_{(k)})}{\operatorname{median}_k(s_{(k+1)}-s_{(k)})},\quad"
+                r"z_i^{\pm}=-|z_i|\ \text{(two\_sided)},\qquad "
+                r"g=\frac{\max_k(s_{(k+1)}-s_{(k)})}{\operatorname{median}_k(s_{(k+1)}-s_{(k)})},\quad "
                 r"g<\gamma\Rightarrow z_i\leftarrow\max(z_i,0)"
             ),
             "explanation": (
@@ -374,7 +374,8 @@ FORMULAS.extend(
                 "colluders sitting on the reference) is treated like one far below. The gap gate gamma is "
                 "gap_gate: unless the largest gap between neighbouring scores is gamma times the median gap, "
                 "the round's scores do not split and nobody collects bad evidence. gap_ratio is logged in "
-                "score_stats of every round."
+                "score_stats of every round. Fewer than four scores give zero. A zero median gap gives infinity "
+                "when any gap is positive, and zero when all gaps are zero."
             ),
             "source": "defense/screening.py",
         },
@@ -382,9 +383,9 @@ FORMULAS.extend(
             "name": "L0 · influence bound (ARC, NNM, trimmed mean)",
             "method": "fedhep_plus",
             "latex": (
-                r"k=\lfloor 2\tfrac{f}{n}(n-f)\rfloor,\quad"
-                r"\mathrm{ARC}:\ \text{clip the }k\text{ largest updates to the }(k{+}1)\text{-th norm},\quad"
-                r"\mathrm{NNM}:\ \tilde\Delta_i=\tfrac{1}{n-f}\sum_{j\in N_{n-f}(i)}\Delta_j,\quad"
+                r"k=\lfloor 2\tfrac{f}{n}(n-f)\rfloor,\quad "
+                r"\mathrm{ARC}:\ \text{clip the }k\text{ largest updates to the }(k{+}1)\text{-th norm},\quad "
+                r"\mathrm{NNM}:\ \tilde\Delta_i=\tfrac{1}{n-f}\sum_{j\in N_{n-f}(i)}\Delta_j,\quad "
                 r"\Delta=\mathrm{TM}_f(\tilde\Delta)"
             ),
             "explanation": (
@@ -402,7 +403,7 @@ FORMULAS.extend(
             "latex": (
                 r"\text{critical: } L^*=\operatorname{top}_k\ "
                 r"\mathrm{Var}_i\cos(\Delta_i^{(\ell)},\bar\Delta^{(\ell)}),"
-                r"\ s_i=\tfrac1k\sum_{\ell\in L^*}\cos(\Delta_i^{(\ell)},\bar\Delta^{(\ell)});\qquad"
+                r"\ s_i=\tfrac1k\sum_{\ell\in L^*}\cos(\Delta_i^{(\ell)},\bar\Delta^{(\ell)});\qquad "
                 r"\text{sign\_align: } s_i=\tfrac{1}{|T_i|}\sum_{j\in T_i}\mathbb 1[\operatorname{sgn}\Delta_{ij}"
                 r"=\operatorname{sgn}\bar\Delta_j]"
             ),
@@ -440,7 +441,7 @@ FORMULAS.extend(
             "method": "fedhep_plus",
             "latex": (
                 r"t^*=\min_{c\in I_{new}}\ \text{first } t\le r\text{ with "
-                r"} z_{c,t'}<-z_{cut}\ \forall t'\in[t,r],"
+                r"} z_{c,t'}<-z_{cut}\ \forall t'\in[t,r),"
                 r"\qquad w_r\leftarrow M\odot w_{t^*}+(1-M)\odot w_r"
             ),
             "explanation": (
@@ -448,8 +449,10 @@ FORMULAS.extend(
                 "isolated in round r, the Global model and every "
                 "parent return, on the coordinates selected by M (trunk, "
                 "trunk and root head, or all), to the stored "
-                "model from the start of t*, the earliest round of their unbroken suspicious trail within "
-                "rewind_window rounds; no aggregation happens that round. rewind_target is logged in the round's "
+                "model from the start of t*, the earliest round in their preceding unbroken suspicious trail within "
+                "rewind_window rounds, defaulting to the current round. The target is clamped to retained snapshots. "
+                "Parent aggregation precedes this restoration. The Global aggregation step is skipped. "
+                "rewind_target is logged in the round's "
                 "diagnostics."
             ),
             "source": "server/fedhep_plus_server.py",
@@ -458,15 +461,18 @@ FORMULAS.extend(
             "name": "Depth-exit guard",
             "method": "fedhep",
             "latex": (
-                r"e_d=\operatorname{softmax}(W_d\,\mathrm{pool}(h_d(x))),\ d\in\{res1,layer2,layer3\};\quad"
-                r"\text{flag if } \tfrac13\sum_d e_d[\hat y]<\tau_{95}"
+                r"u_d=\frac{\mathrm{pool}(h_d(x))-\mu_d}{\max(\sigma_d,10^{-6})},\quad "
+                r"e_d=\operatorname{softmax}(\operatorname{mask}_{C_i}(W_du_d+b_d)),\quad "
+                r"s(x)=1-\tfrac13\sum_d e_d[\hat y],\quad "
+                r"\tau_i=Q_{0.95}(s(x_{cal})),\quad \text{flag if }s(x)>\tau_i"
             ),
             "explanation": (
                 "fedhep.exit_guard, evaluation only (after Orion, IJCAI "
                 "2023). Each honest client fits three linear "
-                "exits on pooled trunk features of its own training images; "
-                "tau is the 5th percentile of support on "
-                "its 20% held-out split. A flagged input takes the exits' vote. history[].guarded records the "
+                "exits at res1, layer2 and layer3 using pooled, standardized features of its own training images. "
+                "mu and sigma are fitted feature statistics. C_i is the active-class mask, assigning -1e9 "
+                "to inactive logits. The threshold is the 95th percentile of the disagreement score s on "
+                "the 20% held-out split. A flagged input takes the exits' vote. history[].guarded records the "
                 "guarded accuracy, bottom-10%, backdoor success and the clean flag rate."
             ),
             "source": "defense/exit_guard.py",
