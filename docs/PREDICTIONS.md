@@ -153,3 +153,13 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 - SCRUB-FL (2026) — https://arxiv.org/abs/2606.22700
 - H+ similarity-aware aggregation — https://arxiv.org/html/2509.24330v1
 - FedSurrogate, AlignIns, Orion, CrowdGuard, FedREDefense, BackdoorIndicator: see `IDEAS.md` and `LITERATURE_REVIEW.md`
+
+## Outcomes so far (appended; the predictions above are unchanged)
+
+| Prediction | Outcome | Run |
+|---|---|---|
+| ALIE (a): regrouping explains at most 0.5 of the gap | **Held:** 0.35 of 1.8 points | `m6__r3_noregroup`, 2026-11-17 |
+| ALIE (c): fixed f recovers 0.3–0.8 points | **Refuted, in direction:** fixed f costs another 1.1 points | `m6__r3_ffixed` |
+| ALIE (b): lost data explains most of the gap | **Consistent** (about 1.4 points left once (a) and (c) are removed), not yet tested directly | — |
+| P6 cost: exit guard costs 0.5–1.5 points | **Better than predicted:** 0.33 points, 3.1% of clean inputs flagged (no-backdoor runs only) | `m6__*`, 19 runs |
+| P11 cost: head agreement costs under 0.5 points | **Held:** 0.18 points, 3.0% of inputs overruled (no-backdoor runs only) | `m6__*`, 19 runs |
