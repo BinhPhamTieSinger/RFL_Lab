@@ -29,6 +29,14 @@ Alternatively, after installation run `bash RFL_Lab/visualizer/scripts/dev.sh` f
 
 Open http://localhost:3000. The frontend proxies `/api` to the loopback backend. Keep a single API worker. The compute lock prevents simultaneous experiments across API processes. Application data is stored in `visualizer/data`, which is Git-ignored. `RFL_VIZ_DATA` selects another persistence directory.
 
+## AI advisor (Documentation tab)
+
+"Ask the docs (AI)" opens an advisor that answers questions about the documentation with your own Ollama models, citing the passages it used; each citation opens that document at that section. It runs in the browser: the documents are split at their headings, embedded with `bge-m3`, the six passages closest to the question are retrieved, and the answer model (default `qwen3.8:27b`, any installed model can be chosen in Settings) answers from them. Nothing is sent anywhere except your Ollama server. The embeddings are cached in the browser, so only the first question after a documentation change re-reads the documents. "Explain selection" turns text you have highlighted in a document into a question.
+
+- **Visualizer on your machine** (`npm run dev`, http://localhost:3000): works as soon as the Ollama app is running; Ollama accepts requests from `localhost` pages by default.
+- **Deployed site** (https://rfl-lab-visualizer.netlify.app): Ollama must also accept that page. On macOS, quit Ollama, run `launchctl setenv OLLAMA_ORIGINS "https://rfl-lab-visualizer.netlify.app"`, and open Ollama again (on Linux: `OLLAMA_ORIGINS=https://rfl-lab-visualizer.netlify.app ollama serve`). Use Chrome or Firefox; Chrome may ask to allow access to devices on your local network. Safari does not let an https page call `http://localhost`.
+- **Ollama on another machine:** set its address in Settings (for example `http://192.168.1.20:11434`), start Ollama there with `OLLAMA_HOST=0.0.0.0` and the page's origin in `OLLAMA_ORIGINS`.
+
 ## Execution
 
 The default runs one CPU round on 600 actual CIFAR-100 training images and 300 test images. Data comes from `Paper_Reproduction/data`. Configure additional rounds explicitly. Synthetic data is the research package's test fixture and is labeled as such in the dataset selector. Attacker identities follow the original seeded count or rate selection. Explicit arbitrary client IDs are unavailable in the original configuration.

@@ -1,5 +1,6 @@
 "use client";
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import DocAdvisor from "./DocAdvisor";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -194,6 +195,7 @@ export default function Documentation() {
   const [decisionFilterStatus, setDecisionFilterStatus] = useState<string>("all");
   const [decisionFilterTrack, setDecisionFilterTrack] = useState<string>("all");
   const [decisionSearch, setDecisionSearch] = useState<string>("");
+  const [advisorOpen, setAdvisorOpen] = useState(false);
 
   useEffect(() => {
     const requested = new URL(window.location.href).searchParams.get("document");
@@ -334,6 +336,14 @@ export default function Documentation() {
               "Reproducible methods, benchmark logs, architecture, and operational guides for RFL Lab."}
           </p>
         </div>
+        <button
+          type="button"
+          className="advisor-toggle"
+          aria-expanded={advisorOpen}
+          onClick={() => setAdvisorOpen((open) => !open)}
+        >
+          {advisorOpen ? "Hide advisor" : "Ask the docs (AI)"}
+        </button>
         <label className="documentation-selector">
           Research document
           <select
@@ -348,6 +358,20 @@ export default function Documentation() {
           </select>
         </label>
       </div>
+
+      {advisorOpen && documents.length > 0 && (
+        <DocAdvisor
+          documents={documents}
+          currentPath={document?.path ?? selected}
+          onClose={() => setAdvisorOpen(false)}
+          onOpen={(path, heading) => {
+            selectDocument(path);
+            window.setTimeout(() => {
+              window.document.getElementById(slugify(heading))?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 400);
+          }}
+        />
+      )}
 
       {error && <p role="alert">{error}</p>}
       {!document && !error && <p>Loading research Markdown…</p>}
