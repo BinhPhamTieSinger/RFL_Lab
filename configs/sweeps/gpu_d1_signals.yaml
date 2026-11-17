@@ -8,6 +8,7 @@
 # 150 runs; run the pilot first (see OPERATIONS.md).
 seeds: [42, 123, 7]
 common:
+  run.deterministic: true      # identical reruns on the GPU server (pilot: CUDA otherwise varies run to run)
   data.alpha: 0.5
   run.rounds: 30
   fedhep.exit_guard: true

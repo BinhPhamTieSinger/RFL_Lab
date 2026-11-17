@@ -4,6 +4,7 @@
 # memory; matching seeds across the three output folders also checks that running in parallel changes no result.
 seeds: [42, 123, 7, 2026]
 common:
+  run.deterministic: true      # identical reruns on the GPU server (pilot: CUDA otherwise varies run to run)
   data.alpha: 0.5
   run.rounds: 5
   run.eval_every: 5

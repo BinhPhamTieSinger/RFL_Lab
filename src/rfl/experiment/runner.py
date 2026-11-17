@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import resource
 import sys
@@ -74,6 +75,17 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
 
 
+def set_deterministic(on: bool) -> None:
+    """Deterministic kernels (run.deterministic). cuBLAS needs its workspace setting before CUDA starts, so it is
+    set here for runs started by this process; scripts/gpu_sweep.py also sets it for its workers."""
+    if not on:
+        return
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
+
+
 def synthetic_data(n_train: int, n_test: int, num_classes: int, seed: int, device: torch.device
                    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Smooth class patterns plus noise: learnable in a few rounds. For tests only."""
@@ -96,6 +108,7 @@ def run_experiment(cfg: ExperimentConfig) -> dict[str, Any]:
     (out / "config.yaml").write_text(yaml.safe_dump(to_dict(cfg), sort_keys=False))
     device = pick_device(cfg.run.device)
     set_seed(cfg.run.seed)
+    set_deterministic(cfg.run.deterministic)
 
     d = cfg.data
     if d.dataset == "cifar100":

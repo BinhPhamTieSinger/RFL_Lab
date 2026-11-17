@@ -75,7 +75,9 @@ def main() -> None:
     devices = gpus()
     workers = len(devices) * a.procs
     cpus = int(os.environ.get("SLURM_CPUS_PER_TASK") or os.cpu_count() or 1)
-    job = os.environ.get("SLURM_JOB_ID", time.strftime("%Y%m%d-%H%M%S"))
+    # The lab's container hides Slurm's variables, so add the process id: jobs started in the same second must not
+    # share log files.
+    job = os.environ.get("SLURM_JOB_ID") or f"{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
     logs = ROOT / "logs"
     logs.mkdir(exist_ok=True)
     (ROOT / "outputs_env").mkdir(exist_ok=True)
@@ -87,7 +89,7 @@ def main() -> None:
 
     def work(w: int) -> None:
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": devices[w % len(devices)],
-               "OMP_NUM_THREADS": str(max(1, cpus // workers))}
+               "OMP_NUM_THREADS": str(max(1, cpus // workers)), "CUBLAS_WORKSPACE_CONFIG": ":4096:8"}
         with open(logs / f"gpu_sweep_{job}_w{w}.log", "a") as log:
             for spec in a.specs:
                 cmd = [sys.executable, "-u", str(ROOT / "scripts/sweep.py"), spec, "--shard", f"{w}/{workers}"]

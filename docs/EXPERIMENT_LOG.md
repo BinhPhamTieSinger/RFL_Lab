@@ -1096,3 +1096,16 @@ FedHEP+ stops the backdoor at 10% attackers and degrades with the share; FedHEP'
 | Acer | `acer_c6_durability` | 21 | 16 | 100 rounds, backdoor stopped at round 50: lifespan under each defense and the rewind |
 
 Every run records head-agreement inference and the exit guard, so P6 and P11 get their first CIFAR-100 answer from these runs. The GPU sweeps stay queued for the server; their runs are not duplicated here (different device, different names).
+
+## 2026-11-17 · GPU server pilot: one run per GPU, and CUDA is not repeatable by default
+Lab GPU server, NVIDIA RTX PRO 4500 Blackwell (32 GB), PyTorch 2.7.1 + CUDA 12.8 in the lab's container (`/scratch/containers/pytorch/pytorch-2.7.1-cu128.sif`), commit `802eb85`. Sweep `gpu_pilot`: rung R3 with the exit guard and head agreement on, 5 rounds, seeds 42, 123, 7, 2026, run with 1, 2 and 4 runs at a time on one GPU each (`outputs_pilot/p1`, `p2`, `p4`).
+
+| Runs at once on one GPU | Seconds per round, per run | Runs finished per GPU-hour (relative) | Peak GPU memory per run |
+|---|---|---|---|
+| 1 | 3.1 | 1.0 | 2.1 GB |
+| 2 | 5.6–6.2 | 1.0 | 2.1 GB |
+| 4 | 11.3–12.5 | 1.0 | 2.1 GB |
+
+- **One run already fills the GPU.** Running 2 or 4 at once makes each run 2 or 4 times slower, so throughput does not change. The campaign uses `--procs 1` on each of the 4 GPUs. A 30-round D1 run should take about 2 minutes (3.1 s per round plus evaluation), against about 13 minutes on the Mac: roughly 6 times faster per GPU, 24 times with all four. The second round is slow in every run (8 s alone): one-off start-up work, not a recurring cost.
+- **The same run gives different numbers on CUDA.** Same seed, same configuration, same GPU model: final accuracy after 5 rounds differs by up to 0.67 points between the three jobs (seed 7: 30.93, 31.27, 31.60). The cause is cuDNN and atomic GPU additions, which sum in an order that changes from run to run. Runs on the server now use deterministic kernels (`run.deterministic: true`, added to every `gpu_*` sweep and to `device_parity`), so a rerun reproduces its numbers exactly; the cost in speed is measured by the next pilot (`outputs_pilot/det_a` and `det_b`, two identical jobs).
+- **Fixed:** the launcher read the commit with `git`, which the container lacks (all three first jobs stopped at start-up); it now reads `.git` directly. Jobs started in the same second also shared log files, because the container hides Slurm's job number; log names now include the process id.

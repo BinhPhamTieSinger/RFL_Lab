@@ -3,6 +3,7 @@
 # and does the rewind end it. GPU server. 21 runs of 100 rounds.
 seeds: [42, 123, 7]
 common:
+  run.deterministic: true      # identical reruns on the GPU server (pilot: CUDA otherwise varies run to run)
   data.alpha: 0.5
   run.rounds: 100
   run.eval_every: 5

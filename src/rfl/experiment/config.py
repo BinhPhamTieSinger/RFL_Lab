@@ -31,6 +31,8 @@ class RunConfig:
     seed: int = 42
     device: str = "auto"                 # auto: cuda, then xpu, then mps, then cpu
     output_dir: str = "outputs"
+    deterministic: bool = False          # deterministic GPU kernels: a rerun on the same device type gives the
+                                         # same numbers (cuDNN and atomics otherwise reorder float additions)
 
 
 @dataclass(frozen=True)

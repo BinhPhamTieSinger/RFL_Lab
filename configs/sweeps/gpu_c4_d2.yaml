@@ -3,6 +3,7 @@
 # here because CUDA results are compared only with each other. GPU server. 120 runs.
 seeds: [42, 123, 7]
 common:
+  run.deterministic: true      # identical reruns on the GPU server (pilot: CUDA otherwise varies run to run)
   data.alpha: 0.2
   data.num_clients: 20
   run.rounds: 30
