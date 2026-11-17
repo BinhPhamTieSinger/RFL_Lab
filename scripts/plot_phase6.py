@@ -153,6 +153,33 @@ def fig_backdoor_heads(runs: dict) -> None:
     pr.save(fig, "phase6_backdoor_heads")
 
 
+def fig_durability(runs: dict) -> None:
+    """100 rounds, backdoor stopped after round 50 (acer_c6_durability): backdoor success over time per method,
+    and with the depth-exit guard at prediction time (dashed). Whatever x6 runs exist are drawn."""
+    methods = [("x6__fedhep", "FedHEP (no defense)", "#6b6b6b"), ("x6__l0", "L0 alone", pr.SLOT[1]),
+               ("x6__plus", "FedHEP+ (isolates early)", pr.SLOT[0]), ("x6__r3g8", "R3, gate 8", pr.SLOT[2]),
+               ("x6__r3_tr", "R3 + rewind", pr.SLOT[3]), ("x6__r3w_tr", "R3 whole-update + rewind", "#7a3fb8")]
+    fig, ax = plt.subplots(figsize=(9, 4.2))
+    for prefix, label, color in methods:
+        done = [m for m in runs.get(prefix, []) if m.get("final")]
+        if not done:
+            continue
+        rounds = [r["round"] for r in done[0]["history"]]
+        mean = [sum(m["history"][i]["asr"] for m in done) / len(done) for i in range(len(rounds))]
+        ax.plot(rounds, mean, color=color, label=f"{label} (n={len(done)})")
+        if all(m["history"][-1].get("guarded") for m in done) and prefix != "x6__plus":
+            guard = [sum(m["history"][i]["guarded"]["asr"] for m in done) / len(done) for i in range(len(rounds))]
+            ax.plot(rounds, guard, color=color, linestyle="--", linewidth=1.4, label=f"{label} + exit guard")
+    ax.axvline(50, color=pr.INK2, linewidth=1, linestyle=":")
+    ax.text(51, 92, "attackers stop", fontsize=8, color=pr.INK2)
+    ax.set_xlabel("round")
+    ax.set_ylabel("backdoor success (%)")
+    ax.set_ylim(0, 100)
+    ax.set_title("A backdoor outlives its attackers unless they are caught early (D1, 3 attackers, Acer)")
+    ax.legend(fontsize=8, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16))
+    pr.save(fig, "phase6_durability.png")
+
+
 def main() -> None:
     pr.style()
     runs = pr.load(Path(sys.argv[1]))
@@ -161,6 +188,7 @@ def main() -> None:
     fig_backdoor_stop(runs)
     fig_n30(runs)
     fig_backdoor_heads(runs)
+    fig_durability(runs)
 
 
 if __name__ == "__main__":

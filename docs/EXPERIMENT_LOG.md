@@ -1127,3 +1127,47 @@ Lab GPU server, NVIDIA RTX PRO 4500 Blackwell (32 GB), PyTorch 2.7.1 + CUDA 12.8
 - **Consequence:** for attacks that stay near the mean, bounding beats isolating. This supports soft, reversible trust (H3) over permanent isolation for these attackers.
 
 **Prediction-time defenses, first CIFAR-100 numbers** (19 runs above, no backdoor, so this is their cost only): head-agreement inference overrules 3.0% of inputs and costs 0.18 points of accuracy on average (worst run 0.61), 0.22 on the bottom 10%; the depth-exit guard flags 3.1% of clean inputs and costs 0.33 (worst 0.53). Both are inside the costs predicted (P6: 0.5–1.5; P11: below 0.5). Their effect on the backdoor comes from `mac_c5_recovery` and the GPU runs.
+
+## 2026-11-17 · Durability, recovery, and 20–30 clients (Acer and Mac, 157 runs)
+**Durability (Acer, `acer_c6_durability`, 100 rounds, backdoor by 3 attackers for rounds 1–50, D1).** Done so far: FedHEP and FedHEP+ (3 seeds), L0 (2 seeds); the R3 rungs are still running.
+
+![Backdoor over 100 rounds](figures/phase6_durability.png)
+
+| Method | Success at round 50 | at 100 | Rounds above 50% after the attack stops | Attackers isolated (first round) | With exit guard at 100 | Honest isolated |
+|---|---|---|---|---|---|---|
+| FedHEP (no defense) | 75% | 72% | all 50 | none | 39% | 0 |
+| L0 alone | 65% | 67% | all 50 | none | 39% | 0 |
+| FedHEP+ | 3% | **3%** | none | 3 of 3 (rounds 4, 9, 10) | 3% | **8 per run** |
+
+- **A backdoor that is not caught never fades.** With no defense or with L0, success stays at 64–75% for all 50 rounds after the attackers stop training on poisoned data. The honest clients do not erase it.
+- **Catching the attackers early keeps it out for good:** FedHEP+ isolates all three by round 10 and success stays at 2–5% for 100 rounds. The price is the one we know: 8 honest clients isolated per run over 100 rounds (more rounds, more chances for a false isolation).
+- **The exit guard halves an undetected backdoor and keeps it halved:** 72% → 39% (FedHEP), 67% → 39% (L0), stable from round 50 to 100, at 0.3–0.7 points of accuracy.
+
+**Recovery (Mac, `mac_c5_recovery`, R3 gate 8 on the root-head signal, D1, backdoor all 30 rounds).** Rewinds fire only when an attacker is isolated, so the effect depends on the seed:
+
+| Seed | No rewind | Rewind trunk | Trunk + root head | All shared weights | All + exit guard | Rewinds (round → rewound to) |
+|---|---|---|---|---|---|---|
+| 123 (caught round 14) | 35.6% | 22.5% | 18.6% | 16.3% | **12.7%** | 14 → 9, then more after false isolations |
+| 7 (caught round 12) | 44.6% | 30.0% | 28.7% | 26.9% | **17.6%** | 12 → 9 |
+| 42 (never caught) | 73.9% | 73.9% | 73.9% | 73.9% | 35.4% | none |
+
+- **When an attacker is caught, the rewind cuts backdoor success by 13–19 points**, more the more it rewinds (trunk < trunk + root < all). Accuracy: −1.3 points on seed 123, where false isolations triggered extra rewinds; ±0.5 elsewhere.
+- **It cannot go below what was implanted before the first suspicious round:** the attackers poison from round 1, but their first suspicious round is 9, so rounds 1–8 stay in the model. That is why success stays at 16–30% instead of below 15 (prediction P8 not met).
+- **On seed 42 nobody is caught and nothing is rewound.** Detection is the bottleneck: the gated root-head screen misses the backdoor on this seed, which is what the whole-update and layer signals (`gpu_d1_signals`, `m6__r3w_*` still running) are meant to fix.
+- **Head agreement helps little against the backdoor** (73.9% → 65.2% on seed 42; 3–6 points on the others). The parent head carries the backdoor too (63% on seed 42), so the two personal heads rarely agree against the ensemble on a triggered input. The exit guard does far more.
+
+**More clients (Acer).** 20 clients (`n20__`, α = 0.5, 5 or 7 sign flippers) and 30 clients (`n30__`, 6, 9 or 12 attackers), 3 seeds:
+
+| | 20 clients: no attack | sign 5 | sign 7 | 30 clients: no attack | sign 6 | sign 9 | sign 12 | backdoor 6 / 9 / 12 (success) |
+|---|---|---|---|---|---|---|---|---|
+| FedAvg | 37.0 | 10.9 | 1.1 | 32.8 | 18.1 | 4.3 | 1.1 | 89 / 92 / 93% |
+| FedHEP | 47.3 | 30.2 | 17.0 | **45.5** | 28.4 | 22.3 | 5.3 | 73 / 74 / 76% |
+| Defended FedHEP | **47.5** | 36.2 | 29.2 | 44.4 | 39.7 | 29.6 | 17.9 | 72 / 74 / 75% |
+| FLAME | 41.4 | 41.9 | 41.4 | 37.8 | 38.3 | 36.5 | 36.3 | **0.5 / 0.7 / 0.9%** |
+| FedHEP+ | 47.4 | **46.4** | **45.3** | 44.6 | **42.0** | **40.9** | **39.8** | 60 / 68 / 73% |
+
+- **FedHEP+ holds under sign flipping up to 40% attackers**: it isolates every sign flipper on every seed (5/5, 7/7, 6/6, 9/9, 12/12) and loses at most 1.1 points at 20 clients and 4.8 at 30 clients with 12 attackers, where Defended FedHEP falls to 17.9. Cost with no attack: 3 honest clients isolated at 20 clients, 3.7 at 30; accuracy within 0.2 of Defended.
+- **FLAME is the only rule that stops the backdoor at scale** (under 1% at every attacker share) and pays 6.6–7.7 points with no attack. FedHEP+ reduces the backdoor only at 20% attackers (60% vs 72%).
+- **Backdoor with stop (`n20h__`, 20 clients, 5 attackers):** FedHEP 80% (full) and 37% (stopped at round 10); FedHEP+ 45% and 32%.
+
+**Sign-election pilot** (`acer_frontier__`, a colleague's implementation of idea 10, seed 42 only, Acer): sign election vs L0: no attack 47.83 vs 47.83; ALIE 47.77 vs 48.09; Min-Max 43.01 vs 44.27; sign flip **44.15 vs 42.00**. Better than L0 under sign flip, worse under Min-Max; one seed, so no conclusion yet.

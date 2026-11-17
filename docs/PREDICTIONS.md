@@ -163,3 +163,9 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | ALIE (b): lost data explains most of the gap | **Consistent** (about 1.4 points left once (a) and (c) are removed), not yet tested directly | — |
 | P6 cost: exit guard costs 0.5–1.5 points | **Better than predicted:** 0.33 points, 3.1% of clean inputs flagged (no-backdoor runs only) | `m6__*`, 19 runs |
 | P11 cost: head agreement costs under 0.5 points | **Held:** 0.18 points, 3.0% of inputs overruled (no-backdoor runs only) | `m6__*`, 19 runs |
+| P6 effect: exit guard at least halves backdoor success | **About held:** 72% → 39% and 67% → 39% over 100 rounds; 74% → 35% on an undetected D1 run (cuts of 42–52%) | `x6__fedhep`, `x6__l0`, `m6__*` |
+| P8: rewind to before the first suspicious round brings success below 15% | **Not met:** 16–30% when the attacker is caught (from 36–45%); unchanged when nobody is caught. The rewind cannot reach poisoning done before the first suspicious round | `m6__r3_*__backdoor3` |
+| P9: trunk-only rewind leaves success above 30% | **Mixed:** 22.5% and 30.0%; rewinding the root head too adds only 1–4 points | `m6__r3_trunk`, `m6__r3_tr` |
+| P11 effect: head agreement brings success near the local head's | **Refuted:** 3–9 points of reduction; the parent head carries the backdoor too, so the personal heads rarely agree against the ensemble | `m6__*`, `x6__*` |
+| P13 (root-head gated screen rises above 80% by round 100) | Pending (`x6__r3g8` running). Related: with no detection the backdoor stays at 64–75% for 50 rounds after the attack stops | `x6__fedhep`, `x6__l0` |
+
