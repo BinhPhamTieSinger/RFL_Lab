@@ -148,7 +148,9 @@ for (const relative of [
     .readdirSync(path.join(root, "docs"))
     .filter((name) => name.endsWith(".md"))
     .map((name) => "docs/" + name),
+  "visualizer/README.md",
 ]) {
+  if (!fs.existsSync(path.join(root, relative))) continue;
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   documents.push({
     path: relative,
@@ -160,12 +162,12 @@ fs.writeFileSync(
   path.join(destination, "documentation.json"),
   JSON.stringify(documents),
 );
-// Preserve relative image paths in the published Markdown documents.
+// Preserve relative image and static HTML paths in the published Markdown documents.
 function copyImages(folder) {
   for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
     const location = path.join(folder, entry.name);
     if (entry.isDirectory()) copyImages(location);
-    else if (/\.(png|svg|jpe?g|webp)$/i.test(entry.name)) {
+    else if (/\.(png|svg|jpe?g|webp|html)$/i.test(entry.name)) {
       const target = path.join(
         destination,
         "documents",

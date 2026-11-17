@@ -1,20 +1,203 @@
 "use client";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
 type Document = { path: string; title: string; content: string };
+
+type DocMeta = {
+  path: string;
+  shortTitle: string;
+  subtitle: string;
+  category: string;
+};
+
+type DecisionItem = {
+  id: string;
+  num: number;
+  date: string;
+  status: string;
+  statusKind: "active" | "updated" | "closed";
+  track: string;
+  decision: string;
+  why: string;
+};
+
+const DOC_CATALOG: DocMeta[] = [
+  {
+    path: "README.md",
+    shortTitle: "RFL Lab Overview",
+    subtitle: "Status, Phase 5–6 results, repo layout & reproducibility",
+    category: "1. Start Here & Overview",
+  },
+  {
+    path: "docs/RESEARCH_SUMMARY.md",
+    shortTitle: "RFL Lab in Plain Words",
+    subtitle: "Visual walkthrough of every stage from Phase 1 to Phase 6",
+    category: "1. Start Here & Overview",
+  },
+  {
+    path: "docs/PAPER_PLAN.md",
+    shortTitle: "Paper Plan",
+    subtitle: "Claims C1–C9, related work & figure-to-run mapping",
+    category: "1. Start Here & Overview",
+  },
+  {
+    path: "docs/RESEARCH_PLAN.md",
+    shortTitle: "FedHEP-Guard Plan",
+    subtitle: "Layers L0–L3, hypotheses H1–H8 & ablation ladder",
+    category: "2. Defense Design & Theory",
+  },
+  {
+    path: "docs/PREDICTIONS.md",
+    shortTitle: "Pre-Campaign Predictions",
+    subtitle: "P1–P16 expected numbers & refutation criteria",
+    category: "2. Defense Design & Theory",
+  },
+  {
+    path: "docs/IDEAS.md",
+    shortTitle: "Defense Ideas (1–19)",
+    subtitle: "Ranked mechanisms from robust FL & neighbouring fields",
+    category: "2. Defense Design & Theory",
+  },
+  {
+    path: "docs/LITERATURE_REVIEW.md",
+    shortTitle: "Literature Review",
+    subtitle: "170 sources across aggregation, attacks & 7 open gaps",
+    category: "2. Defense Design & Theory",
+  },
+  {
+    path: "docs/EXPERIMENT_LOG.md",
+    shortTitle: "Experiment Log",
+    subtitle: "Complete laboratory record, charts & negative results",
+    category: "3. Empirical & Decision Logs",
+  },
+  {
+    path: "docs/DECISIONS.md",
+    shortTitle: "Decision Log (D1–D33)",
+    subtitle: "Architecture, parity, active defense & closed explorations",
+    category: "3. Empirical & Decision Logs",
+  },
+  {
+    path: "docs/ARCHITECTURE.md",
+    shortTitle: "Package Architecture",
+    subtitle: "5-layer dependency rule & plug-in slot interfaces",
+    category: "4. Architecture & Operations",
+  },
+  {
+    path: "docs/OPERATIONS.md",
+    shortTitle: "Operations Guide",
+    subtitle: "Mac (MPS), Acer (XPU) & Lab GPU Server (CUDA / Slurm)",
+    category: "4. Architecture & Operations",
+  },
+  {
+    path: "visualizer/README.md",
+    shortTitle: "Visualizer Workbench",
+    subtitle: "Local SSE runner, captured playback & deployment",
+    category: "4. Architecture & Operations",
+  },
+];
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[`*_~()[\]{}:;,.!?/\\|<>+"']/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function flattenText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(flattenText).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    return flattenText((node as { props?: { children?: ReactNode } }).props?.children);
+  }
+  return "";
+}
+
+function prepareMarkdown(raw: string): string {
+  // 1. Strip raw <details><summary>Diagram source (Mermaid)</summary> wrappers so our custom code renderer handles them cleanly
+  let cleaned = raw.replace(
+    /<details>\s*<summary>[^<]*<\/summary>\s*(```mermaid[\s\S]*?```)\s*<\/details>/gi,
+    "$1",
+  );
+  // 2. Convert single-line $$...$$ display math into multi-line fenced math blocks for remark-math v6
+  cleaned = cleaned.replace(
+    /(^|\n)\$\$([^\n$]+?)\$\$(?=\s*(\n|$))/g,
+    "\n\n$$\n$2\n$$\n\n",
+  );
+  return cleaned;
+}
+
+function classifyStatus(status: string): "active" | "updated" | "closed" {
+  const lower = status.toLowerCase();
+  if (lower.includes("closed") || lower.includes("rejected")) return "closed";
+  if (lower.includes("superseded") || lower.includes("updated")) return "updated";
+  return "active";
+}
+
+function parseDecisions(markdown: string): DecisionItem[] {
+  const lines = markdown.split("\n");
+  let currentTrack = "General";
+  const items: DecisionItem[] = [];
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+\d+\.\s+(.+)$/);
+    if (headingMatch) {
+      currentTrack = headingMatch[1].trim();
+      continue;
+    }
+    if (!line.startsWith("|")) continue;
+    const cells = line
+      .split("|")
+      .slice(1, -1)
+      .map((c) => c.trim());
+    if (cells.length < 4) continue;
+    const idClean = cells[0].replace(/\*/g, "").trim();
+    const idMatch = idClean.match(/^D(\d+)$/);
+    if (!idMatch) continue;
+    const num = Number(idMatch[1]);
+    if (cells.length >= 5) {
+      const statusRaw = cells[2].replace(/`/g, "").trim();
+      items.push({
+        id: idClean,
+        num,
+        date: cells[1],
+        status: statusRaw,
+        statusKind: classifyStatus(statusRaw),
+        track: currentTrack,
+        decision: cells[3],
+        why: cells[4],
+      });
+    } else {
+      items.push({
+        id: idClean,
+        num,
+        date: cells[1],
+        status: "Active",
+        statusKind: "active",
+        track: currentTrack,
+        decision: cells[2],
+        why: cells[3],
+      });
+    }
+  }
+  return items.sort((a, b) => a.num - b.num);
+}
+
 export default function Documentation() {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [selected, setSelected] = useState("docs/ARCHITECTURE.md");
+  const [selected, setSelected] = useState("README.md");
   const [error, setError] = useState("");
+  const [decisionFilterStatus, setDecisionFilterStatus] = useState<string>("all");
+  const [decisionFilterTrack, setDecisionFilterTrack] = useState<string>("all");
+  const [decisionSearch, setDecisionSearch] = useState<string>("");
+
   useEffect(() => {
-    setSelected(
-      new URL(window.location.href).searchParams.get("document") ??
-        "docs/ARCHITECTURE.md",
-    );
+    const requested = new URL(window.location.href).searchParams.get("document");
+    setSelected(requested ?? "README.md");
     fetch("/research/documentation.json")
       .then(async (response) => {
         if (!response.ok) throw Error("Documentation could not be loaded");
@@ -22,85 +205,476 @@ export default function Documentation() {
       })
       .catch((e) => setError(e.message));
   }, []);
+
   const document =
-    documents.find((item) => item.path === selected) ?? documents[0];
+    documents.find((item) => item.path === selected) ??
+    documents.find((item) => item.path === "README.md") ??
+    documents[0];
+
+  function selectDocument(path: string) {
+    setSelected(path);
+    const url = new URL(window.location.href);
+    url.searchParams.set("document", path);
+    window.history.replaceState(null, "", url);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function relativePath(value: string) {
     return new URL(
       value,
       `https://research.local/${document?.path ?? "README.md"}`,
     ).pathname.slice(1);
   }
+
+  const orderedDocuments = useMemo(() => {
+    const byPath = new Map(documents.map((d) => [d.path, d]));
+    const result: Array<Document & { meta: DocMeta }> = [];
+    for (const meta of DOC_CATALOG) {
+      const found = byPath.get(meta.path);
+      if (found) {
+        result.push({ ...found, meta });
+        byPath.delete(meta.path);
+      }
+    }
+    for (const leftover of byPath.values()) {
+      result.push({
+        ...leftover,
+        meta: {
+          path: leftover.path,
+          shortTitle: leftover.title,
+          subtitle: leftover.path,
+          category: "4. Architecture & Operations",
+        },
+      });
+    }
+    return result;
+  }, [documents]);
+
+  const groupedSidebar = useMemo(() => {
+    const groups = new Map<string, Array<Document & { meta: DocMeta }>>();
+    for (const doc of orderedDocuments) {
+      const list = groups.get(doc.meta.category) ?? [];
+      list.push(doc);
+      groups.set(doc.meta.category, list);
+    }
+    return Array.from(groups.entries());
+  }, [orderedDocuments]);
+
+  const headings = useMemo(() => {
+    if (!document) return [];
+    const list: Array<{ level: number; text: string; id: string }> = [];
+    let inFence = false;
+    for (const line of document.content.split("\n")) {
+      if (line.trim().startsWith("```")) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      const match = line.match(/^(#{2,3})\s+(.+)$/);
+      if (match) {
+        const rawText = match[2]
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+          .replace(/\\alpha/g, "α")
+          .replace(/\\beta/g, "β")
+          .replace(/[`*_~$]/g, "")
+          .trim();
+        list.push({
+          level: match[1].length,
+          text: rawText,
+          id: slugify(rawText),
+        });
+      }
+    }
+    return list;
+  }, [document]);
+
+  const decisions = useMemo(() => {
+    if (document?.path !== "docs/DECISIONS.md") return [];
+    return parseDecisions(document.content);
+  }, [document]);
+
+  const decisionTracks = useMemo(() => {
+    return Array.from(new Set(decisions.map((d) => d.track)));
+  }, [decisions]);
+
+  const filteredDecisions = useMemo(() => {
+    const q = decisionSearch.trim().toLowerCase();
+    return decisions.filter((d) => {
+      if (decisionFilterStatus !== "all" && d.statusKind !== decisionFilterStatus) {
+        return false;
+      }
+      if (decisionFilterTrack !== "all" && d.track !== decisionFilterTrack) {
+        return false;
+      }
+      if (q) {
+        const hay = `${d.id} ${d.date} ${d.status} ${d.track} ${d.decision} ${d.why}`.toLowerCase();
+        return hay.includes(q);
+      }
+      return true;
+    });
+  }, [decisions, decisionFilterStatus, decisionFilterTrack, decisionSearch]);
+
+  const preparedContent = useMemo(
+    () => (document ? prepareMarkdown(document.content) : ""),
+    [document],
+  );
+
+  const currentMeta = orderedDocuments.find((d) => d.path === document?.path)?.meta;
+
   return (
     <div className="documentation">
-      <h1>Documentation</h1>
-      <label>
-        Research document
-        <select
-          value={document?.path ?? selected}
-          onChange={(e) => {
-            setSelected(e.target.value);
-            const url = new URL(window.location.href);
-            url.searchParams.set("document", e.target.value);
-            window.history.replaceState(null, "", url);
-          }}
-        >
-          {documents.map((item) => (
-            <option key={item.path} value={item.path}>
-              {item.title}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="documentation-header">
+        <div>
+          <span className="documentation-eyebrow">
+            {currentMeta?.category ?? "Research Documentation"}
+          </span>
+          <h1>Documentation</h1>
+          <p className="documentation-subtitle">
+            {currentMeta?.subtitle ??
+              "Reproducible methods, benchmark logs, architecture, and operational guides for RFL Lab."}
+          </p>
+        </div>
+        <label className="documentation-selector">
+          Research document
+          <select
+            value={document?.path ?? selected}
+            onChange={(e) => selectDocument(e.target.value)}
+          >
+            {orderedDocuments.map((item) => (
+              <option key={item.path} value={item.path}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {error && <p role="alert">{error}</p>}
       {!document && !error && <p>Loading research Markdown…</p>}
+
       {document && (
-        <article className="markdown-document">
-          <p className="document-source">{document.path}</p>
-          <Markdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-            components={{
-              a: ({ href, children }) => {
-                const match =
-                  href &&
-                  documents.find(
-                    (item) => item.path === relativePath(href).split("#")[0],
-                  );
-                return match ? (
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setSelected(match.path);
-                    }}
-                  >
-                    {children}
-                  </a>
-                ) : (
-                  <a href={href}>{children}</a>
-                );
-              },
-              img: ({ src, alt }) => (
-                <img
-                  src={
-                    typeof src === "string" && !/^https?:|^data:/.test(src)
-                      ? `/research/documents/${relativePath(src)}`
-                      : src
-                  }
-                  alt={alt ?? "Research figure"}
-                  loading="lazy"
-                />
-              ),
-              table: ({ children }) => (
-                <div className="table-scroll">
-                  <table>{children}</table>
+        <div className="documentation-layout">
+          <aside className="doc-sidebar" aria-label="Documentation directory">
+            {groupedSidebar.map(([category, items]) => (
+              <div key={category} className="doc-sidebar-group">
+                <h3>{category}</h3>
+                <ul>
+                  {items.map((item) => {
+                    const active = item.path === document.path;
+                    return (
+                      <li key={item.path}>
+                        <button
+                          type="button"
+                          className={active ? "doc-nav-item active" : "doc-nav-item"}
+                          onClick={() => selectDocument(item.path)}
+                        >
+                          <span className="doc-nav-title">{item.meta.shortTitle}</span>
+                          <small className="doc-nav-path">{item.path}</small>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </aside>
+
+          <article className="markdown-document">
+            <div className="document-meta-bar">
+              <span className="document-source">{document.path}</span>
+              <span className="document-stats">
+                {headings.length} sections ·{" "}
+                {Math.max(1, Math.round(document.content.split(/\s+/).length / 220))} min read
+              </span>
+            </div>
+
+            {document.path === "docs/DECISIONS.md" && decisions.length > 0 && (
+              <section
+                className="decision-explorer"
+                aria-label="Interactive decision explorer"
+              >
+                <div className="decision-explorer-header">
+                  <div>
+                    <h2>Interactive Decision Registry (D1–D33)</h2>
+                    <p>
+                      Filter by lifecycle status, engineering track, or keyword to inspect active invariants versus closed explorations.
+                    </p>
+                  </div>
+                  <div className="decision-counts">
+                    <span className="doc-badge active">
+                      {decisions.filter((d) => d.statusKind === "active").length} Active
+                    </span>
+                    <span className="doc-badge updated">
+                      {decisions.filter((d) => d.statusKind === "updated").length} Updated / Superseded
+                    </span>
+                    <span className="doc-badge closed">
+                      {decisions.filter((d) => d.statusKind === "closed").length} Closed
+                    </span>
+                  </div>
                 </div>
-              ),
-            }}
-          >
-            {document.content}
-          </Markdown>
-        </article>
+
+                <div className="decision-controls">
+                  <div className="decision-pills" role="group" aria-label="Filter by status">
+                    {[
+                      { id: "all", label: `All (${decisions.length})` },
+                      {
+                        id: "active",
+                        label: `Active (${decisions.filter((d) => d.statusKind === "active").length})`,
+                      },
+                      {
+                        id: "updated",
+                        label: `Updated / Superseded (${decisions.filter((d) => d.statusKind === "updated").length})`,
+                      },
+                      {
+                        id: "closed",
+                        label: `Closed (${decisions.filter((d) => d.statusKind === "closed").length})`,
+                      },
+                    ].map((pill) => (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        className={
+                          decisionFilterStatus === pill.id
+                            ? "filter-pill active"
+                            : "filter-pill"
+                        }
+                        onClick={() => setDecisionFilterStatus(pill.id)}
+                      >
+                        {pill.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="decision-search-row">
+                    <input
+                      type="search"
+                      aria-label="Search decisions"
+                      placeholder="Filter D1–D33 by ID, keyword (e.g. ALIE, MAD, backdoor, BatchNorm)…"
+                      value={decisionSearch}
+                      onChange={(e) => setDecisionSearch(e.target.value)}
+                    />
+                    { (decisionFilterStatus !== "all" ||
+                      decisionFilterTrack !== "all" ||
+                      decisionSearch) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDecisionFilterStatus("all");
+                          setDecisionFilterTrack("all");
+                          setDecisionSearch("");
+                        }}
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="decision-pills track-pills" role="group" aria-label="Filter by track">
+                    <button
+                      type="button"
+                      className={
+                        decisionFilterTrack === "all"
+                          ? "filter-pill active"
+                          : "filter-pill"
+                      }
+                      onClick={() => setDecisionFilterTrack("all")}
+                    >
+                      All tracks
+                    </button>
+                    {decisionTracks.map((track) => (
+                      <button
+                        key={track}
+                        type="button"
+                        className={
+                          decisionFilterTrack === track
+                            ? "filter-pill active"
+                            : "filter-pill"
+                        }
+                        onClick={() => setDecisionFilterTrack(track)}
+                      >
+                        {track}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="decision-cards">
+                  {filteredDecisions.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`decision-card status-${item.statusKind}`}
+                    >
+                      <div className="decision-card-meta">
+                        <span className="decision-id">{item.id}</span>
+                        <span className={`doc-badge ${item.statusKind}`}>
+                          {item.status}
+                        </span>
+                        <span className="decision-track-tag">{item.track}</span>
+                        <time className="decision-date">{item.date}</time>
+                      </div>
+                      <div className="decision-card-body">
+                        <div className="decision-main">
+                          <strong>Decision:</strong>{" "}
+                          <Markdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={{
+                              p: ({ children }) => <span>{children}</span>,
+                            }}
+                          >
+                            {item.decision}
+                          </Markdown>
+                        </div>
+                        <div className="decision-why">
+                          <strong>Rationale:</strong>{" "}
+                          <Markdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={{
+                              p: ({ children }) => <span>{children}</span>,
+                            }}
+                          >
+                            {item.why}
+                          </Markdown>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredDecisions.length === 0 && (
+                    <p className="decision-empty">
+                      No decisions match your current filter criteria.
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <Markdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                h2: ({ children }) => {
+                  const text = flattenText(children);
+                  return <h2 id={slugify(text)}>{children}</h2>;
+                },
+                h3: ({ children }) => {
+                  const text = flattenText(children);
+                  return <h3 id={slugify(text)}>{children}</h3>;
+                },
+                a: ({ href, children }) => {
+                  if (!href) return <a>{children}</a>;
+                  const resolved = relativePath(href).split("#")[0];
+                  const match = documents.find((item) => item.path === resolved);
+                  if (match) {
+                    return (
+                      <a
+                        href={`?tab=Documentation&document=${encodeURIComponent(match.path)}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          selectDocument(match.path);
+                        }}
+                      >
+                        {children}
+                      </a>
+                    );
+                  }
+                  if (resolved.endsWith(".html")) {
+                    return (
+                      <a
+                        href={`/research/documents/${resolved}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {children}
+                      </a>
+                    );
+                  }
+                  return <a href={href}>{children}</a>;
+                },
+                img: ({ src, alt }) => (
+                  <img
+                    className="doc-img"
+                    src={
+                      typeof src === "string" && !/^https?:|^data:/.test(src)
+                        ? `/research/documents/${relativePath(src)}`
+                        : src
+                    }
+                    alt={alt ?? "Research figure"}
+                    loading="lazy"
+                  />
+                ),
+                pre: ({ children }) => {
+                  const childProps =
+                    children && typeof children === "object" && "props" in children
+                      ? (children as { props?: { className?: string } }).props
+                      : undefined;
+                  if (childProps?.className?.includes("language-mermaid")) {
+                    return (
+                      <details
+                        className="mermaid-details"
+                        open={document.path === "docs/ARCHITECTURE.md"}
+                      >
+                        <summary>Mermaid flow specification</summary>
+                        <pre className="mermaid-code">{children}</pre>
+                      </details>
+                    );
+                  }
+                  return <pre>{children}</pre>;
+                },
+                code: ({ className, children }) => {
+                  const text = String(children).replace(/\n$/, "");
+                  if (!className) {
+                    const lower = text.toLowerCase();
+                    if (
+                      lower === "active" ||
+                      lower.startsWith("updated →") ||
+                      lower.startsWith("superseded →") ||
+                      lower.startsWith("closed (")
+                    ) {
+                      const kind = classifyStatus(text);
+                      return <span className={`doc-badge ${kind}`}>{text}</span>;
+                    }
+                  }
+                  return <code className={className}>{children}</code>;
+                },
+                table: ({ children }) => (
+                  <div className="table-scroll">
+                    <table>{children}</table>
+                  </div>
+                ),
+              }}
+            >
+              {preparedContent}
+            </Markdown>
+          </article>
+
+          {headings.length > 1 && (
+            <aside className="doc-toc" aria-label="On this page">
+              <h3>On this page</h3>
+              <ul>
+                {headings.map((h, idx) => (
+                  <li
+                    key={`${h.id}-${idx}`}
+                    className={h.level === 3 ? "toc-sub" : "toc-main"}
+                  >
+                    <a
+                      href={`#${h.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const target = window.document.getElementById(h.id);
+                        if (target) {
+                          target.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }
+                      }}
+                    >
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
+        </div>
       )}
     </div>
   );
