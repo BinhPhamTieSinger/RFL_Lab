@@ -16,6 +16,8 @@ The [integration follow-up](#integration-follow-up) records the local CIFAR-100 
 | 15. Conformal rejection at inference | prediction time | calibration split per client | a principled version of the exit guard's threshold |
 | 16. Conditional screening | FedHEP+ run loop | none | screening only when the round looks attacked: fewer false isolations by construction |
 | 17. Shapley contribution scores | evidence source | expensive | treated as a baseline, not a component |
+| 18. Retuning test (post-purification robustness) | evaluation, after the final round | no runs | the metric that separates a removed backdoor from a hidden one |
+| 19. Anti-backdoor task vector | recovery, after a rewind | shadow data | future work |
 
 ## 10. Coordinate-wise sign election instead of a trimmed mean (FedSECA; read in full)
 
@@ -70,17 +72,30 @@ The [integration follow-up](#integration-follow-up) records the local CIFAR-100 
 **Evidence.** The surveyed baseline ([arXiv 2602.21721](https://arxiv.org/pdf/2602.21721.pdf)) evaluates all subsets per round (exponential), needs a representative server validation set, and was tested against one label-flipping client with IID honest clients only; no false-positive rate reported.
 **Fit.** Not as a component: it needs server data, and on non-IID data a client with unusual data has a negative marginal contribution on a global validation set by construction, which is our false-isolation problem restated. Worth one line in related work as what we deliberately avoid.
 
-## Seen by title only (fetch limit; to read next)
+## 18. Post-purification robustness: a metric we must report (Superficial safety; read in full)
 
-- [FedGraph, ICLR 2026](https://iclr.cc/virtual/2026/10019300): graph-based aggregation against backdoors in federated LLM fine-tuning; a client-similarity graph is close to FedHEP's grouping.
-- [Safe-FedLLM, arXiv 2601.07177](https://arxiv.org/html/2601.07177v1): which aggregation rules survive backdoors on LoRA updates. Relevant if the paper's scope ever extends past vision.
-- [Task arithmetic for backdoor mitigation in model merging, arXiv 2606.12498](https://arxiv.org/pdf/2606.12498): subtracting a task vector in feature space; a possible form for the rewind that needs no stored models.
-- [Superficial safety of backdoor defenses, arXiv 2410.09838](https://arxiv.org/pdf/2410.09838): purified models re-learn the backdoor after a little fine-tuning. Directly relevant to the rewind and to the 100-round durability runs: the paper should report success after continued training, not only at the round of removal.
+**What.** [arXiv 2410.09838](https://arxiv.org/pdf/2410.09838) shows that every purification defense it tested (ANP, I-BAU, FT-SAM, FST, BTI) reaches near-zero backdoor success and then recovers 55–100% of it after five epochs of fine-tuning on 1,000 images containing as few as 1–10 poisoned ones (the "retuning attack"), or after query-only perturbations (66% on average). Only exact purification with the true trigger stays low (2.2%). The explanation, from linear mode connectivity: purified models stop close to the backdoored model along the backdoor-connected path; models that move farther along it (their PAM: 4.6% after retuning on CIFAR-10, 1.0% on CIFAR-100) do not come back.
+**Fit.** This is the test the rewind (H8) and the 100-round durability runs must pass, and the paper's own argument predicts the rewind passes it: a model rewound to *before* the attack is not on the backdoor path at all, unlike a model purified *after* it. Head-agreement inference and the exit guard change nothing in the weights, so they are immune to retuning by construction, which is an argument for prediction-time defenses the paper makes for us.
+**Test.** Add a post-hoc evaluation to the runner, `eval.retuning: true`: after the final round, fine-tune the Global model for 5 epochs on 1,000 held-out images with 1% carrying the trigger, and record success before and after (P-ASR). No new runs: it reuses the saved final models of every backdoor run. Report P-ASR next to ASR in every backdoor table; it is the number that separates "removed" from "hidden".
+
+## 19. An anti-backdoor task vector instead of a rollback (task arithmetic for merging; read in full)
+
+**What.** [arXiv 2606.12498](https://arxiv.org/pdf/2606.12498): in model merging, subtracting an estimated backdoor vector (IBVS) costs about 21 points of accuracy; *adding* a learned anti-backdoor vector, trained on 10,000 unlabeled shadow images so that features along the interpolation path resist worst-case prompt perturbations, keeps accuracy (58.7 vs 63.6 undefended) and drops success 98% → 0.5% without knowing which source was poisoned or what the trigger is.
+**Fit.** A rewind needs stored models; an anti-backdoor vector needs shadow data and a clean reference. FedHEP's server has neither, but the rewound model *is* a clean reference once H8 works, which suggests a two-step recovery: rewind, then train the anti-backdoor vector between the rewound and the current model and apply it instead of discarding the rounds in between. Speculative; worth a line in future work, not a run yet.
+
+## Read and set aside
+
+- [Safe-FedLLM, arXiv 2601.07177](https://arxiv.org/html/2601.07177v1): a probe classifier on LoRA parameter changes for federated LLM fine-tuning (harmful data, not triggers). Its own limitations (probe tied to one backbone and seed, drifts with rounds) rule it out for vision FL. Krum and trimmed mean barely moved its safety metrics, which matches our Phase 5 finding that classic rules do little against targeted harm.
+- [AugMP, cai2026graph](https://www.tkn.tu-berlin.de/bib/cai2026graph-preprint/cai2026graph-preprint.pdf): an attack that learns a graph autoencoder over benign LoRA updates to forge malicious updates that pass distance and cosine thresholds (up to 26 points of accuracy lost). A reminder that a defense-aware attack belongs in C8; a learned forgery of our root-head cosine is the strongest adaptive attacker we could face.
+
+## Seen by title only (to read next)
+
+- [FedGraph, ICLR 2026](https://iclr.cc/virtual/2026/10019300): graph-based aggregation against backdoors in federated LLM fine-tuning; a client-similarity graph is close to FedHEP's grouping. The preprint link found so far is a different paper.
 - [FedPoisonTTP](https://www.alphaxiv.org/abs/2511.19248.md): poisoning federated test-time adaptation; a threat the exit guard and head-agreement inference would face if clients adapt at test time.
 
 ## What this changes in the plan
 
-Three of these are cheap enough to add to the campaign without waiting: idea 11 (a fixed ETF root head, one line), idea 10 (sign election as a fourth rule), and idea 12 as a post-hoc pass on the saved backdoor models. Ideas 13 and 14 are offline analyses of updates we already record. None of them replaces anything queued; they would form a stage C3b of about 30 runs after `gpu_c2_alie`.
+Three of these are cheap enough to add to the campaign without waiting: idea 11 (a fixed ETF root head, one line), idea 10 (sign election as a fourth rule; a colleague has a first implementation in the Mac working tree and pilots on the Acer), and idea 12 as a post-hoc pass on the saved backdoor models. Ideas 13 and 14 are offline analyses of updates we already record. Idea 18 is not optional: the retuning test is what a 2026 reviewer will ask of any removal claim, and it costs no runs. None of them replaces anything queued; they would form a stage C3b of about 30 runs after `gpu_c2_alie`.
 
 ## Sources
 
@@ -95,7 +110,11 @@ Three of these are cheap enough to add to the campaign without waiting: idea 11 
 - PRISM-FCP — https://arxiv.org/html/2602.18396v1
 - SD-CSFL, WACV 2026 — https://openaccess.thecvf.com/content/WACV2026/papers/Alharbi_SD-CSFL_A_Synthetic_Data-Driven_Conformity_Scoring_Framework_for_Robust_Federated_WACV_2026_paper.pdf
 - Kick Bad Guys Out — https://arxiv.org/pdf/2310.04055
-- Titles only: FedGraph (ICLR 2026), Safe-FedLLM, task arithmetic for backdoor mitigation, superficial safety, FedPoisonTTP (links above)
+- Superficial safety of backdoor defenses — https://arxiv.org/pdf/2410.09838
+- Task arithmetic for backdoor mitigation in model merging — https://arxiv.org/pdf/2606.12498
+- Safe-FedLLM — https://arxiv.org/html/2601.07177v1
+- AugMP — https://www.tkn.tu-berlin.de/bib/cai2026graph-preprint/cai2026graph-preprint.pdf
+- Titles only: FedGraph (ICLR 2026), FedPoisonTTP (links above)
 
 
 ## Integration follow-up
