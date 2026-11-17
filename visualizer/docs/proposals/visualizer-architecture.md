@@ -2,7 +2,7 @@
 
 Status: **proposal for review**, 2026-11-15. Owner of this document and of the backend: Claude. Frontend design and implementation: Astra. Independent review: ChatGPT. Nothing beyond an observation spike is implemented; implementation starts after review and the owner's decisions (section 15).
 
-Companion documents: [`integration-contracts.md`](integration-contracts.md) (the backend–frontend contract) and [`event-schema.md`](event-schema.md) (every event the backend emits). Reference material: [`../visualizer/docs/01_REPOSITORY_INVENTORY.md`](../visualizer/docs/01_REPOSITORY_INVENTORY.md) (execution specification of all ten methods, read from the source). This document supersedes the earlier draft `../visualizer/docs/02_ARCHITECTURE.md`, which is kept unchanged.
+Companion documents: [`integration-contracts.md`](integration-contracts.md) (the backend–frontend contract) and [`event-schema.md`](event-schema.md) (every event the backend emits). Reference material: `01_REPOSITORY_INVENTORY.md` (execution specification of all ten methods, read from the source). This document supersedes the earlier draft `02_ARCHITECTURE.md`, which is kept unchanged.
 
 ## 1. Goals and non-goals
 

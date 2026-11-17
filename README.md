@@ -35,19 +35,17 @@ FedHEP+ gives identical results under sign flip and label flip because it leaves
 | Document | Contents |
 |---|---|
 | [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | Plain-language account of every stage so far, with the key charts. Start here. |
-| [`visualizer/docs/`](visualizer/docs/) | The RFL Lab visualizer (in progress): repository inventory and architecture. |
+| [`visualizer/README.md`](visualizer/README.md) | The RFL Lab visualizer: setup, workbench, experiment history, deployment. Early design proposals are in `visualizer/docs/proposals/`. |
 | [`docs/OPERATIONS.md`](docs/OPERATIONS.md) | How to set up either machine, run and queue sweeps, move results between the Mac and the Acer, and push. |
 | [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md) | Written before the GPU campaign: what each queued experiment is expected to show, the number that would refute it, the model we expect to publish, and the campaign plan. |
-| [`docs/IDEAS_FRONTIER.md`](docs/IDEAS_FRONTIER.md) | Ideas from outside robust FL (model merging, neural collapse, spectral methods, pruning, conformal prediction), each with where it would plug into FedHEP and the run that would test it. |
-| [`docs/IDEAS.md`](docs/IDEAS.md) | Ranked ideas for the next defense, with the evidence for each: layer-level and sign signals, depth exits, recovery, peer voting. |
+| [`docs/IDEAS.md`](docs/IDEAS.md) | Ranked ideas for the next defense with the evidence for each: Part A from robust FL (layer-level and sign signals, depth exits, recovery, head agreement, peer voting), Part B from neighbouring fields (sign election, neural collapse, spectral signals, the retuning test). |
 | [`docs/PAPER_PLAN.md`](docs/PAPER_PLAN.md) | Claims and their status, closest published work, paper outline with figures mapped to runs, experiments needed before submission. |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Literature review: aggregation rules, attacks, backdoor and distillation defenses, personalized and hierarchical FL, efficiency, privacy, evaluation standards, open gaps. |
-| [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) | Proposed method, hypotheses, experiment stages and efficiency plan for the next paper. |
+| [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) | Proposed method, hypotheses, experiment stages, efficiency plan, and the phases with their exit criteria and progress. |
 | [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md) | Every experiment: setting, results, charts, interpretation. Starts with diagrams and formulas for each method. |
 | [`docs/methods_page/rfl_lab_methods.html`](docs/methods_page/rfl_lab_methods.html) | Self-contained page with the method diagrams and rendered formulas. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Package layers, interfaces and the import rule. |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases, exit criteria and progress. |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Numbered design decisions with their reasons. |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Numbered design decisions with their reasons, and the screening review of 2026-11-12. |
 
 ## Repository layout
 

@@ -628,7 +628,7 @@ Charts will compare each rule with Defended FedHEP and FedHEP+ once the runs exi
 **Direction:** FedHEP+'s weak spot (backdoor, worse with more colluders) is FLAME/Bulyan's strength, and their weak spot (honest clients left out) is FedHEP+'s strength. A hybrid that uses a FLAME-style cluster check only as *evidence* in FedHEP+'s screening is the natural next candidate.
 
 ## 2026-11-12 · Answers to the professor's questions
-Partly from a follow-up session on your Mac (`docs/FOLLOWUP_REVIEW.md`, code and tests verified here: all 81 tests pass), partly new. Full-scale runs still pending are marked "Pending:".
+Partly from a follow-up session on your Mac (`docs/DECISIONS.md`, screening review, code and tests verified here: all 81 tests pass), partly new. Full-scale runs still pending are marked "Pending:".
 
 **1. False-isolation cascade: is it the MAD shrinking?** *Plausible, not yet proven.* The historical runs logged z but not the raw scores or the MAD, so the denominator cannot be recovered. What the logs do show:
 ![Honest vs malicious z](figures/honest_vs_malicious_z.png)
@@ -1085,7 +1085,7 @@ All 36 runs of `phase6_ladder_d2` are done (Mac, MPS). D2: α = 0.2, 20 clients,
 
 FedHEP+ stops the backdoor at 10% attackers and degrades with the share; FedHEP's hierarchy alone gives at most 7 points over FedAvg. Accuracy: FedHEP+ loses 2.7 points to Defended at 40% (42.7 vs 46.1).
 
-**Sign-election pilots** (`frontier_pilot_*`, seed 42, synthetic data): a colleague's first pass at idea 10 from `IDEAS_FRONTIER.md`; the rule is in the Mac working tree, not yet committed. On the synthetic problem sign election matches L0 with no attack (3.6 vs 3.7) and beats ARC+NNM under ALIE (3.5 vs 3.1). CIFAR-100 runs are on the Acer (`acer_frontier_first`).
+**Sign-election pilots** (`frontier_pilot_*`, seed 42, synthetic data): a colleague's first pass at idea 10 in `IDEAS.md`, Part B; the rule is in the Mac working tree, not yet committed. On the synthetic problem sign election matches L0 with no attack (3.6 vs 3.7) and beats ARC+NNM under ALIE (3.5 vs 3.1). CIFAR-100 runs are on the Acer (`acer_frontier_first`).
 
 **Run plan while the GPU server is unavailable** (each machine compares only with its own runs):
 
