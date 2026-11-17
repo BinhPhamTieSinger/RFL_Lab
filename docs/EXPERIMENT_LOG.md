@@ -1109,3 +1109,21 @@ Lab GPU server, NVIDIA RTX PRO 4500 Blackwell (32 GB), PyTorch 2.7.1 + CUDA 12.8
 - **One run already fills the GPU.** Running 2 or 4 at once makes each run 2 or 4 times slower, so throughput does not change. The campaign uses `--procs 1` on each of the 4 GPUs. A 30-round D1 run should take about 2 minutes (3.1 s per round plus evaluation), against about 13 minutes on the Mac: roughly 6 times faster per GPU, 24 times with all four. The second round is slow in every run (8 s alone): one-off start-up work, not a recurring cost.
 - **The same run gives different numbers on CUDA.** Same seed, same configuration, same GPU model: final accuracy after 5 rounds differs by up to 0.67 points between the three jobs (seed 7: 30.93, 31.27, 31.60). The cause is cuDNN and atomic GPU additions, which sum in an order that changes from run to run. Runs on the server now use deterministic kernels (`run.deterministic: true`, added to every `gpu_*` sweep and to `device_parity`), so a rerun reproduces its numbers exactly; the cost in speed is measured by the next pilot (`outputs_pilot/det_a` and `det_b`, two identical jobs).
 - **Fixed:** the launcher read the commit with `git`, which the container lacks (all three first jobs stopped at start-up); it now reads `.git` directly. Jobs started in the same second also shared log files, because the container hides Slurm's job number; log names now include the process id.
+
+## 2026-11-17 · ALIE puzzle (C2 on the Mac): regrouping is not the cause, holding f fixed makes it worse
+`mac_c2_alie`, D1 (α = 0.5, 15 clients, 3 ALIE attackers, z = 0.43), 3 seeds, Mac (MPS); baselines `p6__l0` and `p6__r3g8` from the same machine. Every variant isolates all three ALIE attackers in round 3.
+
+| Variant of R3 (gate 8) | No attack | ALIE | ALIE, per seed (123 / 42 / 7) | Honest isolated, ALIE |
+|---|---|---|---|---|
+| L0 alone (isolates nobody) | 47.56 | **47.56** | 48.47 / 47.64 / 46.57 | 0 |
+| R3 as before | 47.36 | 45.74 | 46.30 / 46.63 / 44.28 | 0.7 |
+| (a) no regrouping after isolation | 47.59 | 46.09 | 47.03 / 47.12 / 44.12 | 0.3 |
+| (c) f held at 3 after isolation | 47.16 | 44.65 | 45.15 / 45.86 / 42.93 | 1.3 |
+| (a) and (c) | 47.40 | 44.67 | 45.28 / 45.25 / 43.48 | 0 |
+
+- **(a) Regrouping explains a little:** turning it off recovers 0.35 of the 1.8-point gap (2 of 3 seeds), as predicted (at most 0.5).
+- **(c) was wrong in direction:** keeping f = 3 after the three attackers are gone makes the trimmed mean discard 3 honest clients per side every round, which costs another 1.1 points. The current rule (f falls with each isolation) is the right one.
+- **(b) is what remains:** about 1.4 points that neither regrouping nor the trimmed mean explains. ALIE updates are honest updates shifted by 0.43 standard deviations, so they still carry three clients' data; L0 bounds the shift and keeps the data, isolation discards both. Not proven by these runs (no variant restores the attackers' data); the direct test is L0 with the three ALIE clients' data trained honestly, which is the no-attack L0 run with 15 clients against one with 12.
+- **Consequence:** for attacks that stay near the mean, bounding beats isolating. This supports soft, reversible trust (H3) over permanent isolation for these attackers.
+
+**Prediction-time defenses, first CIFAR-100 numbers** (19 runs above, no backdoor, so this is their cost only): head-agreement inference overrules 3.0% of inputs and costs 0.18 points of accuracy on average (worst run 0.61), 0.22 on the bottom 10%; the depth-exit guard flags 3.1% of clean inputs and costs 0.33 (worst 0.53). Both are inside the costs predicted (P6: 0.5–1.5; P11: below 0.5). Their effect on the backdoor comes from `mac_c5_recovery` and the GPU runs.
