@@ -66,23 +66,25 @@ def fig_d2(runs: dict) -> None:
     attacks = [("clean", "No attack"), ("sign4", "Sign flip"), ("backdoor4", "Backdoor"), ("minmax4", "Min-Max")]
     methods = [("a02__fedhep", "FedHEP (no defense)", "#b0b0b0"), ("a02__defended", "Defended FedHEP", "#6e6e6e"),
                ("a02__plus", "FedHEP+", pr.SLOT[0]),
-               ("a02__plus_p3_two", "FedHEP+ two-sided, patience 3", pr.SLOT[2]),
-               ("a02__l0", "L0", pr.SLOT[1])]
+               ("a02__l0", "L0", pr.SLOT[1]),
+               ("a02__r2", "R2: L0 + two-sided", pr.SLOT[2]),
+               ("a02__r3g8", "R3: gate 8", pr.SLOT[3]),
+               ("a02__r3g12", "R3: gate 12", "#7a3fb8")]
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(15, 4.4), gridspec_kw={"width_ratios": [2.4, 1]})
-    _grouped(ax, runs, methods, attacks, 0.16)
+    _grouped(ax, runs, methods, attacks, 0.12)
     ax.set_ylim(40, 58)
     ax.set_title("D2: α = 0.2, 20 clients, 4 attackers (mean ± sd, 3 seeds)")
-    variants = [methods[2], ("a02__plus_p3", "FedHEP+ patience 3", "#9a9a9a"), methods[3]]
+    variants = [methods[2], methods[4], methods[5], methods[6]]
     for j, (prefix, label, color) in enumerate(variants):
         hon = [sum(_false(m) for m in _runs(runs, f"{prefix}__{a}")) for a, _ in attacks]
-        pr.bar_labels(ax2, ax2.bar([i + (j - 1) * 0.27 for i in range(4)], hon, 0.25, color=color, label=label),
+        pr.bar_labels(ax2, ax2.bar([i + (j - 1.5) * 0.21 for i in range(4)], hon, 0.19, color=color, label=label),
                       fmt="{:.0f}", size=7.5)
     ax2.set_xticks(range(4), [label for _, label in attacks], fontsize=7.5)
     ax2.set_ylabel("honest clients isolated (sum of 3 seeds)")
-    ax2.set_title("Screening variants: false isolations (L0 isolates nobody)")
+    ax2.set_title("False isolations by rung (L0 isolates nobody)")
     ax2.legend(fontsize=7.5)
     fig.tight_layout(rect=(0, 0.09, 1, 1))
-    fig.legend(*ax.get_legend_handles_labels(), ncols=5, fontsize=8.5, loc="lower center", frameon=False)
+    fig.legend(*ax.get_legend_handles_labels(), ncols=7, fontsize=8.5, loc="lower center", frameon=False)
     pr.save(fig, "phase6_d2.png")
 
 

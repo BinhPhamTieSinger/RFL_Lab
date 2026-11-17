@@ -1,0 +1,24 @@
+# Acer (XPU) version of campaign stage C6, durability at 100 rounds, self-contained: every method it compares is
+# in this file. 21 runs of 100 rounds, about 16 hours; resumable.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 100
+  run.eval_every: 5
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  attack.kind: backdoor
+  attack.count: 3
+  attack.stop_round: 50
+axes:
+  - x6__fedhep: {config: configs/cifar100_fedhep.yaml}
+    x6__plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true}
+    x6__l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm,
+             robust.assumed_attackers: 3}
+    x6__r3g8: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}
+    x6__r3w: {<<: *r3, plus.signal: weights}
+    x6__r3w_tr: {<<: *r3, plus.signal: weights, plus.rewind: trunk_root}
+    x6__r3_tr: {<<: *r3, plus.rewind: trunk_root}

@@ -1,0 +1,24 @@
+# Mac (MPS) version of campaign stage C2, the ALIE accuracy puzzle, while the GPU server is unavailable. Baselines
+# p6__r3g8 and p6__l0 (clean, alie3) are already on the Mac, so the comparison stays within one device. 24 runs,
+# about 5 hours.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - m6__r3_noregroup: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: false, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8}
+    m6__r3_ffixed: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.global_f_fixed: true}
+    m6__r3_noregroup_ffixed: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: false, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.global_f_fixed: true}
+    m6__r3g12: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 12}
+  - clean: {}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}

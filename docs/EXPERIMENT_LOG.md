@@ -1055,3 +1055,44 @@ Written into the code today, all tested (104 tests pass): head-agreement inferen
 | 5 | `gpu_c6_durability` | 21 | P13: 100 rounds, backdoor stopped at round 50; lifespan |
 
 Every run also records the depth-exit guard and head-agreement metrics, so no separate runs are needed for them. Results are compared only with other CUDA runs. The predictions each sweep is checked against are in `PREDICTIONS.md`.
+
+## 2026-11-17 · D2 ladder complete: the gate holds at α = 0.2; backdoor by attacker share
+All 36 runs of `phase6_ladder_d2` are done (Mac, MPS). D2: α = 0.2, 20 clients, 4 attackers, mean of 3 seeds. Honest isolated is the sum over 3 seeds of honest clients isolated by round 30.
+
+![D2 ladder](figures/phase6_d2.png)
+
+| Method | No attack | Sign flip | Min-Max | Backdoor (success) | Honest isolated (no attack / sign / Min-Max / backdoor) |
+|---|---|---|---|---|---|
+| FedHEP (no defense) | **55.59** | 42.51 | 52.10 | 54.72 (46.9%) | 0 |
+| Defended FedHEP | 54.70 | 50.62 | **54.16** | 54.47 (44.3%) | 0 |
+| FedHEP+ | 52.68 | 52.15 | 53.55 | 53.08 (43.3%) | 27 / 21 / 6 / 18 |
+| L0 alone | 54.23 | 50.52 | 52.96 | 54.51 (**37.7%**) | 0 |
+| R2: L0 + two-sided | 52.13 | 51.86 | 52.62 | 52.49 (44.1%) | 38 / 29 / 29 / 33 |
+| R3, gate 8 | 54.72 | **54.26** | 53.34 | 54.46 (45.3%) | 3 / 6 / 8 / 7 |
+| R3, gate 12 | **54.73** | 54.19 | 52.51 | 54.49 (45.3%) | 2 / 1 / 0 / 6 |
+
+- **The gate works at strong heterogeneity.** R3 with gate 12 is within 0.9 points of the undefended model with no attack and isolates 2 honest clients over 3 seeds, where FedHEP+ isolated 27 and lost 2.9 points. Under sign flip it is the best method by 2 points (54.2 vs FedHEP+ 52.2, Defended 50.6), catching all 4 attackers on every seed. This is the D2 result the Phase 5 follow-up was missing: FedHEP+'s advantage now carries over to α = 0.2.
+- **Min-Max is the one attack where isolation costs:** gate 12 isolates the attackers in 1 of 3 seeds and scores 52.5, below Defended FedHEP (54.2) and L0 (53.0). The same pattern as ALIE at D1: when attackers sit near the mean, bounding beats isolating. The ALIE-puzzle runs (`mac_c2_alie`) test the explanation.
+- **The backdoor is untouched by every rung at D2** (44–45% success; L0 alone 38%; no defense 47%). Per head: root 86%, parent 48–62%, local 12–15%, a wider gap than at D1 (root 29–71%, local 8–22%). The personal heads resist more at α = 0.2 because each sees fewer classes. Head-agreement inference (P11) should gain more here, and it is on in every new run.
+
+**Backdoor by attacker share** (D1, 15 clients, 30 rounds; FedHEP+ = `zmr`):
+
+| Attackers | FedAvg | FedHEP | Defended | FedHEP+ (honest / attackers isolated) |
+|---|---|---|---|---|
+| 10% (1–2) | 43.1% | 42.3% | 36.2% | **1.3%** (3.7 / 1.0) |
+| 30% (4–5) | 90.9% | 83.9% | 83.8% | 50.2% (3.3 / 4.7) |
+| 40% (6) | 93.4% | 87.3% | 86.5% | 74.9% (2.3 / 4.7) |
+
+FedHEP+ stops the backdoor at 10% attackers and degrades with the share; FedHEP's hierarchy alone gives at most 7 points over FedAvg. Accuracy: FedHEP+ loses 2.7 points to Defended at 40% (42.7 vs 46.1).
+
+**Sign-election pilots** (`frontier_pilot_*`, seed 42, synthetic data): a colleague's first pass at idea 10 from `IDEAS_FRONTIER.md`; the rule is in the Mac working tree, not yet committed. On the synthetic problem sign election matches L0 with no attack (3.6 vs 3.7) and beats ARC+NNM under ALIE (3.5 vs 3.1). CIFAR-100 runs are on the Acer (`acer_frontier_first`).
+
+**Run plan while the GPU server is unavailable** (each machine compares only with its own runs):
+
+| Machine | Sweep | Runs | Hours | Tests |
+|---|---|---|---|---|
+| Mac | `mac_c2_alie` | 24 | 5 | the ALIE puzzle (a, b, c) against the Mac's own `p6__r3g8` and `p6__l0` |
+| Mac | `mac_c5_recovery` | 42 | 9 | rewind trunk / trunk + root / all on the root-head and whole-update signals; backdoor on, and stopped at round 10 |
+| Acer | `acer_c6_durability` | 21 | 16 | 100 rounds, backdoor stopped at round 50: lifespan under each defense and the rewind |
+
+Every run records head-agreement inference and the exit guard, so P6 and P11 get their first CIFAR-100 answer from these runs. The GPU sweeps stay queued for the server; their runs are not duplicated here (different device, different names).
