@@ -29,13 +29,30 @@ def gpus() -> list[str]:
     return [str(i) for i in range(torch.cuda.device_count())] or ["cpu"]
 
 
+def git_commit() -> str:
+    """The checked-out commit, read from .git directly: the lab's container has no git executable."""
+    git = ROOT / ".git"
+    try:
+        head = (git / "HEAD").read_text().strip()
+        if not head.startswith("ref: "):
+            return head
+        ref = head[5:]
+        if (git / ref).exists():
+            return (git / ref).read_text().strip()
+        for line in (git / "packed-refs").read_text().splitlines():
+            if line.endswith(" " + ref):
+                return line.split()[0]
+    except OSError:
+        pass
+    return "unknown"
+
+
 def record_environment(path: Path) -> None:
     """What the paper's reproducibility section needs: code version, container, PyTorch, GPUs."""
     import torch
 
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout
     lines = [
-        f"commit: {commit.strip()}",
+        f"commit: {git_commit()}",
         f"slurm job: {os.environ.get('SLURM_JOB_ID', 'none')}",
         f"python: {sys.version.split()[0]} ({sys.executable})",
         f"torch: {torch.__version__}, CUDA {torch.version.cuda}, cuDNN {torch.backends.cudnn.version()}",
