@@ -14,7 +14,12 @@ type Chunk = { path: string; title: string; heading: string; text: string };
 type Turn = { role: "user" | "assistant"; content: string; sources?: Chunk[] };
 type Settings = { url: string; chat: string; embed: string };
 
-const DEFAULTS: Settings = { url: "http://localhost:11434", chat: "qwen3.8:27b", embed: "bge-m3" };
+// Small by default: a 27-30B model needs 17-20 GB of RAM while it answers. qwen3:4b needs about 3 GB; if it is not
+// installed, the smallest installed chat model is used. Any installed model can be chosen in Settings.
+const DEFAULTS: Settings = { url: "http://localhost:11434", chat: "qwen3:4b", embed: "bge-m3" };
+const STORE = "rfl-advisor-v2"; // v1 stored the old 27B default
+// Unload the model two minutes after the last answer, and cap the context so its memory stays small.
+const RUN_OPTIONS = { keep_alive: "2m", options: { num_ctx: 8192 } };
 const CHUNK_CHARS = 1600;
 const TOP_K = 6;
 
@@ -26,7 +31,7 @@ Use Markdown; write formulas in LaTeX between $ signs.`;
 
 function load(): Settings {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem("rfl-advisor") ?? "{}") };
+    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORE) ?? "{}") };
   } catch {
     return DEFAULTS;
   }
@@ -34,7 +39,7 @@ function load(): Settings {
 
 function save(settings: Settings) {
   try {
-    localStorage.setItem("rfl-advisor", JSON.stringify(settings));
+    localStorage.setItem(STORE, JSON.stringify(settings));
   } catch {
     /* storage unavailable: settings last for this visit only */
   }
@@ -95,7 +100,7 @@ async function embed(settings: Settings, input: string[], signal?: AbortSignal):
   const response = await fetch(`${settings.url}/api/embed`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: settings.embed, input }),
+    body: JSON.stringify({ model: settings.embed, input, keep_alive: "2m" }),
     signal,
   });
   if (!response.ok) throw Error(`Embedding failed (${response.status}): ${await response.text()}`);
@@ -116,6 +121,7 @@ export default function DocAdvisor({
 }) {
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [models, setModels] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<Record<string, number>>({});
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [problem, setProblem] = useState("");
   const [showSettings, setShowSettings] = useState(false);
@@ -142,19 +148,20 @@ export default function DocAdvisor({
     try {
       const response = await fetch(`${current.url}/api/tags`);
       if (!response.ok) throw Error(`Ollama answered ${response.status}`);
-      const body = (await response.json()) as { models: Array<{ name: string }> };
-      const names = body.models.map((m) => m.name);
+      const body = (await response.json()) as { models: Array<{ name: string; size?: number }> };
+      const isEmbed = (n: string) => /embed|bge|nomic|minilm/i.test(n);
+      const bySize = [...body.models].sort((a, b) => (a.size ?? 0) - (b.size ?? 0));
+      const names = bySize.map((m) => m.name);
       setModels(names);
-      // Installed names carry a tag (bge-m3:latest); keep the reader's choice if installed, else the closest one.
-      const pick = (want: string, fallback: (n: string) => boolean) =>
-        names.find((n) => n === want || n === `${want}:latest`) ??
-        names.find((n) => n.startsWith(want.split(":")[0])) ??
-        names.find(fallback) ??
-        want;
+      setSizes(Object.fromEntries(bySize.map((m) => [m.name, m.size ?? 0])));
+      // Installed names carry a tag (bge-m3:latest). Keep the reader's choice if installed; otherwise the smallest
+      // installed model of the right kind, never a large one picked by a shared name prefix.
+      const pick = (want: string, kind: (n: string) => boolean) =>
+        names.find((n) => n === want || n === `${want}:latest`) ?? names.find(kind) ?? want;
       const next = {
         ...current,
-        chat: pick(current.chat, (n) => !/embed|bge|nomic|minilm/i.test(n)),
-        embed: pick(current.embed, (n) => /embed|bge|nomic|minilm/i.test(n)),
+        chat: pick(current.chat, (n) => !isEmbed(n)),
+        embed: pick(current.embed, isEmbed),
       };
       setSettings(next);
       save(next);
@@ -238,7 +245,7 @@ export default function DocAdvisor({
       let response = await fetch(`${settings.url}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: settings.chat, messages, stream: true, think: false }),
+        body: JSON.stringify({ model: settings.chat, messages, stream: true, think: false, ...RUN_OPTIONS }),
         signal: controller.signal,
       });
       if (response.status === 400) {
@@ -246,7 +253,7 @@ export default function DocAdvisor({
         response = await fetch(`${settings.url}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: settings.chat, messages, stream: true }),
+          body: JSON.stringify({ model: settings.chat, messages, stream: true, ...RUN_OPTIONS }),
           signal: controller.signal,
         });
       }
@@ -320,7 +327,11 @@ export default function DocAdvisor({
           <label>
             Answer model
             <select value={settings.chat} onChange={(e) => { const s = { ...settings, chat: e.target.value }; setSettings(s); save(s); }}>
-              {[...new Set([settings.chat, ...models])].map((m) => <option key={m}>{m}</option>)}
+              {[...new Set([settings.chat, ...models])].map((m) => (
+                <option key={m} value={m}>
+                  {sizes[m] ? `${m} · ${(sizes[m] / 1e9).toFixed(1)} GB` : m}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -331,6 +342,8 @@ export default function DocAdvisor({
           </label>
           <p className="advisor-note">
             Runs on your own machine: the documentation and your questions go only to the Ollama server above.
+            A model needs roughly its size in RAM while answering and is unloaded two minutes after the last answer;
+            4–8B models are enough for explaining the documents.
             {chunks.length} passages from {documents.length} documents.
           </p>
         </div>
@@ -341,6 +354,13 @@ export default function DocAdvisor({
           <Markdown>{problem}</Markdown>
           <button type="button" onClick={() => connect(settings)}>Retry</button>
         </div>
+      )}
+
+      {status === "online" && (sizes[settings.chat] ?? 0) > 8e9 && (
+        <p className="advisor-note advisor-heavy">
+          {settings.chat} needs about {((sizes[settings.chat] ?? 0) / 1e9).toFixed(0)} GB of RAM while answering. For a
+          lighter advisor, run <code>ollama pull qwen3:4b</code> (about 3 GB); it is chosen automatically once installed.
+        </p>
       )}
 
       <div className="advisor-log">

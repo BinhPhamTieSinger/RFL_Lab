@@ -640,6 +640,22 @@ function ResultDetails({
                   keys={["asr"]}
                 />
               )}
+              {result.history?.some((r: any) => r.head_agreement || r.guarded) && (
+                <>
+                  <Series
+                    title="Prediction-time defenses: accuracy (%)"
+                    rows={predictionRows(result.history)}
+                    keys={["model", "head_agreement", "exit_guard"]}
+                  />
+                  {result.history.some((r: any) => r.asr != null) && (
+                    <Series
+                      title="Prediction-time defenses: backdoor success (%)"
+                      rows={predictionRows(result.history, "asr")}
+                      keys={["model", "head_agreement", "exit_guard"]}
+                    />
+                  )}
+                </>
+              )}
               <Series
                 title="MAD and screening scale per round"
                 rows={mad}
@@ -886,3 +902,17 @@ export function ExperimentHistory({
     </>
   );
 }
+
+/** One row per evaluated round: the model's own number next to the same number under head-agreement inference
+ * and the depth-exit guard (both evaluation-only, recorded by fedhep.head_agreement and fedhep.exit_guard). */
+function predictionRows(history: any[], metric: "pooled_acc" | "asr" = "pooled_acc") {
+  return history
+    .filter((r) => r.head_agreement || r.guarded)
+    .map((r) => ({
+      round: r.round,
+      model: r[metric],
+      head_agreement: r.head_agreement?.[metric],
+      exit_guard: r.guarded?.[metric],
+    }));
+}
+

@@ -15,6 +15,7 @@ Sharding: `shard=(i, n)` keeps every n-th (run, seed) pair starting at i, counte
 processes with i = 0..n-1 split one sweep without overlap and each still skips what is already done."""
 from __future__ import annotations
 
+import gc
 import itertools
 from dataclasses import replace
 from pathlib import Path
@@ -56,4 +57,20 @@ def run_sweep(spec: dict[str, Any], dry_run: bool = False, extra: dict[str, Any]
         todo.append(str(folder))
         if not dry_run:
             run_experiment(c)
+            release_device_memory()
     return todo
+
+
+def release_device_memory() -> None:
+    """Return cached GPU memory between runs of one sweep process. Intel's driver otherwise keeps the previous
+    run's blocks, and the next run's dataset upload failed with out-of-device-memory on the Acer (16 GB shared)."""
+    import torch
+
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if hasattr(torch, "xpu") and torch.xpu.is_available():
+        torch.xpu.empty_cache()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
+
