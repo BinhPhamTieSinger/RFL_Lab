@@ -74,7 +74,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
             return None
         heads: tuple[str, ...] = ("fc2_root",) + PERSONAL_HEADS
         exclude = {"trunk": heads, "trunk_root": PERSONAL_HEADS, "all": ()}[rewind]
-        keep = torch.ones(self.global_vec.numel(), dtype=torch.bool)
+        keep = torch.ones(self.global_vec.numel(), dtype=torch.bool, device=self.global_vec.device)
         offset = 0
         for name, value in self.template.items():
             if name.startswith(exclude):

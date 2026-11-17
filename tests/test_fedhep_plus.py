@@ -367,6 +367,7 @@ def test_rewind_mask_covers_the_named_layers():
     total = sum(sizes.values())
     personal = sum(n for k, n in sizes.items() if k.startswith(("fc2_parent", "fc2_local")))
     root = sizes["fc2_root.weight"] + sizes["fc2_root.bias"]
+    assert server.rewind_mask.device == server.global_vec.device   # an MPS run once failed on a CPU mask
     assert int(server.rewind_mask.sum()) == total - personal
     assert int(server._rewind_mask("trunk").sum()) == total - personal - root
     assert int(server._rewind_mask("all").sum()) == total
