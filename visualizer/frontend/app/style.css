@@ -969,19 +969,20 @@ details:not([open]) > :not(summary) {
 .markdown-document table th {
   font-weight: 600;
   background: var(--field);
-  white-space: nowrap;
+}
+/* Every column wraps, so a table fits the page and no column is pushed off-screen; a column holding long
+   text gets more of the width instead of making every row tall. Short first columns (IDs, phases) stay
+   readable through their minimum width. */
+.markdown-document table th,
+.markdown-document table td {
+  white-space: normal;
+  min-width: 5.5em;
 }
 .markdown-document table td:first-child {
-  white-space: nowrap;
   font-weight: 500;
 }
-.markdown-document table td:nth-child(2) {
-  white-space: nowrap;
-}
-.markdown-document table td:nth-child(2):has(+ td:last-child),
-.markdown-document table td:last-child {
-  white-space: normal;
-  min-width: 220px;
+.markdown-document table td code {
+  overflow-wrap: anywhere;
 }
 .doc-badge {
   display: inline-block;
