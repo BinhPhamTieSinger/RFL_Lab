@@ -125,6 +125,20 @@ git pull --rebase && git push
 
 **Update the server's code** with `git pull --rebase` when no job is running: a job reloads the code at the start of each sweep file, so pulling mid-job can mix two code versions in one batch.
 
+**Device parity** (does the device change the numbers, and by how much?). Run `configs/sweeps/device_parity.yaml` (12 runs of 30 rounds) on every machine, each into its own folder, then compare:
+```bash
+# GPU server: twice, so its own run-to-run noise is measured too (about 30 minutes on 4 GPUs)
+qbatch --gpus 4 --cpus 16 --mem 64G --time 03:00:00 scripts/gpu_sweep.py configs/sweeps/device_parity.yaml \
+    --procs 3 --set data.root=data run.output_dir=outputs_parity/cuda
+qbatch --gpus 4 --cpus 16 --mem 64G --time 03:00:00 scripts/gpu_sweep.py configs/sweeps/device_parity.yaml \
+    --procs 3 --set data.root=data run.output_dir=outputs_parity/cuda_b
+# Mac (about 3 hours) and Acer (about 3 hours), after their current queues
+python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/mps
+python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/xpu
+# anywhere, once the folders are pulled together
+python scripts/compare_devices.py outputs_parity
+```
+
 The GPU server is a third machine: its results are compared only with each other, so every sweep run there carries its own baselines (`gpu_*.yaml`).
 
 ## 3. Running experiments

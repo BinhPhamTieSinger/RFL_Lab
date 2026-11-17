@@ -1,0 +1,16 @@
+# Device parity: how far do results move when only the device changes? Run this same file on every machine with
+# its own output folder (commands in OPERATIONS.md, "Device parity"); scripts/compare_devices.py then pairs the
+# runs by name. Two methods that react differently to small changes (FedHEP has no thresholds; R3 gate 12 has
+# several), with and without an attack, three seeds: 12 runs of 30 rounds. Running it twice on one device
+# measures that device's own run-to-run noise, which is the floor any cross-device difference is judged against.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - par__fedhep: {config: configs/cifar100_fedhep.yaml}
+    par__r3g12: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 12}
+  - clean: {}
+    sign_flip: {attack.kind: sign_flip, attack.count: 3}
