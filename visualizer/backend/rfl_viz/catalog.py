@@ -27,6 +27,7 @@ OPTIONS = {
         "backdoor",
         "alie",
         "min_max",
+        "stealth_backdoor",
     ],
     "attack.placement": ["random", "concentrated", "spread"],
     "attack.knowledge": ["colluders", "omniscient"],
@@ -78,7 +79,7 @@ def schema(method):
                 continue
             opts = OPTIONS.get(path)
             if path == "attack.kind" and not method.startswith("fedhep"):
-                opts = opts[:-2]
+                opts = opts[:-3]   # alie, min_max and stealth_backdoor need a FedHEP server
             out.append(
                 {
                     "key": path,
@@ -417,6 +418,21 @@ FORMULAS.extend(
                 "model's predictions on probe_size server images with the median prediction."
             ),
             "source": "defense/screening.py",
+        },
+        {
+            "name": "Stealth backdoor (adaptive)",
+            "method": "fedhep",
+            "latex": (
+                r"\tilde u_a=\bar h+\lambda^\star(u_a-\bar h),\quad \lambda^\star=\max\Bigl\{\lambda\in[0,1]:"
+                r"\max_i\|\bar h+\lambda(u_a-\bar h)-h_i\|^2\le\max_{i,j}\|h_i-h_j\|^2\Bigr\}"
+            ),
+            "explanation": (
+                "attack.kind stealth_backdoor: each attacker trains on stamped, relabelled images (BadNets), then "
+                "pulls its update u_a toward the honest mean h-bar just far enough to sit inside Min-Max's bound: no "
+                "farther from any honest update than the farthest honest pair. Omniscient (it sees the honest "
+                "updates); it does not read the screen's own statistic. BatchNorm buffers are kept."
+            ),
+            "source": "attacks/adaptive.py",
         },
         {
             "name": "Union screen (weights_critical)",

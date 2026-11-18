@@ -337,6 +337,15 @@ def test_weights_critical_takes_the_lower_z_of_both_screens(tmp_path):
     assert all(attackers <= set(d["flagged"]) for d in runs["weights_critical"]["detection"][1:])
 
 
+def test_stealth_backdoor_runs_end_to_end_and_reports_success(tmp_path):
+    result = run_experiment(_cfg(tmp_path, name="stealth", **{"attack.kind": "stealth_backdoor",
+                                                              "plus.reference": "median"}))
+    assert result["history"][-1]["asr"] is not None
+    with pytest.raises(ValueError):
+        run_experiment(_cfg(tmp_path, name="stealth_fedavg", method="fedavg", model="resnet9",
+                            **{"attack.kind": "stealth_backdoor"}))
+
+
 def test_head_agreement_overrules_only_where_the_personal_heads_agree_against_the_ensemble():
     from rfl.client.fedhep import HeadMemory, ensemble_logits, head_agreement_logits
 

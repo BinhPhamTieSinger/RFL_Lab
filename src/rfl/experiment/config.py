@@ -38,7 +38,8 @@ class RunConfig:
 @dataclass(frozen=True)
 class AttackConfig:
     kind: str | None = None              # None, "label_flip", "sign_flip", "gradient_ascent", "random_noise",
-                                         # "backdoor"
+                                         # "backdoor", "alie", "min_max", "stealth_backdoor" (FedHEP servers:
+                                         # backdoor blended toward the honest mean, rfl.attacks.adaptive)
     knowledge: str = "colluders"       # coordinated attacks: colluders | omniscient
     alie_z: float = 1.0
     rate: float = 0.0                    # each client is an attacker with this probability (authors' rule)

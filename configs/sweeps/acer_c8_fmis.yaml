@@ -1,0 +1,20 @@
+# Acer (xpu), mis-specified f: every robust rule so far was told the true attacker count. Here the defender assumes
+# f = 1 (too few), 3 (right) or 6 (twice too many) while 3 attackers (or none) take part. L0 and R3 with the union
+# screen; D1: 15 clients, alpha 0.5. 3 f x 4 attacks x 2 methods x 3 seeds = 72 runs, about 16 min each on the
+# Acer. Matched f first, so a stopped queue still has its baseline.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+axes:
+  - x8_f3: {robust.assumed_attackers: 3, plus.global_f: 3}
+    x8_f6: {robust.assumed_attackers: 6, plus.global_f: 6}
+    x8_f1: {robust.assumed_attackers: 1, plus.global_f: 1}
+  - clean: {}
+    sign3: {attack.kind: sign_flip, attack.count: 3}
+    alie3: {attack.kind: alie, attack.count: 3, attack.knowledge: colluders, attack.alie_z: 0.43}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}
+  - l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm}
+    r3wc: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+           plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+           plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical}

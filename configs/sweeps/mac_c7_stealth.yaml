@@ -1,0 +1,25 @@
+# Mac (mps), adaptive attack: does a backdoor that hides inside the honest spread get past the screens?
+# stealth_backdoor trains on stamped images like the plain backdoor, then pulls each attacker's update toward the
+# honest mean as far as needed to stay within Min-Max's distance bound (rfl.attacks.adaptive.StealthBackdoorAttack;
+# omniscient). Plain backdoor alongside on the same device for the comparison. D1: 15 clients, alpha 0.5,
+# 3 or 5 attackers, f = true count. 7 methods x 4 attacks x 3 seeds = 84 runs, about 11 min each on the Mac.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 30
+  fedhep.exit_guard: true
+axes:
+  - m7__backdoor3: {attack.kind: backdoor, attack.count: 3, robust.assumed_attackers: 3, plus.global_f: 3}
+    m7__stealth3: {attack.kind: stealth_backdoor, attack.count: 3, robust.assumed_attackers: 3, plus.global_f: 3}
+    m7__stealth5: {attack.kind: stealth_backdoor, attack.count: 5, robust.assumed_attackers: 5, plus.global_f: 5}
+    m7__backdoor5: {attack.kind: backdoor, attack.count: 5, robust.assumed_attackers: 5, plus.global_f: 5}
+  - fedhep: {config: configs/cifar100_fedhep.yaml}
+    defended: {config: configs/cifar100_fedhep_defended.yaml}
+    plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+           plus.regroup: true}
+    l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm}
+    r3w: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+              plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights}
+    r3wc: {<<: *r3, plus.signal: weights_critical}
+    flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}

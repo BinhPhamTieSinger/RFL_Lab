@@ -7,7 +7,7 @@ import torch
 
 from rfl.aggregation.fedavg import FedAvg
 from rfl.aggregation.multikrum import MultiKrum
-from rfl.attacks.adaptive import CoordinatedAttack
+from rfl.attacks.adaptive import CoordinatedAttack, StealthBackdoorAttack
 from rfl.attacks.backdoor import BackdoorAttack
 from rfl.attacks.byzantine import ByzantineAttack, select_attackers, select_attackers_fixed
 from rfl.client.ditto import DittoTrainer
@@ -75,13 +75,15 @@ def build_fedrep(cfg: ExperimentConfig, model: torch.nn.Module, clients: Sequenc
 
 def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, frozenset[int]]:
     a = cfg.attack
-    if a.kind in ("alie", "min_max") and cfg.method not in (
+    if a.kind in ("alie", "min_max", "stealth_backdoor") and cfg.method not in (
             "fedhep", "fedhep_defended", "fedhep_plus", "fedhep_robust"):
         raise ValueError("Coordinated attacks currently require a FedHEP server")
     if a.kind is None:
         return None, frozenset()
     attack: Attack = (BackdoorAttack(a.backdoor_target, a.backdoor_fraction, a.scale, cfg.run.seed)
                       if a.kind == "backdoor" else
+                      StealthBackdoorAttack(a.backdoor_target, a.backdoor_fraction, cfg.run.seed)
+                      if a.kind == "stealth_backdoor" else
                       CoordinatedAttack(a.kind, a.alie_z, a.knowledge) if a.kind in ("alie", "min_max") else
                       ByzantineAttack(a.kind))
     attackers = (select_attackers_fixed(num_clients, a.count, cfg.run.seed) if a.count is not None

@@ -159,13 +159,13 @@ A run that already has `metrics.json` is skipped, so an interrupted sweep resume
 Mac (keeps the machine awake):
 ```bash
 cd ~/Documents/AI_researching/Robust_Federated_Learning/RFL_Lab && source .venv/bin/activate
-caffeinate -i bash -c 'for s in mac_c2_alie mac_c5_recovery; do python scripts/sweep.py configs/sweeps/$s.yaml || break; done'
+caffeinate -i bash -c 'python scripts/sweep.py configs/sweeps/mac_c7_stealth.yaml && python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/mps'
 ```
 Acer (inside tmux, so it survives closing the SSH window):
 ```bash
 tmux new -s rfl          # or: tmux attach -t rfl
 cd ~/Documents/RFL_Lab
-for s in acer_c6_durability; do python scripts/sweep.py configs/sweeps/$s.yaml || break; done
+python scripts/sweep.py configs/sweeps/acer_c8_fmis.yaml && python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/xpu
 ```
 Detach with Ctrl-b then d; `tmux attach -t rfl` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`.
 

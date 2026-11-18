@@ -92,6 +92,14 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P18 | At α 0.1 every screen isolates more honest clients with no attack than at α 0.5 (strong label skew looks like an attack), and R3's gap gate keeps that count at no more than half of FedHEP+'s | 0.6 | R3 isolates as many honest clients as FedHEP+ at α 0.1 |
 | P19 | At 50 clients with 15 sign flippers, L0 and every R3 variant stay within 3 points of their own no-attack accuracy, while Defended FedHEP loses more than 10 | 0.55 | an R3 variant loses more than 5 points, or Defended FedHEP loses less than 5 |
 
+
+### Mac and Acer, while the grid runs (2026-11-18, `mac_c7_stealth`, `acer_c8_fmis`)
+
+| # | Prediction | Confidence | Refuted if |
+|---|---|---|---|
+| P20 | The stealth backdoor (blended toward the honest mean until it sits inside Min-Max's bound) gets past the whole-update and union screens more often than the plain backdoor does, but carries less backdoor: with 3 attackers its success under no defense is lower than the plain backdoor's | 0.55 | the screens catch it as often as the plain backdoor, or its undefended success matches the plain one |
+| P21 | Telling the robust rules f = 6 when 3 attack costs L0 at least 1 point with no attack (it trims more honest updates), while R3 with the union screen loses less, because its trimmed mean only acts on the clients the screen kept; f = 1 lets sign flip through L0's trimmed mean but not R3's screen | 0.5 | R3 loses as much as L0 at f = 6, or L0 at f = 1 holds sign flip within 1 point |
+
 ## 3. The model we expect to publish
 
 If the predictions above mostly hold, the published method is:

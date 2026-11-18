@@ -1243,3 +1243,11 @@ The pilot and batch 1 settled the two open questions about the GPU server (one r
 - **Fix:** `gpu_c4_d2` ALIE used z = 0.43 (the 15-client value); corrected to 0.39 for 20 clients and 4 attackers before it ran.
 - **Expected time:** about 40 hours on four GPUs at the pilot's speed; 30- and 50-client runs may be slower (more clients per round of screening and evaluation). The job then continues with `gpu_c4_d2`, `gpu_c2_alie`, `gpu_c5_recovery` and `gpu_c6_durability`.
 
+## 2026-11-18 · Run plan: Mac and Acer while the GPU grid runs
+The GPU server works through the large grid (about 40 hours on two GPUs). The Mac and the Acer take two questions the grid leaves out. Each study runs its own baselines on its own device, so no table mixes devices.
+
+- **Mac, `mac_c7_stealth` (84 runs, about 16 hours), adaptive attack.** New attack `stealth_backdoor` (`rfl.attacks.adaptive.StealthBackdoorAttack`): BadNets training, then each attacker's update is pulled toward the honest mean, m + λ(u − m), with the largest λ in [0, 1] that keeps it within Min-Max's bound (no farther from any honest update than the farthest honest pair). It sees the honest updates (omniscient) but not the screen's own statistic. 7 methods (FedHEP, Defended FedHEP, FedHEP+, L0, R3 whole update, R3 union screen, FLAME) × {plain backdoor, stealth backdoor} × {3, 5 attackers} × 3 seeds, D1. Tests: `test_stealth_blend_keeps_an_inside_update_and_pulls_a_far_one_to_the_bound`, `test_stealth_backdoor_changes_only_attackers_parameters`, `test_stealth_backdoor_runs_end_to_end_and_reports_success`. Prediction P20.
+- **Acer, `acer_c8_fmis` (72 runs, about 19 hours), mis-specified f.** Every table so far told the robust rules the true attacker count. Here f = 1, 3 or 6 with 3 attackers (or none): L0 and R3 with the union screen × no attack, sign flip, ALIE, backdoor × 3 seeds, D1. Prediction P21.
+- **Then on both:** `device_parity` (12 runs) into `outputs_parity/mps` and `outputs_parity/xpu`, which measures how far each device moves from the GPU server's numbers and from itself.
+- **Earlier queues finished:** Mac `mac_c5_recovery` (66 runs), Acer `acer_c6_durability`; their analysis follows once the Acer's last runs are synced.
+

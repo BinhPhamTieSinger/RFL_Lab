@@ -2,7 +2,7 @@
 import pytest
 import torch
 
-from rfl.attacks.adaptive import CoordinatedAttack, crafted_update
+from rfl.attacks.adaptive import CoordinatedAttack, StealthBackdoorAttack, crafted_update, stealth_blend
 from rfl.core.types import DetectionResult, RoundReport
 from rfl.defense.screening import EvidenceTracker, one_sided, robust_z
 from rfl.evaluation.detection import detection_metrics
@@ -67,3 +67,30 @@ def test_gap_ratio_is_small_for_a_spread_and_large_for_a_split():
     split = spread + [-5.0, -5.1, -5.05]                              # three far below: a clear split
     assert gap_ratio(split) > 10
     assert gap_ratio(spread + [9.0]) > 10                             # a split above counts too
+
+
+def test_stealth_blend_keeps_an_inside_update_and_pulls_a_far_one_to_the_bound():
+    honest = torch.randn(8, 19, generator=torch.Generator().manual_seed(7))
+    radius = torch.cdist(honest, honest).square().max()
+    inside = honest.mean(0) + 0.1 * (honest[0] - honest.mean(0))
+    out, lam = stealth_blend(inside, honest)
+    assert lam == 1.0 and torch.equal(out, inside)
+    far = honest.mean(0) + 50 * torch.ones(19)
+    out, lam = stealth_blend(far, honest)
+    assert 0 < lam < 1
+    assert (out - honest).square().sum(1).max() <= radius + 1e-4
+    further = honest.mean(0) + 1.01 * (out - honest.mean(0))
+    assert (further - honest).square().sum(1).max() > radius
+
+
+def test_stealth_backdoor_changes_only_attackers_parameters():
+    attack = StealthBackdoorAttack()
+    start = torch.zeros(3)
+    uploads = {0: torch.tensor([90., 90., 10.]), 1: torch.tensor([2., 3., 20.]),
+               2: torch.tensor([3., 1., 30.]), 3: torch.tensor([1., 2., 40.])}
+    out = attack.poison_batch(uploads, start, frozenset({0}), torch.tensor([True, True, False]))
+    assert out[0][2] == 10                      # buffer kept
+    assert out[0][:2].abs().max() < 90          # pulled in
+    assert attack.blend and 0 < attack.blend[0] < 1
+    assert all(torch.equal(out[c], uploads[c]) for c in (1, 2, 3))
+
