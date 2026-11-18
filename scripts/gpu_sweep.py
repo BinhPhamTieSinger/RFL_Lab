@@ -3,7 +3,7 @@
 Submit with qbatch on the lab GPU server (docs/OPERATIONS.md, "Lab GPU server"):
 
   qbatch --gpus 4 --cpus 16 --mem 64G --time 12:00:00 scripts/gpu_sweep.py \
-      configs/sweeps/gpu_d1_signals.yaml --procs 3 --set data.root=data
+      configs/sweeps/gpu_grid_n15.yaml --procs 1 --set data.root=data   # one run already fills a GPU
 
 Each of the GPUs x procs workers runs `scripts/sweep.py <spec> --shard w/W` for every spec in turn, so the
 workers split each grid without overlap. Finished runs are skipped, so resubmitting the same command resumes. Run

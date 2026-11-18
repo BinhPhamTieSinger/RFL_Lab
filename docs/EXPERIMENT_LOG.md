@@ -1231,3 +1231,15 @@ Detected by round 6, the backdoor never takes hold, so the rewind has nothing le
 | FedHEP+ | 2 / 5 / 2% | 3, 3, 3 (4–10) | 8, 8, 8 | 43.68 |
 
 Over 100 rounds the price of the whole-update signal shows: 4–8 honest clients isolated and 1.4–2.2 points of accuracy. The root-head screen does not climb past 80% as predicted (P13): where it catches the attackers by round 14 the backdoor stays near 20%.
+
+## 2026-11-18 · Run plan: the large GPU grid (1,872 runs) and the union screen
+The pilot and batch 1 settled the two open questions about the GPU server (one run per GPU, about 50 runs per hour on four; deterministic reruns), so the server now runs one large grid instead of small staged batches. A grid that covers every candidate component stays valid whatever the final method turns out to be, and it resumes if interrupted.
+
+- **Grid** (`configs/sweeps/gpu_grid_n15.yaml`, `_n30`, `_n50`, written by `scripts/make_gpu_grid.py`): 15 / 30 / 50 clients × α 0.1 / 0.5 × (no attack + sign flip, ALIE, Min-Max, backdoor at about 10 / 20 / 30% attackers: 2/3/5, 3/6/9, 5/10/15) × 8 methods × seeds 42, 123, 7. Methods: FedHEP, Defended FedHEP, FedHEP+, L0, R3 (root head, gate 8), R3 whole update, R3 union screen, FLAME. 30 rounds, deterministic kernels, exit guard and head-agreement inference recorded in every run.
+- **ALIE z** per (n, m) from Baruch et al.: s = ⌊n/2 + 1⌋ − m, z = Φ⁻¹((n − s)/n): 0.253 / 0.431 / 0.842 (n 15), 0.168 / 0.431 / 0.728 (n 30), 0.202 / 0.468 / 0.772 (n 50).
+- **Assumption:** the robust rules are told the true attacker count (f = m), as in every earlier table; with no attack they assume the middle share. A mis-specified f is a separate, smaller follow-up.
+- **Run order:** methods innermost, so the job finishes whole cells (8 methods × 3 seeds) one after another; a stopped job still leaves complete comparisons. The 15-client, α 0.5, 3-attacker cell repeats batch 1 under new names, which doubles as a determinism check across jobs and code versions.
+- **New arm, the union screen** (`plus.signal: weights_critical`): each of the two signals is z-scored and gap-gated on its own, and a client's z is the lower of the two, so either signal can exclude or isolate it. Motivation: in batch 1 the whole update caught the backdoor on seeds 123 and 7 and the critical layers on seed 42. Test: `test_weights_critical_takes_the_lower_z_of_both_screens`. Predictions P17–P19.
+- **Fix:** `gpu_c4_d2` ALIE used z = 0.43 (the 15-client value); corrected to 0.39 for 20 clients and 4 attackers before it ran.
+- **Expected time:** about 40 hours on four GPUs at the pilot's speed; 30- and 50-client runs may be slower (more clients per round of screening and evaluation). The job then continues with `gpu_c4_d2`, `gpu_c2_alie`, `gpu_c5_recovery` and `gpu_c6_durability`.
+

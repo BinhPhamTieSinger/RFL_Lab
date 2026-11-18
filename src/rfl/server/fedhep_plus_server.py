@@ -13,6 +13,7 @@ Per round:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 import torch
 import torch.nn.functional as F
@@ -132,29 +133,21 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         if len(scored) > 1:
             in_ref = torch.tensor([self.screen.population == "all" or c not in isolated for c in scored])
             updates = [to_global[c] - start for c in scored]
-            if self.screen.signal in ("probe_logits", "head_gap"):
-                scores = self._probe_scores(to_global, scored, in_ref)
+            if self.screen.signal == "weights_critical":
+                # Union of two screens: each signal is z-scored and gap-gated on its own, and a client's z is the
+                # lower of the two, so either signal alone can exclude or isolate it (GPU batch 1: the whole update
+                # and the critical layers each missed the backdoor on a different seed).
+                parts = {name: self._signal_z(name, to_global, updates, scored, in_ref)
+                         for name in ("weights", "critical")}
+                raw_scores, score_stats, z_logged, z = parts["weights"]
+                score_stats = {**score_stats, "critical": parts["critical"][1],
+                               "critical_scores": parts["critical"][0]}
+                for c, v in parts["critical"][3].items():
+                    if v < z[c]:
+                        z[c], z_logged[c] = v, parts["critical"][2][c]
             else:
-                scores = screening_scores(updates, self.global_defense.layout, self._masks(scored), self.screen,
-                                          reference_rows=in_ref)
-            ref_scores = scores[in_ref]
-            if ref_scores.numel():
-                med = ref_scores.median()
-                mad = (ref_scores - med).abs().median()
-                scale = max(1.4826 * float(mad), self.screen.relative_floor * abs(float(med)),
-                            self.screen.mad_floor)
-                score_stats = {"median": float(med), "mad": float(mad), "scale": scale,
-                               "relative_floor": self.screen.relative_floor * abs(float(med)),
-                               "absolute_floor": self.screen.mad_floor, "reference_n": int(in_ref.sum())}
-            raw_scores = dict(zip(scored, scores.tolist(), strict=True))
-            zs = robust_z(scores, floor=self.screen.relative_floor, reference=ref_scores,
-                          absolute_floor=self.screen.mad_floor)
-            z_logged = {c: float(v) for c, v in zip(scored, zs.tolist(), strict=True)}
-            z = one_sided(z_logged, self.screen.two_sided)
-            split = gap_ratio(scores.tolist())
-            score_stats["gap_ratio"] = split
-            if self.screen.gap_gate > 0 and split < self.screen.gap_gate:
-                z = {c: max(v, 0.0) for c, v in z.items()}   # no separate group this round: no bad evidence
+                raw_scores, score_stats, z_logged, z = self._signal_z(self.screen.signal, to_global, updates,
+                                                                      scored, in_ref)
             z_evidence = dict(z)
             if self.screen.drill_down:
                 parent_z = self._group_z(updates, scored, isolated, in_ref, round_idx)
@@ -227,6 +220,36 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                                  "evidence": dict(self.evidence.evidence), "global_trust": global_trust,
                                  "regroup": event.value, "groups": dict(self.grouping.assignment),
                                  "rewind_target": rewind_target})
+
+    def _signal_z(self, signal: str, to_global: dict[int, torch.Tensor], updates: list[torch.Tensor],
+                  scored: list[int], in_ref: torch.Tensor
+                  ) -> tuple[dict[int, float], dict[str, object], dict[int, float], dict[int, float]]:
+        """One signal's scores, their statistics, the logged robust z and the z the cuts act on (one- or two-sided,
+        zeroed on the bad side in rounds the gap gate does not open)."""
+        if signal in ("probe_logits", "head_gap"):
+            scores = self._probe_scores(to_global, scored, in_ref)
+        else:
+            scores = screening_scores(updates, self.global_defense.layout, self._masks(scored),
+                                      replace(self.screen, signal=signal), reference_rows=in_ref)
+        ref_scores = scores[in_ref]
+        score_stats: dict[str, object] = {}
+        if ref_scores.numel():
+            med = ref_scores.median()
+            mad = (ref_scores - med).abs().median()
+            scale = max(1.4826 * float(mad), self.screen.relative_floor * abs(float(med)), self.screen.mad_floor)
+            score_stats = {"median": float(med), "mad": float(mad), "scale": scale,
+                           "relative_floor": self.screen.relative_floor * abs(float(med)),
+                           "absolute_floor": self.screen.mad_floor, "reference_n": int(in_ref.sum())}
+        raw_scores = dict(zip(scored, scores.tolist(), strict=True))
+        zs = robust_z(scores, floor=self.screen.relative_floor, reference=ref_scores,
+                      absolute_floor=self.screen.mad_floor)
+        z_logged = {c: float(v) for c, v in zip(scored, zs.tolist(), strict=True)}
+        z = one_sided(z_logged, self.screen.two_sided)
+        split = gap_ratio(scores.tolist())
+        score_stats["gap_ratio"] = split
+        if self.screen.gap_gate > 0 and split < self.screen.gap_gate:
+            z = {c: max(v, 0.0) for c, v in z.items()}   # no separate group this round: no bad evidence
+        return raw_scores, score_stats, z_logged, z
 
     def _probe_scores(self, uploads: dict[int, torch.Tensor], scored: list[int], in_ref: torch.Tensor
                       ) -> torch.Tensor:

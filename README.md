@@ -98,6 +98,8 @@ This motivates the two active Phase 6 backdoor mechanisms: **Head-Agreement Infe
 - **A backdoor that is missed never fades** (100 rounds, attackers stop at round 50: 64–75% to the end), and **one caught by round 10 stays out** (FedHEP+, whole-update signal: 0–5% for 100 rounds). See [`docs/figures/phase6_durability.png`](docs/figures/phase6_durability.png).
 - **The depth-exit guard halves any backdoor that gets through** (79% → 42%, 64% → 35%) at 0.3 points of accuracy; head-agreement inference does little.
 
+**Running next (GPU server):** the large grid `gpu_grid_n{15,30,50}` (1,872 runs: 15/30/50 clients × α 0.1/0.5 × five attack settings at 10/20/30% attackers × 8 methods × 3 seeds), including the union screen `plus.signal: weights_critical` that the result above points to. Plan and predictions P17–P19 in the log.
+
 ## Documentation Guide
 
 The repository documentation is organized into **four tracks**:
@@ -113,7 +115,7 @@ The repository documentation is organized into **four tracks**:
 | Document | Purpose |
 |---|---|
 | [`docs/RESEARCH_PLAN.md`](docs/RESEARCH_PLAN.md) | Technical specification of **FedHEP-Guard** (`L0` influence bound, `L1` multi-signal screen + gap gate, `L2` two-vantage trust, `L3` soft quarantine), hypotheses `H1`–`H8`, and ablation stages. |
-| [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md) | Pre-registered predictions (`P1`–`P16`), confidence levels, and refutation thresholds written before the multi-GPU campaign (`C1`–`C6`). |
+| [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md) | Pre-registered predictions (`P1`–`P19`), confidence levels, and refutation thresholds written before the multi-GPU campaign (`C1`–`C6`). |
 | [`docs/IDEAS.md`](docs/IDEAS.md) | Ranked candidate mechanisms and their mathematical grounding: Part A (robust FL signals, depth exits, unlearning) and Part B (sign election, neural collapse, spectral geometry). |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Indexed registry of all 33 design decisions (`D1`–`D33`) grouped by status (`Active`, `Superseded`, `Closed`), plus the 2026-11-12 screening review archive. |
 
@@ -200,8 +202,8 @@ python scripts/sweep.py configs/sweeps/phase6_ladder_d1.yaml --dry-run
 # Run sequentially (finished runs with metrics.json are skipped automatically on resume)
 python scripts/sweep.py configs/sweeps/phase6_ladder_d1.yaml
 
-# Multi-GPU parallel sweep on the Slurm server (e.g. 4 GPUs x 3 workers/GPU)
-python scripts/gpu_sweep.py configs/sweeps/gpu_d1_signals.yaml --procs 3 --set data.root=data
+# Multi-GPU parallel sweep on the Slurm server (4 GPUs, one run per GPU)
+python scripts/gpu_sweep.py configs/sweeps/gpu_grid_n15.yaml --procs 1 --set data.root=data
 ```
 
 ### 3. Summarizing & Plotting Results

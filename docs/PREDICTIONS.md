@@ -83,6 +83,15 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P15 | At 40% attackers, L0 fails first (NNM mixes attackers into honest neighbours once attackers are 8 of 20) and the two-sided screen with the gate still isolates the sign flippers, so the full method degrades gracefully to about the FedHEP+ numbers | 0.5 | the full method falls below Defended FedHEP at 40% |
 | P16 | A defense-aware adaptive attack that keeps every signal inside the gate's band (our planned attack) achieves at most half the backdoor success of the plain attack, because staying inside the band bounds its per-round deviation and L0 bounds its influence; this is the δ window of Hammer and Anvil and is where recovery (H8) must do the work | 0.5 | the adaptive attack reaches the plain attack's success |
 
+
+### Large GPU grid (2026-11-18, `gpu_grid_n{15,30,50}`)
+
+| # | Prediction | Confidence | Refuted if |
+|---|---|---|---|
+| P17 | The union screen (R3 with `weights_critical`: a client's z is the lower of its whole-update and critical-layer z) keeps backdoor success below 5% on all three seeds at 15 clients, α 0.5, 3 attackers, where each signal alone missed one seed; its honest isolations with no attack stay near the whole-update signal's (13 over 3 seeds), because the critical-layer screen isolated nobody on its own | 0.6 | any seed above 10%, or more than 20 honest isolations over 3 no-attack runs |
+| P18 | At α 0.1 every screen isolates more honest clients with no attack than at α 0.5 (strong label skew looks like an attack), and R3's gap gate keeps that count at no more than half of FedHEP+'s | 0.6 | R3 isolates as many honest clients as FedHEP+ at α 0.1 |
+| P19 | At 50 clients with 15 sign flippers, L0 and every R3 variant stay within 3 points of their own no-attack accuracy, while Defended FedHEP loses more than 10 | 0.55 | an R3 variant loses more than 5 points, or Defended FedHEP loses less than 5 |
+
 ## 3. The model we expect to publish
 
 If the predictions above mostly hold, the published method is:

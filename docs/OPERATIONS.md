@@ -96,24 +96,23 @@ tail -n 3 logs/qbatch-*.out             # each job ends with "finished in X min"
 ```
 Then push the pilot (below). Choose `--procs` from it: the most runs per hour while peak GPU memory stays under about 28 GB of the 32 GB.
 
-**The campaign, in order** (each line one job; submit the next when the previous has finished, or list several files in one job):
+**The campaign.** The pilot showed that one run already fills a GPU (`--procs 1`; about 4.5 min per 30-round run, about 50 runs per hour on four GPUs). One job, in this order: the large grid first (1,872 runs, about 40 hours, longer if the 50-client runs are slower), then the mechanism studies:
 ```bash
-qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
-    configs/sweeps/gpu_d1_signals.yaml configs/sweeps/gpu_c2_alie.yaml --procs 3 --set data.root=data
-qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
-    configs/sweeps/gpu_c4_d2.yaml configs/sweeps/gpu_c5_recovery.yaml --procs 3 --set data.root=data
-qbatch --gpus 4 --cpus 16 --mem 96G --time 24:00:00 scripts/gpu_sweep.py \
-    configs/sweeps/gpu_c6_durability.yaml --procs 3 --set data.root=data
+qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/gpu_grid_n15.yaml configs/sweeps/gpu_grid_n30.yaml configs/sweeps/gpu_grid_n50.yaml \
+    configs/sweeps/gpu_c4_d2.yaml configs/sweeps/gpu_c2_alie.yaml configs/sweeps/gpu_c5_recovery.yaml \
+    configs/sweeps/gpu_c6_durability.yaml --procs 1 --set data.root=data
 ```
+If the lab refuses the time limit, use the longest it allows and resubmit the same command when the job ends: finished runs are skipped. Progress: `ls outputs | grep -c '^gg'` (of 1,872). The grid files are written by `scripts/make_gpu_grid.py` (client counts, attacker counts, ALIE z per n and m); edit that script, not the YAML.
 
 **A sweep on all four GPUs:**
 ```bash
 qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \
-    configs/sweeps/gpu_d1_signals.yaml --procs 3 --set data.root=data
+    configs/sweeps/gpu_d1_signals.yaml --procs 1 --set data.root=data
 ```
 Several sweep files can follow each other in one job (list them in order). Resubmitting the same command after a time limit or a crash resumes: finished runs are skipped. Do not run two jobs on the same sweep file at once. For the one-week option on two GPUs: `--gpus 2 --time 7-00:00:00` (check the longest time the lab allows).
 
-**Watch and stop:** `squeue -u "$USER"`, `tail -f logs/qbatch-<job>.out`, worker logs in `logs/gpu_sweep_<job>_w*.log`, `ls outputs | grep -c g1__` for finished runs, `scancel <job>` to stop.
+**Watch and stop:** `squeue -u "$USER"`, `tail -f logs/qbatch-<job>.out`, worker logs in `logs/gpu_sweep_<job>_w*.log`, `ls outputs | grep -c '^gg'` for finished grid runs, `scancel <job>` to stop.
 
 **Push results** (any time, also while a job runs; only finished runs have `metrics.json`):
 ```bash
@@ -129,9 +128,9 @@ git pull --rebase && git push
 ```bash
 # GPU server: twice, so its own run-to-run noise is measured too (about 30 minutes on 4 GPUs)
 qbatch --gpus 4 --cpus 16 --mem 64G --time 03:00:00 scripts/gpu_sweep.py configs/sweeps/device_parity.yaml \
-    --procs 3 --set data.root=data run.output_dir=outputs_parity/cuda
+    --procs 1 --set data.root=data run.output_dir=outputs_parity/cuda
 qbatch --gpus 4 --cpus 16 --mem 64G --time 03:00:00 scripts/gpu_sweep.py configs/sweeps/device_parity.yaml \
-    --procs 3 --set data.root=data run.output_dir=outputs_parity/cuda_b
+    --procs 1 --set data.root=data run.output_dir=outputs_parity/cuda_b
 # Mac (about 3 hours) and Acer (about 3 hours), after their current queues
 python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/mps
 python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/xpu

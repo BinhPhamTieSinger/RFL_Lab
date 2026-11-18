@@ -40,7 +40,8 @@ from rfl.defense.soft_cosine import FlatLayout, bound_update_norms, coordinate_m
 @dataclass(frozen=True)
 class ScreenOptions:
     signal: str = "root_head"           # "root_head" | "weights" | "critical" | "sign_align" | "probe_logits" |
-                                        # "head_gap" (rfl.defense.probe)
+                                        # "head_gap" (rfl.defense.probe) | "weights_critical" (union of the
+                                        # weights and critical screens, combined in the FedHEP+ server)
     reference: str = "mean_direction"   # "mean_direction" | "median"
     z_cut: float = 2.5
     evidence_cut: float = 1.5
@@ -69,7 +70,8 @@ class ScreenOptions:
             raise ValueError("MAD floors must be nonnegative")
         if self.isolation_patience < 1 or self.exclusion_patience < 1:
             raise ValueError("Patience must be positive")
-        if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap"):
+        if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
+                               "weights_critical"):
             raise ValueError(f"Unknown screening signal {self.signal!r}")
         if self.reference not in ("mean_direction", "median"):
             raise ValueError(f"Unknown screening reference {self.reference!r}")

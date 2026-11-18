@@ -321,6 +321,22 @@ def test_new_signals_run_end_to_end_and_leave_out_sign_flippers(tmp_path, signal
     assert all(attackers <= set(d["flagged"]) for d in result["detection"][1:])
 
 
+def test_weights_critical_takes_the_lower_z_of_both_screens(tmp_path):
+    """The union screen: in round 1 (same start for all three runs) each client's z is the lower of its z under
+    the whole-update and the critical-layer screens, so either alone can flag it; sign flippers are left out."""
+    base = {"plus.reference": "median"}
+    runs = {sig: run_experiment(_cfg(tmp_path, name=f"plus_{sig}", **base, **{"plus.signal": sig}))
+            for sig in ("weights", "critical", "weights_critical")}
+    zw, zc, zu = (runs[s]["diagnostics"][0]["z"] for s in ("weights", "critical", "weights_critical"))
+    assert zu.keys() == zw.keys() == zc.keys()
+    for c in zu:
+        assert zu[c] == pytest.approx(min(zw[c], zc[c]))
+    stats = runs["weights_critical"]["diagnostics"][0]["score_stats"]
+    assert "critical" in stats and len(stats["critical_scores"]) == len(zu)
+    attackers = set(runs["weights_critical"]["attackers"])
+    assert all(attackers <= set(d["flagged"]) for d in runs["weights_critical"]["detection"][1:])
+
+
 def test_head_agreement_overrules_only_where_the_personal_heads_agree_against_the_ensemble():
     from rfl.client.fedhep import HeadMemory, ensemble_logits, head_agreement_logits
 

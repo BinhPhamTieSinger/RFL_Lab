@@ -1,0 +1,138 @@
+# Large GPU grid, 15 clients (written by scripts/make_gpu_grid.py; edit that, not this file).
+# 8 methods x alpha 0.1 / 0.5 x (clean + 4 attacks x 3 attacker counts (2, 3, 5)) x 3 seeds = 624 runs. GPU server only.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  data.num_clients: 15
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a01:
+    data.alpha: 0.1
+  gg15_a05:
+    data.alpha: 0.5
+- clean:
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  sign2:
+    attack.kind: sign_flip
+    attack.count: 2
+    robust.assumed_attackers: 2
+    plus.global_f: 2
+  alie2:
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.253
+    attack.count: 2
+    robust.assumed_attackers: 2
+    plus.global_f: 2
+  minmax2:
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 2
+    robust.assumed_attackers: 2
+    plus.global_f: 2
+  backdoor2:
+    attack.kind: backdoor
+    attack.count: 2
+    robust.assumed_attackers: 2
+    plus.global_f: 2
+  sign3:
+    attack.kind: sign_flip
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  alie3:
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.431
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  minmax3:
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  backdoor3:
+    attack.kind: backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  sign5:
+    attack.kind: sign_flip
+    attack.count: 5
+    robust.assumed_attackers: 5
+    plus.global_f: 5
+  alie5:
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.842
+    attack.count: 5
+    robust.assumed_attackers: 5
+    plus.global_f: 5
+  minmax5:
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 5
+    robust.assumed_attackers: 5
+    plus.global_f: 5
+  backdoor5:
+    attack.kind: backdoor
+    attack.count: 5
+    robust.assumed_attackers: 5
+    plus.global_f: 5
+- fedhep:
+    config: configs/cifar100_fedhep.yaml
+  defended:
+    config: configs/cifar100_fedhep_defended.yaml
+  plus:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+  l0:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: arc_nnm_tm
+  r3:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+  r3w:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights
+  r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  flame:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame

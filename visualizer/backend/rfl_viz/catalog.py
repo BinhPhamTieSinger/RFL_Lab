@@ -30,7 +30,8 @@ OPTIONS = {
     ],
     "attack.placement": ["random", "concentrated", "spread"],
     "attack.knowledge": ["colluders", "omniscient"],
-    "plus.signal": ["root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap"],
+    "plus.signal": ["root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
+                    "weights_critical"],
     "plus.reference": ["mean_direction", "median"],
     "plus.population": ["kept", "all"],
     "plus.drill_mode": ["exclude", "evidence"],
@@ -416,6 +417,22 @@ FORMULAS.extend(
                 "model's predictions on probe_size server images with the median prediction."
             ),
             "source": "defense/screening.py",
+        },
+        {
+            "name": "Union screen (weights_critical)",
+            "method": "fedhep_plus",
+            "latex": (
+                r"z_i=\min\bigl(\tilde z_i^{\,\mathrm{weights}},\ \tilde z_i^{\,\mathrm{critical}}\bigr),\qquad "
+                r"\tilde z_i^{\,s}=\begin{cases}\max(-|z_i^{s}|,0)&\mathrm{gap}^{s}<\mathrm{gate}\\-|z_i^{s}|"
+                r"&\text{otherwise}\end{cases}"
+            ),
+            "explanation": (
+                "plus.signal weights_critical runs the whole-update and the critical-layer screens side by side. Each "
+                "signal is z-scored against the kept clients and gap-gated on its own scores (two-sided: z folded to "
+                "-|z|), and the client's z is the lower of the two, so either screen alone can exclude or isolate "
+                "it. In GPU batch 1 each signal missed the backdoor on a different seed."
+            ),
+            "source": "server/fedhep_plus_server.py",
         },
         {
             "name": "Head-agreement inference",
