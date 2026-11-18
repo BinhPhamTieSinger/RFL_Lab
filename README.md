@@ -87,6 +87,17 @@ This motivates the two active Phase 6 backdoor mechanisms: **Head-Agreement Infe
 
 ---
 
+### Latest Results (2026-11-18): Screening Signals on the GPU Server
+
+186 runs on 4 × RTX PRO 4500 (CUDA, deterministic; `D1`, 3 seeds) compared six screening signals on top of rung R3, with fresh baselines. Full tables in [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md); predictions checked in [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md).
+
+![Screening signals](docs/figures/phase6_signals.png)
+
+- **No single signal catches the backdoor on every seed.** The whole-update signal catches all three attackers on two seeds (0.6% success) and misses the third (71%); the critical-layer signal catches exactly the seed the whole-update signal misses; the head-gap signal catches two. Their union covers all three seeds, which points to a multi-signal screen as the next rung.
+- **Signals that see the backdoor cost honest clients:** whole update 13 and head gap 9 false isolations over 3 seeds with no attack; critical layers, sign alignment and probe logits isolate nobody (and, except critical layers once, miss the backdoor).
+- **A backdoor that is missed never fades** (100 rounds, attackers stop at round 50: 64–75% to the end), and **one caught by round 10 stays out** (FedHEP+, whole-update signal: 0–5% for 100 rounds). See [`docs/figures/phase6_durability.png`](docs/figures/phase6_durability.png).
+- **The depth-exit guard halves any backdoor that gets through** (79% → 42%, 64% → 35%) at 0.3 points of accuracy; head-agreement inference does little.
+
 ## Documentation Guide
 
 The repository documentation is organized into **four tracks**:
@@ -227,7 +238,7 @@ python scripts/plot_phase6.py outputs                  # Regenerate Phase 6 ladd
 
 ### Why `mps`, Intel `xpu`, `cuda`, and `cpu` Produce Different Numbers
 
-Running the exact same configuration and seed on Apple Silicon (`mps`), Intel Arc/Iris (`xpu`), NVIDIA GPUs (`cuda`), and `cpu` produces **different training trajectories from the first round**, because the mini-batch order is drawn on the device (row 4 below): for training, a different device acts much like a different shuffling seed. **How large the difference is has not been measured yet**: no configuration in `outputs/` has been run on two devices. The device-parity sweep measures it (`configs/sweeps/device_parity.yaml`, 12 runs per device, each device also run twice to measure its own run-to-run noise; compare with `scripts/compare_devices.py`; commands in `docs/OPERATIONS.md`). Until then, the working assumption is that cross-device differences are of the same order as seed-to-seed differences (sd 0.3–1.5 points in our three-seed tables), which is why comparisons never mix devices. The causes:
+Running the exact same configuration and seed on Apple Silicon (`mps`), Intel Arc/Iris (`xpu`), NVIDIA GPUs (`cuda`), and `cpu` produces **different training trajectories from the first round**, because the mini-batch order is drawn on the device (row 4 below): for training, a different device acts much like a different shuffling seed. **Measured on 2026-11-18:** 105 runs exist with the same configuration and seed on the Mac (`mps`) and the GPU server (`cuda`). Final accuracy differs by 0.72 points on average (largest 2.75; CUDA higher by 0.30 on average), which is the same size as the seed-to-seed spread of one configuration on one device (standard deviation 0.79). A ranking of methods survives the change of device when they are more than about a point apart (sign flip: identical order) and can swap when they are within half a point (no attack, ALIE, Min-Max). See `docs/figures/phase6_devices.png` and the pairs in `docs/results/device_pairs.json`. Runs on the GPU server use deterministic kernels (`run.deterministic: true`): two jobs with the same configuration give identical numbers, which the Mac and the Acer do not guarantee. The causes:
 
 | Stage / Operation | Behavior Across `cuda`, `xpu`, `mps`, `cpu` | Technical Cause in Code |
 |---|---|---|

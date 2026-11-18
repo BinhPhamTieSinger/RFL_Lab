@@ -1171,3 +1171,63 @@ Lab GPU server, NVIDIA RTX PRO 4500 Blackwell (32 GB), PyTorch 2.7.1 + CUDA 12.8
 - **Backdoor with stop (`n20h__`, 20 clients, 5 attackers):** FedHEP 80% (full) and 37% (stopped at round 10); FedHEP+ 45% and 32%.
 
 **Sign-election pilot** (`acer_frontier__`, a colleague's implementation of idea 10, seed 42 only, Acer): sign election vs L0: no attack 47.83 vs 47.83; ALIE 47.77 vs 48.09; Min-Max 43.01 vs 44.27; sign flip **44.15 vs 42.00**. Better than L0 under sign flip, worse under Min-Max; one seed, so no conclusion yet.
+
+## 2026-11-18 · GPU batch 1: six screening signals, fresh CUDA baselines, device comparison (186 runs)
+Lab GPU server, 4 × RTX PRO 4500, PyTorch 2.7.1 + CUDA 12.8, deterministic kernels; `gpu_d1_signals` (150 runs), `gpu_c2_alie` (24), `device_parity` (12). D1: α = 0.5, 15 clients, 3 attackers, 30 rounds, seeds 42, 123, 7. Every run also records the exit guard and head-agreement inference.
+
+![Screening signals](figures/phase6_signals.png)
+
+**Accuracy (mean ± sd over 3 seeds) and backdoor success:**
+
+| Method | No attack | Sign flip | ALIE | Min-Max | Backdoor (acc.) | Backdoor success per seed (123 / 42 / 7) | Honest isolated, no attack (sum of 3) |
+|---|---|---|---|---|---|---|---|
+| FedHEP | **49.19 ± 0.47** | 33.76 ± 2.71 | 47.58 ± 0.51 | 45.53 ± 0.88 | 46.99 | 75 / 80 / 83% | 0 |
+| Defended FedHEP | 48.68 ± 0.98 | 38.78 ± 1.52 | 47.50 ± 0.24 | 45.25 ± 0.85 | 47.47 | 75 / 80 / 82% | 0 |
+| FedHEP+ | 48.48 ± 1.21 | **46.28 ± 1.28** | **47.84 ± 0.65** | 44.67 ± 2.11 | 46.69 | **5 / 18 / 42%** | 8 |
+| L0 alone | 48.21 ± 0.75 | 41.58 ± 1.39 | 47.29 ± 0.20 | 45.78 ± 0.86 | 46.95 | 60 / 64 / 69% | 0 |
+| R3, root-head signal | 47.89 ± 0.55 | 46.12 ± 0.59 | 46.33 ± 0.51 | 46.22 ± 0.56 | 46.18 | 32 / 70 / 68% | 4 |
+| R3, whole update | 47.36 ± 0.13 | 45.81 ± 0.67 | 45.41 ± 1.23 | 46.13 ± 1.35 | 44.76 | **0.6** / 71 / **0.6%** | 13 |
+| R3, critical layers | 47.89 ± 0.50 | 46.12 ± 0.59 | 46.33 ± 0.51 | 46.03 ± 1.50 | 46.11 | 65 / **0.5** / 83% | 0 |
+| R3, sign alignment | 47.89 ± 0.50 | 46.12 ± 0.59 | 46.33 ± 0.51 | **46.44 ± 0.93** | 46.02 | 74 / 71 / 83% | 0 |
+| R3, probe logits | 47.91 ± 0.51 | 46.16 ± 0.45 | 47.30 ± 0.28 | 46.09 ± 1.04 | 45.83 | 74 / 71 / 83% | 1 |
+| R3, head gap | 47.44 ± 0.39 | 46.16 ± 0.45 | 47.32 ± 0.31 | 45.79 ± 0.80 | 46.17 | 10 / **0.7** / 83% | 9 |
+
+Attackers isolated (of 3, mean over seeds): every R3 signal isolates all sign flippers except probe logits and head gap (0); all R3 signals isolate all Min-Max attackers; root head, whole update, critical layers and sign alignment isolate all ALIE attackers, probe logits and head gap almost none (and score 1 point higher under ALIE for it: the ALIE lesson again). Backdoor attackers: root head 2.7, whole update 2.0, critical layers 1.7, head gap 2.3, sign alignment and probe logits 0.
+
+- **No signal catches the backdoor on every seed, but they fail on different seeds.** Whole update catches seeds 123 and 7, critical layers catches 42, head gap catches 123 and 42. A screen that acts on the most suspicious of the whole-update and critical-layer signals would have caught all three. On the Mac the whole-update signal caught all three seeds (0.5–0.9%, below), so the seed it misses is not fixed; detection is close to a threshold in both cases.
+- **Seeing the backdoor costs honest clients.** The two signals that catch it (whole update, head gap) isolate 13 and 9 honest clients over 3 no-attack runs and lose 0.5 points against the root-head signal; the three that never isolate anyone also never see the backdoor (except critical layers on one seed). This is the screening dilemma of the whole project in one table.
+- **Identical rows are expected, not a bug:** runs are deterministic, and when two signals make the same isolation decisions (nobody with no attack, the three sign flippers in round 3) the runs are bit-identical.
+- **FedHEP+ (no gate, one-sided) remains the best overall** on CUDA: best under sign flip and ALIE, and the lowest backdoor success, at 8 honest isolations with no attack.
+- **Prediction-time defenses:** the exit guard cuts every undetected backdoor by about half (FedHEP 79 → 42%, Defended 79 → 42%, L0 64 → 35%, R3 57 → 32%) and costs 0.3 points with no attack (3% of clean inputs flagged). Head-agreement inference costs 0.1–0.4 points and removes 0.5–19 points of backdoor success.
+- **ALIE puzzle on CUDA (`c2__`) reproduces the Mac result:** no regrouping 46.53 (+0.20 over R3), f held fixed 45.09 (−1.24), both 45.36; with no attack all within 0.3.
+
+**The same experiments on two devices.** 105 runs have identical configuration and seed on the Mac (MPS) and the GPU server (CUDA):
+
+![Mac vs CUDA](figures/phase6_devices.png)
+
+Mean |difference| 0.72 points (CUDA higher by 0.30 on average, largest 2.75); the seed-to-seed standard deviation of one configuration on the Mac is 0.79. A device change moves a run about as much as a seed change. Method rankings with gaps of a point or more survive (sign flip: identical order), rankings within half a point can swap (no attack, ALIE, Min-Max). The device rule stands: one device per comparison table. Pairs: `docs/results/device_pairs.json`. Four Mac/Acer pairs (seed 42) differ by 0.46 on average.
+
+**Whole-update signal with rewind (Mac, `mac_c5_recovery`, D1 backdoor):**
+
+| Variant | Backdoor success (123 / 42 / 7) | Attackers caught (round) | Honest isolated | Accuracy |
+|---|---|---|---|---|
+| R3, root head, no rewind (`p6__r3g8`) | 36 / 74 / 45% | 3, 0, 3 (12–14) | 0.7 | 46.84 |
+| R3, whole update, no rewind | 0.5 / 0.5 / 0.9% | 3, 3, 3 (3–6) | 0, 2, 5 | 46.10 |
+| … rewind trunk | 0.5 / 0.5 / 0.3% | same | 3, 0, 5 | 45.74 |
+| … rewind trunk + root head | 0.2 / 0.4 / 0.3% | same | 2, 0, 5 | 45.83 |
+| … rewind all shared weights | 0.3 / 0.5 / 0.3% | same | 3, 0, 3 | 45.24 |
+
+Detected by round 6, the backdoor never takes hold, so the rewind has nothing left to remove; each rewind triggered by a false isolation costs accuracy instead (rewinding everything: −0.9). Runs with the attack stopped at round 10 are identical to the full runs because every attacker was already isolated.
+
+**100 rounds, attackers stop at round 50 (Acer, `acer_c6_durability`, now 17 of 21 runs):**
+
+| Method | Backdoor success at round 100 (123 / 42 / 7) | Attackers caught (first round) | Honest isolated | Accuracy |
+|---|---|---|---|---|
+| FedHEP | 69 / 74 / 75% | none | 0 | 43.55 |
+| L0 | 64 / 70 / 71% | none | 0 | 44.38 |
+| R3, root head | 23 / **71** / 21% | 3, 2 (round 40), 3 | 0, 0, 1 | 43.63 |
+| R3, whole update | 1 / 17 / 1% | 3, 3, 3 (3–14) | 8, 6, 4 | 42.19 |
+| R3, whole update + rewind (2 seeds) | 0 / 1% | 3, 3 | 4, 4 | 42.90 |
+| FedHEP+ | 2 / 5 / 2% | 3, 3, 3 (4–10) | 8, 8, 8 | 43.68 |
+
+Over 100 rounds the price of the whole-update signal shows: 4–8 honest clients isolated and 1.4–2.2 points of accuracy. The root-head screen does not climb past 80% as predicted (P13): where it catches the attackers by round 14 the backdoor stays near 20%.

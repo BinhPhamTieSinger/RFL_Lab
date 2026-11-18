@@ -168,4 +168,11 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P9: trunk-only rewind leaves success above 30% | **Mixed:** 22.5% and 30.0%; rewinding the root head too adds only 1–4 points | `m6__r3_trunk`, `m6__r3_tr` |
 | P11 effect: head agreement brings success near the local head's | **Refuted:** 3–9 points of reduction; the parent head carries the backdoor too, so the personal heads rarely agree against the ensemble | `m6__*`, `x6__*` |
 | P13 (root-head gated screen rises above 80% by round 100) | Pending (`x6__r3g8` running). Related: with no detection the backdoor stays at 64–75% for 50 rounds after the attack stops | `x6__fedhep`, `x6__l0` |
+| P1: CUDA baselines within 1 point of the Mac with no attack, same ordering | **Mostly held:** 4 of 5 baselines within 0.7 (FedHEP +1.4); orderings swap only within half a point; L0 still beats R3 under ALIE (47.29 vs 46.33). 105 identical runs: mean difference 0.72 | `g1__*`, `docs/results/device_pairs.json` |
+| P2: whole-update and critical-layer signals cut backdoor success below 25%, critical the lower | **Half held:** whole update 24% on average (0.6, 71, 0.6% by seed; all three seeds under 1% on the Mac); critical layers 50% (catches one seed). Critical is not the lower | `g1__r3w`, `g1__r3c`, `m6__r3w` |
+| P3: those signals bring back 2–5 honest isolations per run | **Held for whole update** (4.3 per run); critical layers isolates nobody | `g1__r3w__clean`, `g1__r3c__clean` |
+| P4: sign alignment isolates every sign flipper and no honest client, misses the backdoor | **Held** exactly: 3/3, 0 honest, backdoor 76% | `g1__r3s` |
+| P5: probe logits and head gap catch sign flippers and nothing else | **Refuted both ways:** neither catches the sign flippers on CUDA (both catch Min-Max); head gap catches the backdoor on two seeds (10%, 0.7%) | `g1__r3p`, `g1__r3h` |
+| P6 (CUDA): exit guard halves backdoor success | **Held:** 79 → 42%, 64 → 35%, 57 → 32% | `g1__*__backdoor3` |
+| P13: root-head gated screen above 80% by round 100 | **Refuted:** 23, 71, 21% (the attackers are caught by round 14 on two seeds) | `x6__r3g8` |
 

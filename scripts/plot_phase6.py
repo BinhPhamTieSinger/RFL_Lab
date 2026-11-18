@@ -6,6 +6,7 @@ Usage: python scripts/plot_phase6.py outputs
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -180,6 +181,63 @@ def fig_durability(runs: dict) -> None:
     pr.save(fig, "phase6_durability.png")
 
 
+def fig_signals(runs: dict) -> None:
+    """GPU batch gpu_d1_signals (CUDA, D1, 3 seeds): which screening signal catches the backdoor, and what each
+    costs in honest clients isolated with no attack."""
+    rows = [("g1__fedhep", "FedHEP"), ("g1__l0", "L0"), ("g1__plus", "FedHEP+"), ("g1__r3", "R3 root head"),
+            ("g1__r3w", "R3 whole update"), ("g1__r3c", "R3 critical layers"), ("g1__r3s", "R3 sign align"),
+            ("g1__r3p", "R3 probe logits"), ("g1__r3h", "R3 head gap")]
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(13, 4.6), gridspec_kw={"width_ratios": [1.6, 1]})
+    for i, (prefix, _label) in enumerate(rows):
+        bd = _runs(runs, f"{prefix}__backdoor3")
+        ys = [m["history"][-1]["asr"] for m in bd]
+        ax.scatter([i] * len(ys), ys, color=pr.SLOT[0], s=28, zorder=3)
+        if ys:
+            ax.hlines(sum(ys) / len(ys), i - 0.3, i + 0.3, color=pr.INK, linewidth=2)
+        guard = [m["history"][-1]["guarded"]["asr"] for m in bd if m["history"][-1].get("guarded")]
+        ax.scatter([i + 0.18] * len(guard), guard, color=pr.SLOT[1], s=16, marker="D", zorder=3,
+                   label="with exit guard" if i == 0 else None)
+        clean = _runs(runs, f"{prefix}__clean")
+        hon = sum(_false(m) for m in clean)
+        acc = sum(m["final"]["pooled"] for m in clean) / max(1, len(clean))
+        ax2.barh(i, hon, color=pr.SLOT[2] if hon <= 1 else pr.SLOT[3])
+        ax2.text(hon + 0.2, i, f"{hon}   ({acc:.1f}% acc.)", va="center", fontsize=8, color=pr.INK2)
+    ax.set_xticks(range(len(rows)), [r[1] for r in rows], rotation=30, ha="right")
+    ax.set_ylabel("backdoor success at round 30 (%)")
+    ax.set_ylim(-3, 100)
+    ax.scatter([], [], color=pr.SLOT[0], s=28, label="each seed")
+    ax.legend(fontsize=8, loc="upper right")
+    ax.set_title("Backdoor (3 attackers): no single signal catches it on every seed")
+    ax2.set_yticks(range(len(rows)), [r[1] for r in rows])
+    ax2.invert_yaxis()
+    ax2.set_xlabel("honest clients isolated with no attack (sum over 3 seeds)")
+    ax2.set_xlim(0, 16)
+    ax2.set_title("Cost with no attack")
+    pr.save(fig, "phase6_signals.png")
+
+
+def fig_devices(pairs_path: Path) -> None:
+    """Same configuration and seed on the Mac (MPS) and the GPU server (CUDA): final accuracy of each pair."""
+    if not pairs_path.exists():
+        return
+    pairs = [p for p in json.loads(pairs_path.read_text()) if "mps" in p and "cuda" in p]
+    xs = [p["mps"][1] for p in pairs]
+    ys = [p["cuda"][1] for p in pairs]
+    diffs = [y - x for x, y in zip(xs, ys, strict=True)]
+    fig, ax = plt.subplots(figsize=(5.6, 5.2))
+    ax.scatter(xs, ys, s=18, color=pr.SLOT[0], alpha=0.8)
+    lo, hi = min(xs + ys) - 0.5, max(xs + ys) + 0.5
+    ax.plot([lo, hi], [lo, hi], color=pr.INK2, linewidth=1, linestyle=":")
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_xlabel("Mac (MPS) final accuracy (%)")
+    ax.set_ylabel("GPU server (CUDA) final accuracy (%)")
+    mean_abs = sum(map(abs, diffs)) / len(diffs)
+    ax.set_title(f"{len(pairs)} identical runs on two devices: mean |difference| {mean_abs:.2f} points",
+                 fontsize=10)
+    pr.save(fig, "phase6_devices.png")
+
+
 def main() -> None:
     pr.style()
     runs = pr.load(Path(sys.argv[1]))
@@ -189,6 +247,9 @@ def main() -> None:
     fig_n30(runs)
     fig_backdoor_heads(runs)
     fig_durability(runs)
+    fig_signals(runs)
+    if len(sys.argv) > 2:
+        fig_devices(Path(sys.argv[2]))
 
 
 if __name__ == "__main__":
