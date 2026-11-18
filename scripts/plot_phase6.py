@@ -159,7 +159,8 @@ def fig_durability(runs: dict) -> None:
     and with the depth-exit guard at prediction time (dashed). Whatever x6 runs exist are drawn."""
     methods = [("x6__fedhep", "FedHEP (no defense)", "#6b6b6b"), ("x6__l0", "L0 alone", pr.SLOT[1]),
                ("x6__plus", "FedHEP+ (isolates early)", pr.SLOT[0]), ("x6__r3g8", "R3, gate 8", pr.SLOT[2]),
-               ("x6__r3_tr", "R3 + rewind", pr.SLOT[3]), ("x6__r3w_tr", "R3 whole-update + rewind", "#7a3fb8")]
+               ("x6__r3_tr", "R3 + rewind", pr.SLOT[3]), ("x6__r3w", "R3 whole-update", "#b48ad8"),
+               ("x6__r3w_tr", "R3 whole-update + rewind", "#7a3fb8")]
     fig, ax = plt.subplots(figsize=(9, 4.2))
     for prefix, label, color in methods:
         done = [m for m in runs.get(prefix, []) if m.get("final")]
@@ -179,6 +180,34 @@ def fig_durability(runs: dict) -> None:
     ax.set_title("A backdoor outlives its attackers unless they are caught early (D1, 3 attackers, Acer)")
     ax.legend(fontsize=8, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16))
     pr.save(fig, "phase6_durability.png")
+
+
+def fig_rewind(runs: dict) -> None:
+    """Per seed, 100 rounds (acer_c6_durability): does rewinding the trunk and root head when an attacker is
+    isolated remove a backdoor that got in before the catch? Solid: no rewind; dashed: rewind."""
+    panels = [("root-head signal (R3, gate 8)", "x6__r3g8", "x6__r3_tr"),
+              ("whole-update signal (R3)", "x6__r3w", "x6__r3w_tr")]
+    if not all(len(_runs(runs, n)) == 3 for _, a, b in panels for n in (a, b)):
+        return
+    colors = dict(zip(SEEDS, (pr.SLOT[0], pr.SLOT[1], pr.SLOT[2]), strict=True))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.0), sharey=True)
+    for ax, (title, plain, rewind) in zip(axes, panels, strict=True):
+        for name, style in ((plain, "-"), (rewind, "--")):
+            for m in _runs(runs, name):
+                rows = [h for h in m["history"] if h.get("asr") is not None]
+                ax.plot([h["round"] for h in rows], [h["asr"] for h in rows], linestyle=style,
+                        color=colors[m["seed"]], linewidth=1.8,
+                        label=f"seed {m['seed']}, {'rewind' if name == rewind else 'no rewind'}")
+        ax.axvline(50, color=pr.INK2, linewidth=1, linestyle=":")
+        ax.text(51, 92, "attackers stop", fontsize=8, color=pr.INK2)
+        ax.set_title(title)
+        ax.set_xlabel("round")
+        ax.set_ylim(0, 100)
+    axes[0].set_ylabel("backdoor success on honest clients (%)")
+    fig.suptitle("Rewind on isolation, 100 rounds (D1, 3 backdoor attackers until round 50, Acer)", fontsize=10.5)
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    fig.legend(*axes[1].get_legend_handles_labels(), ncols=3, fontsize=8.5, loc="lower center", frameon=False)
+    pr.save(fig, "phase6_rewind.png")
 
 
 def fig_signals(runs: dict) -> None:
@@ -247,6 +276,7 @@ def main() -> None:
     fig_n30(runs)
     fig_backdoor_heads(runs)
     fig_durability(runs)
+    fig_rewind(runs)
     fig_signals(runs)
     if len(sys.argv) > 2:
         fig_devices(Path(sys.argv[2]))

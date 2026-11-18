@@ -1251,3 +1251,41 @@ The GPU server works through the large grid (about 40 hours on two GPUs). The Ma
 - **Then on both:** `device_parity` (12 runs) into `outputs_parity/mps` and `outputs_parity/xpu`, which measures how far each device moves from the GPU server's numbers and from itself.
 - **Earlier queues finished:** Mac `mac_c5_recovery` (66 runs), Acer `acer_c6_durability`; their analysis follows once the Acer's last runs are synced.
 
+## 2026-11-18 · Rewind over 100 rounds, recovery with the whole-update signal, and the first Mac and Acer baselines
+The Acer finished the 100-round durability queue (`acer_c6_durability`, 21 runs) and the Mac the recovery queue (`mac_c5_recovery`, 66 runs). D1 (15 clients, α 0.5, 3 backdoor attackers), seeds 123 / 42 / 7. Figures: `docs/figures/phase6_rewind.png` (new, per seed) and `docs/figures/phase6_durability.png` (updated with the whole-update arm).
+
+**Durability, Acer: attackers plant the backdoor for 50 rounds, then train honestly to round 100.** Backdoor success at round 100:
+
+| Method | Seeds 123 / 42 / 7 | Mean | With exit guard | Accuracy | Honest isolated (3 seeds) |
+|---|---|---|---|---|---|
+| FedHEP (no defense) | 69 / 74 / 75 | 72.4 | 38.6 | 43.55 | 0 |
+| L0 | 64 / 70 / 71 | 68.3 | 37.6 | 44.38 | 0 |
+| FedHEP+ | 2 / 5 / 2 | 3.1 | 2.8 | 43.68 | 24 |
+| R3, root head, gate 8 | 23 / 71 / 21 | 38.4 | 22.9 | 43.63 | 1 |
+| R3, root head + rewind | 8 / 28 / 15 | 17.1 | 11.2 | 42.54 | 2 |
+| R3, whole update | 1 / 17 / 1 | 6.2 | 4.5 | 42.19 | 18 |
+| **R3, whole update + rewind** | **0 / 1 / 0** | **0.6** | 0.6 | 41.81 | 12 |
+
+- **The rewind matters when the catch is late.** On seed 42 the whole-update screen isolated all three attackers, but only after part of the backdoor had reached the shared trunk. It kept growing: 7% at round 20, 13% when the attackers stopped, 17% at round 100. With the trunk-and-root rewind the same seed stayed at 1%. On the other two seeds the catch was early and the rewind changed nothing that matters (1% → 0%).
+- **With the root-head signal the rewind halves the backdoor but does not remove it** (38 → 17% on average, at 1.1 points of accuracy). The screen catches the attackers late (seed 42: after the backdoor reached 13%), and what remains still grows after the attack ends (seed 42: 21% → 28%).
+- **Cost:** the rewind costs 0.4 points with the whole-update signal and 1.1 with the root head. Over 100 rounds the whole-update screen isolates 4–6 honest clients per run, more than over 30 rounds (2–4). FedHEP+ isolates 8 per run.
+- **A backdoor nobody catches stays at 64–75% for 50 rounds after the attack ends**, as before. The exit guard roughly halves whatever gets through.
+
+**Recovery, Mac: attackers plant the backdoor in rounds 1–10, then train honestly to round 30.** Backdoor success at round 30:
+
+| Variant | Seeds 123 / 42 / 7 | Attackers caught (of 9) | Accuracy |
+|---|---|---|---|
+| R3, root head | 19 / 3 / 47 (trunk-only rewind, trunk-and-root, all: within 2 points of each other) | 1 | 46.7–48.1 |
+| R3, whole update, no rewind | 0.5 / 0.5 / 0.9 | 9 | 46.10 |
+| R3, whole update + trunk rewind | 0.5 / 0.5 / 0.3 | 9 | 45.74 |
+| R3, whole update + trunk-and-root rewind | 0.2 / 0.4 / 0.3 | 9 | 45.83 |
+| R3, whole update + rewind all | 0.3 / 0.5 / 0.3 | 9 | 45.27 |
+
+Within 30 rounds the whole-update screen catches every attacker by rounds 3–6, so there is little backdoor to rewind; rewinding everything costs about 0.8 points for nothing. With the root-head signal two of three seeds catch nobody, and a rewind only fires on a catch.
+
+**Taken together:** the strongest configuration so far is R3 with the whole-update signal plus the trunk-and-root rewind (0–1% backdoor success for 100 rounds on all three seeds, about 1.8 points below undefended FedHEP). The union screen should behave the same or better and is the arm to pair with the rewind on the GPU next.
+
+**First results of the new queues (interim, same device only):**
+- Mac `mac_c7_stealth`, plain backdoor with 3 attackers (21 of 84 runs): FedHEP 74–84%, Defended FedHEP 74–82%, L0 54–68%, FedHEP+ 5–29%, **R3 whole update 0.5–0.9% and R3 union screen 0.5–1.4%** (all attackers caught on every seed, 6–7 honest isolations over 3 runs), FLAME 0.4–0.6% at 3 points of accuracy. On CUDA the whole-update screen missed seed 123 (71%); on the Mac it catches it, so that seed sits close to the screen's threshold. The stealth-backdoor runs come next.
+- Acer `acer_c8_fmis`, matched f = 3 (14 of 72 runs): no attack, L0 47.43 and R3 union 46.82 (11 honest isolations over 3 runs); sign flip, **L0 40.73 (−6.7) and R3 union 45.28 (−1.5)** with all 9 attackers isolated. L0's trimmed mean alone does not hold sign flip at D1; the screen does. The f = 6 and f = 1 arms follow.
+

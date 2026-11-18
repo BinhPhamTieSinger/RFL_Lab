@@ -192,4 +192,5 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P5: probe logits and head gap catch sign flippers and nothing else | **Refuted both ways:** neither catches the sign flippers on CUDA (both catch Min-Max); head gap catches the backdoor on two seeds (10%, 0.7%) | `g1__r3p`, `g1__r3h` |
 | P6 (CUDA): exit guard halves backdoor success | **Held:** 79 → 42%, 64 → 35%, 57 → 32% | `g1__*__backdoor3` |
 | P13: root-head gated screen above 80% by round 100 | **Refuted:** 23, 71, 21% (the attackers are caught by round 14 on two seeds) | `x6__r3g8` |
+| P8 at 100 rounds (Acer) | **Not met with the root head, met with the whole update:** trunk-and-root rewind takes the root-head screen from 23 / 71 / 21% to 8 / 28 / 15% (cost 1.1 points), and the whole-update screen from 1 / 17 / 1% to 0 / 1 / 0% (cost 0.4 points) | `x6__r3_tr`, `x6__r3w_tr` |
 

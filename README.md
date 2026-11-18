@@ -97,6 +97,7 @@ This motivates the two active Phase 6 backdoor mechanisms: **Head-Agreement Infe
 - **Signals that see the backdoor cost honest clients:** whole update 13 and head gap 9 false isolations over 3 seeds with no attack; critical layers, sign alignment and probe logits isolate nobody (and, except critical layers once, miss the backdoor).
 - **A backdoor that is missed never fades** (100 rounds, attackers stop at round 50: 64–75% to the end), and **one caught by round 10 stays out** (FedHEP+, whole-update signal: 0–5% for 100 rounds). See [`docs/figures/phase6_durability.png`](docs/figures/phase6_durability.png).
 - **The depth-exit guard halves any backdoor that gets through** (79% → 42%, 64% → 35%) at 0.3 points of accuracy; head-agreement inference does little.
+- **Rewind on isolation is cheap insurance against a late catch** (Acer, 100 rounds): with the whole-update screen, one seed caught its attackers only after part of the backdoor had reached the trunk, and it grew to 17% after the attack ended; with the trunk-and-root rewind all three seeds stay at 0–1% (cost 0.4 points). See [`docs/figures/phase6_rewind.png`](docs/figures/phase6_rewind.png).
 
 **Running next (GPU server):** the large grid `gpu_grid_n{15,30,50}` (1,872 runs: 15/30/50 clients × α 0.1/0.5 × five attack settings at 10/20/30% attackers × 8 methods × 3 seeds), including the union screen `plus.signal: weights_critical` that the result above points to. Plan and predictions P17–P19 in the log.
 
