@@ -9,7 +9,7 @@ How to set up a machine, run experiments, move results between the Mac, the Acer
 | Hardware | MacBook Pro, Apple M5, 32 GB | Acer Swift, Core Ultra 5 226V, Intel Arc 130V, 16 GB | 4 x NVIDIA RTX PRO 4500 (32 GB each), Slurm |
 | PyTorch device | `mps` | `xpu` | `cuda` |
 | Speed | about 25 s per round | about 25 s per round | measured by the pilot |
-| Role | analysis and code only (no sweeps since 2026-11-19); source of truth for the repository; pushes to GitHub | runner; results are pulled to the Mac | main runner; pushes its results to GitHub |
+| Role | analysis, hypotheses and sweep design (no sweeps since 2026-11-19); the only writer of `main` | runner; pushes results to branch `acer` | main runner; pushes results to branch `pc` |
 | Reach | local | `ssh tiesinger@100.117.221.19` (Tailscale) | your SSH session only; code and results through GitHub |
 
 **Rule:** a comparison is only valid within one machine. The same seed gives slightly different numbers on Apple, Intel and NVIDIA GPUs, so every sweep file states which machine it belongs to (the machine whose earlier runs it is compared against). Each run records its device in `metrics.json`.
@@ -114,15 +114,9 @@ Several sweep files can follow each other in one job (list them in order). Resub
 
 **Watch and stop:** `squeue -u "$USER"`, `tail -f logs/qbatch-<job>.out`, worker logs in `logs/gpu_sweep_<job>_w*.log`, `ls outputs | grep -c '^gg'` for finished grid runs, `scancel <job>` to stop.
 
-**Push results** (any time, also while a job runs; only finished runs have `metrics.json`):
-```bash
-git add outputs/ outputs_pilot/ outputs_env/
-git commit -m "GPU server results"
-git pull --rebase && git push
-```
-`outputs_env/` holds one file per job: commit, container image, PyTorch, CUDA and GPU names, for the paper's reproducibility section. Then on the Mac: `git pull`.
+**Push results** (any time, also while a job runs; only finished runs have `metrics.json`): `bash scripts/runner_sync.sh pc` (section 4). `outputs_env/` holds one file per job: commit, container image, PyTorch, CUDA and GPU names, for the paper's reproducibility section.
 
-**Update the server's code** with `git pull --rebase` when no job is running: a job reloads the code at the start of each sweep file, so pulling mid-job can mix two code versions in one batch.
+**Take new code and sweep files** when no job is running: `bash scripts/runner_sync.sh pc --update`. A job reloads the code at the start of each sweep file, so updating mid-job can mix two code versions in one batch.
 
 **Device parity** (does the device change the numbers, and by how much?). Run `configs/sweeps/device_parity.yaml` (12 runs of 30 rounds) on every machine, each into its own folder, then compare:
 ```bash
@@ -173,44 +167,47 @@ The current assignment is always in the latest "Run plan" entry of [`EXPERIMENT_
 
 ## 4. Moving results and code between machines
 
-Everything flows Acer → Mac → GitHub → Acer.
+Since 2026-11-19 the Mac designs experiments and analyses results, and the Acer and the GPU server run them. Each machine has its own branch on GitHub:
 
-### Pull the Acer's finished runs to the Mac
-```bash
-cd ~/Documents/AI_researching/Robust_Federated_Learning/RFL_Lab
-bash scripts/sync_acer.sh
-```
-This copies `outputs/` from the Acer with `rsync --ignore-existing`: a run already on the Mac is never overwritten, and a run still in progress arrives without `metrics.json` and is completed on the next sync. Run it as often as you like.
+| Branch | Written by | Holds |
+|---|---|---|
+| `main` | the Mac only | code, sweep files, docs, every merged result; Netlify deploys it |
+| `acer` | the Acer only | `main` plus the Acer's result commits |
+| `pc` | the GPU server only | `main` plus the GPU server's result commits |
 
-### Commit and push from the Mac
-```bash
-git add -A
-git commit -m "Results from the Mac and the Acer"
-git push
 ```
-`outputs/` is tracked on purpose: every number in the documents is backed by a run in the repository.
+Mac (main) ──push──> GitHub main ──(runner_sync.sh --update)──> acer, pc     new code and sweep files
+Acer (acer), GPU server (pc) ──(runner_sync.sh)──> GitHub acer, pc ──(hub_collect.sh)──> Mac (main)   results
+```
 
-The visualizer's Experiment history lists only runs named in `visualizer/frontend/research/history-manifest.json`. After committing new runs, add the completed ones (the Netlify build log also names any it finds missing):
-```bash
-python3 - <<'PY'
-import json, glob, os
-path = "visualizer/frontend/research/history-manifest.json"
-listed = {e["source"] for e in json.load(open(path))}
-done = sorted(os.path.dirname(m) for m in glob.glob("outputs*/*/metrics.json")
-              if not m.startswith(("outputs_smoke", "outputs_bench")) and json.load(open(m)).get("final"))
-entries = [{"source": s} for s in sorted(listed | set(done))]
-json.dump(entries, open(path, "w"), indent=2); open(path, "a").write("\n")
-print(len(set(done) - listed), "runs added")
-PY
-```
-Note: `git add -A` also commits whatever the visualizer's working copy holds; when someone is editing `visualizer/`, add `outputs*/` and the manifest by path instead.
+A runner never pulls code in the middle of a sweep; pushing results does not touch code, so it is safe at any time. Runners rebase their branch onto `main`, so the Mac's merges never conflict, and result commits the Mac has already merged drop out of the runner's branch on its next rebase.
 
-### Update the Acer's code
+### On a runner: push results, take new sweeps
 ```bash
-cd ~/Documents/RFL_Lab
-git pull --ff-only
+bash scripts/runner_sync.sh acer            # the Acer; the GPU server uses "pc". Any time, also during a sweep
+bash scripts/runner_sync.sh acer --update   # between sweeps: also rebase onto main for new code and sweep files
 ```
-If `git pull` refuses because the Acer has local changes you do not need: `git fetch origin && git reset --hard origin/main` (runs in `outputs/` are untracked there and are not touched). Do this between sweeps, not during one: a sweep already running keeps its old code until it is restarted.
+The script commits `outputs/`, `outputs_parity/`, `outputs_env/` and `outputs_pilot/`, never code; uncommitted code edits (a colleague's) are set aside during the rebase and put back.
+
+**First time on a runner** (the script arrives with the first rebase):
+```bash
+git branch -M acer                          # "pc" on the GPU server
+git add outputs/ outputs_parity/ outputs_env/ 2>/dev/null; git commit -m "acer results"
+git fetch origin && git rebase --autostash origin/main
+git push -u origin acer
+```
+The Acer needs a GitHub token to push (`git config --global credential.helper store`, then enter the user name and a fine-grained token with write access to this repository at the first push).
+
+### On the Mac: collect, analyse, publish
+```bash
+bash scripts/hub_collect.sh        # fetch, merge origin/acer and origin/pc, list new runs in the visualizer
+# ... analyse, write docs and figures, add new sweep files ...
+git add <the files you changed> && git commit -m "..."
+git push origin main               # Netlify deploys; the runners pick it up with --update
+```
+Add files by path, not with `git add -A`: the Mac's working copy may hold a colleague's uncommitted edits. `scripts/update_history_manifest.py` (called by `hub_collect.sh`) lists finished runs in the visualizer's Experiment history.
+
+`scripts/sync_acer.sh` (rsync from the Acer over Tailscale) still works as a fallback when the Acer cannot push.
 
 ## 5. Reading results
 
