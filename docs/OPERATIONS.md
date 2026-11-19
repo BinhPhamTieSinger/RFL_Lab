@@ -9,7 +9,7 @@ How to set up a machine, run experiments, move results between the Mac, the Acer
 | Hardware | MacBook Pro, Apple M5, 32 GB | Acer Swift, Core Ultra 5 226V, Intel Arc 130V, 16 GB | 4 x NVIDIA RTX PRO 4500 (32 GB each), Slurm |
 | PyTorch device | `mps` | `xpu` | `cuda` |
 | Speed | about 25 s per round | about 25 s per round | measured by the pilot |
-| Role | source of truth for the repository; pushes to GitHub | second runner; results are pulled to the Mac | main runner from now on; pushes its results to GitHub |
+| Role | analysis and code only (no sweeps since 2026-11-19); source of truth for the repository; pushes to GitHub | runner; results are pulled to the Mac | main runner; pushes its results to GitHub |
 | Reach | local | `ssh tiesinger@100.117.221.19` (Tailscale) | your SSH session only; code and results through GitHub |
 
 **Rule:** a comparison is only valid within one machine. The same seed gives slightly different numbers on Apple, Intel and NVIDIA GPUs, so every sweep file states which machine it belongs to (the machine whose earlier runs it is compared against). Each run records its device in `metrics.json`.
@@ -156,18 +156,17 @@ python scripts/sweep.py configs/sweeps/phase6_ladder_d1.yaml             # run t
 A run that already has `metrics.json` is skipped, so an interrupted sweep resumes where it stopped: press Ctrl-C whenever you like and start the same command again. At most one run (about 12 minutes) is lost.
 
 ### A queue of sweeps
-Mac (keeps the machine awake):
-```bash
-cd ~/Documents/AI_researching/Robust_Federated_Learning/RFL_Lab && source .venv/bin/activate
-caffeinate -i bash -c 'python scripts/sweep.py configs/sweeps/mac_c7_stealth.yaml && python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/mps'
-```
+The Mac no longer runs sweeps (2026-11-19); it analyses, writes code and pushes. Its earlier runs stay valid for Mac-only comparisons.
+
 Acer (inside tmux, so it survives closing the SSH window):
 ```bash
-tmux new -s rfl          # or: tmux attach -t rfl
-cd ~/Documents/RFL_Lab
-python scripts/sweep.py configs/sweeps/acer_c8_fmis.yaml && python scripts/sweep.py configs/sweeps/device_parity.yaml --set run.output_dir=outputs_parity/xpu
+tmux new -s rfl9         # or: tmux attach -t rfl9
+cd ~/Documents/RFL_Lab && source ~/venvs/rfl/bin/activate
+python scripts/sweep.py configs/sweeps/acer_c9_final_durability.yaml
 ```
-Detach with Ctrl-b then d; `tmux attach -t rfl` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`.
+Detach with Ctrl-b then d; `tmux attach -t rfl9` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same command again.
+
+GPU server: see "Lab GPU server" above; the next file after the large grid is `configs/sweeps/gpu_c7_stealth.yaml`.
 
 ### Which sweep runs where
 The current assignment is always in the latest "Run plan" entry of [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md); the header comment of every sweep file names its machine.

@@ -210,6 +210,68 @@ def fig_rewind(runs: dict) -> None:
     pr.save(fig, "phase6_rewind.png")
 
 
+def fig_stealth(runs: dict) -> None:
+    """mac_c7_stealth: backdoor success per method for the plain backdoor and the stealth backdoor (blended toward
+    the honest mean inside Min-Max's bound), 3 and 5 attackers. Bars are means; dots are the three seeds."""
+    conds = [("backdoor3", "plain backdoor, 3 attackers", pr.SLOT[0]),
+             ("stealth3", "stealth backdoor, 3 attackers", pr.SLOT[1]),
+             ("stealth5", "stealth backdoor, 5 attackers", pr.SLOT[2])]
+    methods = [("fedhep", "FedHEP"), ("defended", "Defended\nFedHEP"), ("l0", "L0"), ("plus", "FedHEP+"),
+               ("r3w", "R3\nwhole update"), ("r3wc", "R3\nunion screen"), ("flame", "FLAME")]
+    if not all(len(_runs(runs, f"m7__{c}__{m}")) == 3 for c, _, _ in conds for m, _ in methods):
+        return
+    fig, ax = plt.subplots(figsize=(12, 4.2))
+    width = 0.26
+    for j, (cond, label, color) in enumerate(conds):
+        for i, (m, _) in enumerate(methods):
+            vals = [r["history"][-1]["asr"] for r in _runs(runs, f"m7__{cond}__{m}")]
+            x = i + (j - 1) * width
+            ax.bar(x, sum(vals) / 3, width - 0.03, color=color, alpha=0.85, label=label if i == 0 else None)
+            ax.scatter([x] * 3, vals, s=12, color=pr.INK, zorder=3)
+    ax.set_xticks(range(len(methods)), [label for _, label in methods], fontsize=8.5)
+    ax.set_ylabel("backdoor success at round 30 (%)")
+    ax.set_ylim(0, 100)
+    ax.set_title("A backdoor that hides inside the honest spread (D1, Mac): only the union screen and FLAME stay under "
+                 "10% on every seed", fontsize=10.5)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(*ax.get_legend_handles_labels(), ncols=3, fontsize=8.5, loc="lower center", frameon=False)
+    pr.save(fig, "phase6_stealth.png")
+
+
+def fig_fmis(runs: dict) -> None:
+    """acer_c8_fmis: L0 and R3 (union screen) when the defender assumes f = 1, 3 or 6 while 3 attack (or none)."""
+    fs = (1, 3, 6)
+    methods = [("l0", "L0", pr.SLOT[1]), ("r3wc", "R3, union screen", pr.SLOT[0])]
+    panels = [("clean", "No attack"), ("sign3", "Sign flip"), ("alie3", "ALIE"), ("backdoor3", "Backdoor")]
+    if not all(len(_runs(runs, f"x8_f{f}__{a}__{m}")) == 3 for f in fs for a, _ in panels for m, _, _ in methods):
+        return
+    fig, axes = plt.subplots(1, 4, figsize=(15, 3.8))
+    for ax, (attack, title) in zip(axes, panels, strict=True):
+        for m, label, color in methods:
+            if attack == "backdoor3":
+                stats = [pr.mean_sd([r["history"][-1]["asr"] for r in _runs(runs, f"x8_f{f}__{attack}__{m}")])
+                         for f in fs]
+            else:
+                stats = [pr.mean_sd([r["final"]["pooled"] for r in _runs(runs, f"x8_f{f}__{attack}__{m}")])
+                         for f in fs]
+            ax.errorbar(fs, [mu for mu, _ in stats], yerr=[sd for _, sd in stats], color=color, marker="o",
+                        capsize=3, label=label)
+        ax.axvline(3, color=pr.INK2, linewidth=1, linestyle=":")
+        ax.set_xticks(fs, ["1", "3\n(true)", "6"])
+        ax.set_xlabel("attackers the defender assumes (f)")
+        ax.set_title(title)
+        ax.set_ylabel("backdoor success (%)" if attack == "backdoor3" else "accuracy (%)")
+        if attack == "backdoor3":
+            ax.set_ylim(0, 100)
+        else:
+            ax.set_ylim(33, 50)
+    fig.suptitle("Mis-specified f (D1, 3 attackers, Acer, mean ± sd over 3 seeds): the screen makes R3 indifferent to "
+                 "f; L0 depends on it", fontsize=10.5)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(*axes[0].get_legend_handles_labels(), ncols=2, fontsize=8.5, loc="lower center", frameon=False)
+    pr.save(fig, "phase6_fmis.png")
+
+
 def fig_signals(runs: dict) -> None:
     """GPU batch gpu_d1_signals (CUDA, D1, 3 seeds): which screening signal catches the backdoor, and what each
     costs in honest clients isolated with no attack."""
@@ -277,6 +339,8 @@ def main() -> None:
     fig_backdoor_heads(runs)
     fig_durability(runs)
     fig_rewind(runs)
+    fig_stealth(runs)
+    fig_fmis(runs)
     fig_signals(runs)
     if len(sys.argv) > 2:
         fig_devices(Path(sys.argv[2]))

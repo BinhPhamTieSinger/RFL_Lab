@@ -1289,3 +1289,41 @@ Within 30 rounds the whole-update screen catches every attacker by rounds 3–6,
 - Mac `mac_c7_stealth`, plain backdoor with 3 attackers (21 of 84 runs): FedHEP 74–84%, Defended FedHEP 74–82%, L0 54–68%, FedHEP+ 5–29%, **R3 whole update 0.5–0.9% and R3 union screen 0.5–1.4%** (all attackers caught on every seed, 6–7 honest isolations over 3 runs), FLAME 0.4–0.6% at 3 points of accuracy. On CUDA the whole-update screen missed seed 123 (71%); on the Mac it catches it, so that seed sits close to the screen's threshold. The stealth-backdoor runs come next.
 - Acer `acer_c8_fmis`, matched f = 3 (14 of 72 runs): no attack, L0 47.43 and R3 union 46.82 (11 honest isolations over 3 runs); sign flip, **L0 40.73 (−6.7) and R3 union 45.28 (−1.5)** with all 9 attackers isolated. L0's trimmed mean alone does not hold sign flip at D1; the screen does. The f = 6 and f = 1 arms follow.
 
+## 2026-11-19 · Stealth backdoor (Mac) and mis-specified f (Acer)
+D1 (15 clients, α 0.5), seeds 123 / 42 / 7, 30 rounds, each study on one device. Figures: `docs/figures/phase6_stealth.png`, `docs/figures/phase6_fmis.png`. From today the Mac runs no sweeps; it analyses and writes code, and the Acer and the GPU server run everything.
+
+**Stealth backdoor, Mac (`mac_c7_stealth`, 69 of 84 runs).** The stealth attacker trains the backdoor as usual, then pulls its update toward the honest mean until it sits inside Min-Max's distance bound. Backdoor success at round 30 (%):
+
+| Method | Plain, 3 attackers | Stealth, 3 attackers | Stealth, 5 attackers | Accuracy, stealth 3 | Honest isolated, stealth 3 |
+|---|---|---|---|---|---|
+| FedHEP | 74 / 80 / 84 | 71 / 77 / 83 | 73 / 81 / 84 | 46.43 | 0 |
+| Defended FedHEP | 74 / 80 / 82 | 73 / 80 / 81 | 73 / 81 / 82 | 46.43 | 0 |
+| L0 | 54 / 66 / 68 | 61 / 70 / 75 | 69 / 79 / 80 | 46.88 | 0 |
+| FedHEP+ | 5 / 29 / 29 | 56 / 75 / 65 | 71 / 79 / 80 | 46.13 | 13 |
+| R3, whole update | 0.5 / 0.5 / 0.9 | 0.2 / **61** / 0.9 | 2.9 / 9.5 / 3.0 | 45.77 | 9 |
+| **R3, union screen** | 0.5 / 0.5 / 1.4 | **0.2 / 0.5 / 0.4** | 2.9 / 9.5 / 1.7 | 45.20 | 14 |
+| FLAME | 0.6 / 0.4 / 0.5 | 1.5 / 0.4 / 0.4 | 1.7 / 3.0 / 1.8 | 43.59 | — |
+
+- **Hiding costs the attacker almost nothing.** Without a defense the stealth backdoor reaches 71–83%, the same as the plain one (74–84%). The blend toward the honest mean shrinks the update but keeps its direction.
+- **It defeats the screens that rely on one view of the update.** FedHEP+ goes from 5–29% to 56–75%. The whole-update screen misses one seed (61%).
+- **The union screen catches every stealth attacker on every seed** (9 of 9; 0.2–0.5%). On the seed the whole-update screen misses, the critical-layer screen flags the attackers, which is the case the union was built for. It costs more honest isolations (14 over 3 runs, against 9 for the whole-update screen) and 1.2 points against undefended FedHEP.
+- **With 5 attackers (33%)** both R3 screens catch all 15, and success stays at 2–10%. FedHEP+ catches 12 of 15 but too late (71–80%). FLAME holds (2–3%) at about 3 points of accuracy.
+- **Not finished:** the plain backdoor with 5 attackers has only FedHEP and Defended FedHEP (73–84%). The Mac stopped running sweeps, and the other 15 runs cannot move to another device without mixing devices. `gpu_c7_stealth` repeats the comparison on the GPU server, at 15 and 30 clients and α 0.1 and 0.5.
+
+**Mis-specified f, Acer (`acer_c8_fmis`, 72 runs, complete).** The defender assumes f = 1, 3 or 6 while 3 attack (or none). Accuracy, and backdoor success:
+
+| Attack | L0, f = 1 / 3 / 6 | R3 union, f = 1 / 3 / 6 | R3 union, honest isolated (3 runs each) |
+|---|---|---|---|
+| None | 48.10 / 47.43 / 47.56 | 46.07 / 46.82 / 45.64 | 18 / 11 / 16 |
+| Sign flip | **35.73** / 40.73 / 41.89 | 44.35 / 45.28 / 43.77 | 10 / 10 / 16 |
+| ALIE (z 0.43) | 47.75 / 47.53 / 46.19 | 44.50 / 44.09 / 44.93 | 12 / 14 / 14 |
+| Backdoor (success) | 70–78% / 60–69% / 58–62% | 0.5–0.6% / 0.4–0.5% / 0.4–1.5% | 16 / 15 / 17 |
+
+- **The screen makes R3 indifferent to f.** It isolates all 9 attackers under every attack and every f, and its accuracy moves within 1.5 points.
+- **L0 depends on f under sign flip:** told 1 attacker it loses 12.4 points against no attack; told the right number, 6.7. Over-estimating f costs L0 nothing with no attack (47.56 against 47.43).
+- **The union screen's cost is honest isolations.** It isolates 4–6 honest clients per run with no attack, so it scores 0.6–2.0 points below L0 when nobody attacks. Under ALIE it is 1.3–3.4 points below L0, because ALIE with 3 attackers barely hurts L0 while the screen still removes honest clients. Cutting these isolations is the main open problem for the candidate method.
+
+**Predictions:** P20 refuted in its premise (the stealth backdoor carries as much backdoor as the plain one) and confirmed in its effect on single screens (FedHEP+, and the whole-update screen on one seed); the union screen holds. P21 half refuted: over-estimating f costs L0 nothing with no attack, while R3 loses 1.2 points; under-estimating lets sign flip through L0 (−5 points against matched f), as predicted.
+
+**Next:** Acer `acer_c9_final_durability` (18 runs of 100 rounds): the union screen with and without the rewind against both backdoors. GPU server after the grid: `gpu_c7_stealth` (168 runs).
+

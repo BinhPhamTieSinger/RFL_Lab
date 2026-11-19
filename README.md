@@ -99,6 +99,9 @@ This motivates the two active Phase 6 backdoor mechanisms: **Head-Agreement Infe
 - **The depth-exit guard halves any backdoor that gets through** (79% → 42%, 64% → 35%) at 0.3 points of accuracy; head-agreement inference does little.
 - **Rewind on isolation is cheap insurance against a late catch** (Acer, 100 rounds): with the whole-update screen, one seed caught its attackers only after part of the backdoor had reached the trunk, and it grew to 17% after the attack ended; with the trunk-and-root rewind all three seeds stay at 0–1% (cost 0.4 points). See [`docs/figures/phase6_rewind.png`](docs/figures/phase6_rewind.png).
 
+- **An adaptive backdoor that hides inside the honest spread** (Mac, D1) is as strong as the plain one without a defense (71–83%), beats FedHEP+ (56–75%) and the whole-update screen on one seed (61%), but not the union screen (0.2–0.5% on every seed, at 14 honest isolations over 3 runs). See [`docs/figures/phase6_stealth.png`](docs/figures/phase6_stealth.png).
+- **A wrong guess of the attacker count barely moves R3** (union screen; f = 1, 3 or 6: within 1.5 points, every attacker caught), while L0 under sign flip ranges from 35.7 (f = 1) to 41.9 (f = 6). The union screen's cost is 4–6 honest clients isolated per run with no attack. See [`docs/figures/phase6_fmis.png`](docs/figures/phase6_fmis.png).
+
 **Running next (GPU server):** the large grid `gpu_grid_n{15,30,50}` (1,872 runs: 15/30/50 clients × α 0.1/0.5 × five attack settings at 10/20/30% attackers × 8 methods × 3 seeds), including the union screen `plus.signal: weights_critical` that the result above points to. Plan and predictions P17–P19 in the log.
 
 ## Documentation Guide

@@ -1,0 +1,20 @@
+# Acer (XPU), after device_parity: the candidate method over 100 rounds against both backdoors. R3 with the union
+# screen, with and without the trunk-and-root rewind, against the plain and the stealth backdoor (attackers stop at
+# round 50), with undefended FedHEP as the reference. Self-contained: 2 attacks x 3 methods x 3 seeds = 18 runs of
+# 100 rounds, about 16 hours; resumable.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 100
+  run.eval_every: 5
+  fedhep.exit_guard: true
+  attack.count: 3
+  attack.stop_round: 50
+axes:
+  - x9__backdoor3: {attack.kind: backdoor}
+    x9__stealth3: {attack.kind: stealth_backdoor}
+  - fedhep: {config: configs/cifar100_fedhep.yaml}
+    r3wc: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+               plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.signal: weights_critical}
+    r3wc_tr: {<<: *r3, plus.rewind: trunk_root}
