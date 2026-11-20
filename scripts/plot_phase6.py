@@ -215,26 +215,27 @@ def fig_stealth(runs: dict) -> None:
     the honest mean inside Min-Max's bound), 3 and 5 attackers. Bars are means; dots are the three seeds."""
     conds = [("backdoor3", "plain backdoor, 3 attackers", pr.SLOT[0]),
              ("stealth3", "stealth backdoor, 3 attackers", pr.SLOT[1]),
+             ("backdoor5", "plain backdoor, 5 attackers", pr.SLOT[3]),
              ("stealth5", "stealth backdoor, 5 attackers", pr.SLOT[2])]
     methods = [("fedhep", "FedHEP"), ("defended", "Defended\nFedHEP"), ("l0", "L0"), ("plus", "FedHEP+"),
                ("r3w", "R3\nwhole update"), ("r3wc", "R3\nunion screen"), ("flame", "FLAME")]
     if not all(len(_runs(runs, f"m7__{c}__{m}")) == 3 for c, _, _ in conds for m, _ in methods):
         return
     fig, ax = plt.subplots(figsize=(12, 4.2))
-    width = 0.26
+    width = 0.2
     for j, (cond, label, color) in enumerate(conds):
         for i, (m, _) in enumerate(methods):
             vals = [r["history"][-1]["asr"] for r in _runs(runs, f"m7__{cond}__{m}")]
-            x = i + (j - 1) * width
+            x = i + (j - 1.5) * width
             ax.bar(x, sum(vals) / 3, width - 0.03, color=color, alpha=0.85, label=label if i == 0 else None)
             ax.scatter([x] * 3, vals, s=12, color=pr.INK, zorder=3)
     ax.set_xticks(range(len(methods)), [label for _, label in methods], fontsize=8.5)
     ax.set_ylabel("backdoor success at round 30 (%)")
     ax.set_ylim(0, 100)
-    ax.set_title("A backdoor that hides inside the honest spread (D1, Mac): only the union screen and FLAME stay under "
-                 "10% on every seed", fontsize=10.5)
+    ax.set_title("A backdoor that hides inside the honest spread (D1, Mac): the union screen holds with 3 "
+                 "attackers, FLAME also with 5", fontsize=10.5)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
-    fig.legend(*ax.get_legend_handles_labels(), ncols=3, fontsize=8.5, loc="lower center", frameon=False)
+    fig.legend(*ax.get_legend_handles_labels(), ncols=4, fontsize=8.5, loc="lower center", frameon=False)
     pr.save(fig, "phase6_stealth.png")
 
 

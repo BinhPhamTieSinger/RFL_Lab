@@ -200,21 +200,22 @@ D1: 15 clients, α = 0.5, 3 attackers. D2: 20 clients, α = 0.2, 4 attackers. Ma
 
 The stealth backdoor ([chapter 1.4](01_federated_learning.md)) hides inside the honest spread. Backdoor success at round 30, seeds 123 / 42 / 7:
 
-| Model | Plain, 3 attackers | Stealth, 3 attackers | Stealth, 5 attackers |
-|---|---|---|---|
-| FedHEP | 74 / 80 / 84 | 71 / 77 / 83 | 73 / 81 / 84 |
-| Defended FedHEP | 74 / 80 / 82 | 73 / 80 / 81 | 73 / 81 / 82 |
-| L0 | 54 / 66 / 68 | 61 / 70 / 75 | 69 / 79 / 80 |
-| FedHEP+ | 5 / 29 / 29 | 56 / 75 / 65 | 71 / 79 / 80 |
-| R3, whole update | 0.5 / 0.5 / 0.9 | 0.2 / **61** / 0.9 | 2.9 / 9.5 / 3.0 |
-| **R3, union screen** | 0.5 / 0.5 / 1.4 | **0.2 / 0.5 / 0.4** | 2.9 / 9.5 / 1.7 |
-| FLAME | 0.6 / 0.4 / 0.5 | 1.5 / 0.4 / 0.4 | 1.7 / 3.0 / 1.8 |
+| Model | Plain, 3 attackers | Stealth, 3 attackers | Plain, 5 attackers | Stealth, 5 attackers |
+|---|---|---|---|---|
+| FedHEP | 74 / 80 / 84 | 71 / 77 / 83 | 75 / 82 / 84 | 73 / 81 / 84 |
+| Defended FedHEP | 74 / 80 / 82 | 73 / 80 / 81 | 74 / 81 / 82 | 73 / 81 / 82 |
+| L0 | 54 / 66 / 68 | 61 / 70 / 75 | 69 / 77 / 79 | 69 / 79 / 80 |
+| FedHEP+ | 5 / 29 / 29 | 56 / 75 / 65 | 40 / 64 / 65 | 71 / 79 / 80 |
+| R3, whole update | 0.5 / 0.5 / 0.9 | 0.2 / **61** / 0.9 | 20 / 4.4 / 3.8 | 2.9 / 9.5 / 3.0 |
+| **R3, union screen** | 0.5 / 0.5 / 1.4 | **0.2 / 0.5 / 0.4** | 20 / 4.0 / 0.7 | 2.9 / 9.5 / 1.7 |
+| FLAME | 0.6 / 0.4 / 0.5 | 1.5 / 0.4 / 0.4 | 0.4 / 0.6 / 0.4 | 1.7 / 3.0 / 1.8 |
 
 ![Stealth backdoor](../figures/phase6_stealth.png)
 
 - Hiding costs the attacker almost nothing: undefended, it still reaches 71–83%.
 - It defeats single-view screens: FedHEP+, and the whole-update screen on one seed.
 - **The union screen catches every stealth attacker on every seed.** The price is more honest isolations (14 over 3 runs, against 9) and 1.2 points against undefended FedHEP.
+- **With 5 attackers (a third of the clients)** both R3 screens catch all 15 attackers, plain or stealth, but on one seed the plain backdoor gets in first (20%). FLAME holds under 1% at about 3 points of accuracy.
 
 ## 6.11 Results: a wrong guess of the attacker count (Acer, D1)
 
@@ -246,7 +247,8 @@ The large grid `gpu_grid_n{15,30,50}` runs 15, 30 and 50 clients × α 0.1 and 0
 **Costs and open problems:**
 1. **Honest isolations.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
 2. **Strong skew and backdoors.** At D2, no model tested so far stops the plain backdoor (37.7% for L0 to 46.9% for FedHEP; R3 45.3%). FedHEP-Guard's union screen and rewind have not yet been run at D2. The canonical benchmark covers it.
-3. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.
+3. **A third of the clients attacking with a plain backdoor** can get it in before the screen catches them (one seed at 20%, Mac). FLAME holds there.
+4. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.
 
 ## 6.14 FedHEP-Guard's exact configuration
 
