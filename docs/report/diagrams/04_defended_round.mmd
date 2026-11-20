@@ -1,0 +1,23 @@
+flowchart TD
+  C["Clients train as in FedHEP"]:::same --> UP["updates Δ_i"]:::same
+  UP --> NB["[a] norm bound: Δ_i scaled to ≤ k × lower-quartile norm<br/>(k = 2 parents, 3 Global)"]:::new
+  NB --> SIG["[b] signal: root-head rows of the classes client i holds"]:::new
+  SIG --> REF["[c] reference r = mean of unit vectors"]:::new
+  REF --> TW["[d] trust t_i = softmax(cos(Δ_i, r) / T)<br/>Global: t_i = 0 if cos < −0.1"]:::new
+  TW --> AGG["[e] SCCF step = Σ_i t_i Δ_i<br/>BatchNorm buffers: coordinate median"]:::changed
+  TW --> TL["[f] trust ledger q_i ← 0.85 q_i + 0.15 min(1, n t_i)<br/>isolated for good if q_i < 0.25"]:::new
+  AGG --> PAR["parents and Global both use SCCF"]:::changed
+  GRP["groups: random, fixed for the whole run"]:::changed --> PAR
+  OLD["FedAvg mean, similarity grouping"]:::gone
+  subgraph LEG["Legend"]
+    direction LR
+    l1["unchanged from the previous model"]:::same
+    l2["new in this model"]:::new
+    l3["changed in this model"]:::changed
+    l4["removed in this model"]:::gone
+  end
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  style LEG fill:#fcfcfb,stroke:#e4e3df

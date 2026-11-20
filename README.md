@@ -2,7 +2,9 @@
 
 A modular PyTorch framework for robust federated learning research. It reproduces **FedHEP** (*Federated Hierarchical Ensemble Personalization*) and its defended variant (**Defended FedHEP**), benchmarks them against established robust aggregation rules under untargeted, adaptive, and backdoor poisoning attacks, and serves as the test bench for **FedHEP+** and **FedHEP-Guard**.
 
-All results—including negative ones and closed explorations—are recorded in [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md). No number in this repository is reported without the run that produced it (`outputs/<run>/metrics.json` and `config.yaml`).
+**Start with the research report, [`docs/report/00_index.md`](docs/report/00_index.md).** It explains federated learning, every model from FedHEP to FedHEP-Guard (formulas, legends, diagrams, what each changes, what improved and what failed), the canonical benchmark, and every configuration key. It also has a presenting kit that maps each question to its chart and table.
+
+All results, including negative ones and closed explorations, are recorded in [`docs/EXPERIMENT_LOG.md`](docs/EXPERIMENT_LOG.md). No number in this repository is reported without the run that produced it (`outputs/<run>/metrics.json` and `config.yaml`).
 
 ---
 
@@ -106,12 +108,18 @@ This motivates the two active Phase 6 backdoor mechanisms: **Head-Agreement Infe
 
 ## Documentation Guide
 
-The repository documentation is organized into **four tracks**:
+The repository documentation is organized into the **research report** and **four notebook tracks**:
 
-### 1. Start Here & Research Overview
+### 0. The Research Report (start here)
 | Document | Purpose |
 |---|---|
-| [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | **Start here.** Plain-language visual walkthrough of every stage from Phase 1 reproduction through Phase 6, with key charts. |
+| [`docs/report/00_index.md`](docs/report/00_index.md) | Reading guide, research path, models at a glance, and the presenting kit (question to chart and table). |
+| [`docs/report/01_federated_learning.md`](docs/report/01_federated_learning.md) … [`08_configuration_reference.md`](docs/report/08_configuration_reference.md) | Chapters 1–8: FL and attacks, FedHEP, Defended FedHEP, FedHEP+, ideas that did not work, FedHEP-Guard, the canonical benchmark, every configuration key. |
+
+### 1. Research Overview
+| Document | Purpose |
+|---|---|
+| [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | Earlier plain-language walkthrough (to Phase 6, 2026-11-15); superseded by the report. |
 | [`docs/PAPER_PLAN.md`](docs/PAPER_PLAN.md) | Paper claims (`C1`–`C9`) and their verification status, closest published work, section outline mapped to figures/runs, and submission checklist. |
 | [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Synthesis of 170 sources across robust aggregation, adaptive/backdoor attacks, personalized & hierarchical FL, and the seven open gaps. |
 

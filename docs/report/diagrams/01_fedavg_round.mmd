@@ -1,0 +1,10 @@
+flowchart LR
+  S["Server: global model w_t"]:::same -->|"send w_t to every client"| C1["Client i: copy w_t"]:::same
+  C1 -->|"E local epochs of SGD<br/>on its own data D_i"| T["trained model w_t^i"]:::same
+  T -->|"upload update Δ_i = w_t^i − w_t"| A["Server: weighted mean<br/>Δ = Σ_i (n_i / n) Δ_i"]:::same
+  A -->|"w_{t+1} = w_t + Δ"| S
+  M["Malicious client a:<br/>uploads any vector Δ_a"]:::gone -.->|"poisoned update"| A
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b

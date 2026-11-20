@@ -1,0 +1,20 @@
+flowchart TD
+  P["FedHEP+ screening (unchanged)"]:::same --> G["each parent g with ≥ 3 eligible members"]:::new
+  G --> GS["parent score = cos(mean of members' updates, r)"]:::new
+  GS --> NULL["compare with 64 random groups of the same size<br/>→ parent z (permutation test)"]:::new
+  NULL --> F{"parent z < −2 ?"}:::new
+  F -->|"v1 (Phase 4)"| V1["members face a stricter cut this round: z_i < −1"]:::new
+  F -->|"v2 (Phase 4b)"| V2["alignment a_i = cos(Δ_i − r, mean of the other members' Δ_j − r)<br/>scored against clients outside the parent"]:::new
+  V2 --> E2["evidence uses min(z_i, −alignment z_i)"]:::new
+  subgraph LEG["Legend"]
+    direction LR
+    l1["unchanged from the previous model"]:::same
+    l2["new in this model"]:::new
+    l3["changed in this model"]:::changed
+    l4["removed in this model"]:::gone
+  end
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  style LEG fill:#fcfcfb,stroke:#e4e3df

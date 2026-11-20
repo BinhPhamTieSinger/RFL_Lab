@@ -1,0 +1,17 @@
+# Canonical benchmark, part 2 of 2 (GPU server only): the single-model baselines of Phase 2, FedAvg (no defense)
+# and Multi-Krum (a classic defense), in the same settings as bench_fedhep_family.yaml. ALIE, Min-Max and the
+# stealth backdoor need a FedHEP server, so these two models face the four other conditions.
+# 2 settings x 4 attacks x 2 models x 3 seeds = 48 runs.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  run.deterministic: true
+axes:
+  - bm_d1: {data.num_clients: 15, data.alpha: 0.5, attack.count: 3}
+    bm_d2: {data.num_clients: 20, data.alpha: 0.2, attack.count: 4}
+  - clean: {}
+    sign: {attack.kind: sign_flip}
+    label: {attack.kind: label_flip}
+    backdoor: {attack.kind: backdoor}
+  - fedavg: {config: configs/cifar100_fedavg.yaml}
+    multikrum: {config: configs/cifar100_fedavg.yaml, method: multikrum}

@@ -105,6 +105,15 @@ qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
 ```
 If the lab refuses the time limit, use the longest it allows and resubmit the same command when the job ends: finished runs are skipped. Progress: `ls outputs | grep -c '^gg'` (of 1,872). The grid files are written by `scripts/make_gpu_grid.py` (client counts, attacker counts, ALIE z per n and m); edit that script, not the YAML.
 
+**The canonical benchmark** (report chapter 7; 594 runs, about 12 hours on two GPUs), after the job above has ended:
+```bash
+bash scripts/runner_sync.sh pc --update
+qbatch --gpus 2 --cpus 8 --mem 48G --time 2-00:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/bench_fedhep_family.yaml configs/sweeps/bench_fedavg_family.yaml \
+    configs/sweeps/gpu_c7_stealth.yaml --procs 1 --set data.root=data
+```
+Progress: `ls outputs | grep -c '^bm_'` (of 594). On the Mac, `python scripts/plot_benchmark.py outputs` draws its figures and tables.
+
 **A sweep on all four GPUs:**
 ```bash
 qbatch --gpus 4 --cpus 16 --mem 96G --time 12:00:00 scripts/gpu_sweep.py \

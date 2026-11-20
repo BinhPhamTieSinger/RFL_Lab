@@ -1327,3 +1327,10 @@ D1 (15 clients, α 0.5), seeds 123 / 42 / 7, 30 rounds, each study on one device
 
 **Next:** Acer `acer_c9_final_durability` (18 runs of 100 rounds): the union screen with and without the rewind against both backdoors. GPU server after the grid: `gpu_c7_stealth` (168 runs).
 
+
+## 2026-11-20 · Documentation rebuilt as a report; canonical benchmark planned
+The organized account now lives in `docs/report/` (chapters 0–8: federated learning and attacks, FedHEP, Defended FedHEP, FedHEP+, ideas that did not work, FedHEP-Guard, the canonical benchmark, the configuration reference). Each model is described with its formulas, a legend of every symbol, a diagram coloured by what it changes against the previous model, and its results by machine. This log, the decisions and the predictions stay as the dated lab notebook.
+
+- **FedHEP-Guard is fixed as:** R3 (L0 + two-sided screen + patience 3 + gap gate 8) with the union screen (`plus.signal: weights_critical`) and the trunk-and-root rewind; the depth-exit guard is an optional prediction-time add-on.
+- **Canonical benchmark** (`configs/sweeps/bench_fedhep_family.yaml`, 546 runs; `bench_fedavg_family.yaml`, 48 runs; GPU server only): 15 models (FedAvg, Multi-Krum, FedHEP, Defended FedHEP, FedHEP+, drill-down v2, Median, Trimmed mean, Bulyan, FLAME, FLTrust, L0, R2, R3, FedHEP-Guard) × 7 attacks (none, sign flip, label flip, ALIE, Min-Max, backdoor, stealth backdoor) × D1 and D2 × 3 seeds, 30 rounds, deterministic kernels. It is the first table with every model on one machine. `scripts/plot_benchmark.py` draws its figures and writes its tables into chapter 7. Every model/attack combination was smoke-tested on synthetic data at D2 before submission.
+- **New figure scripts:** `scripts/plot_report_figures.py` (where each mechanism acts in the model); diagram sources in `docs/report/diagrams/`.

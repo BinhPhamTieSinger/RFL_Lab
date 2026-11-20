@@ -28,6 +28,60 @@ type DecisionItem = {
 
 const DOC_CATALOG: DocMeta[] = [
   {
+    path: "docs/report/00_index.md",
+    shortTitle: "Research Report: Start Here",
+    subtitle: "Research path, models at a glance, presenting kit",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/01_federated_learning.md",
+    shortTitle: "1. Federated Learning & Attacks",
+    subtitle: "FedAvg, non-IID data, settings D1/D2, attacks, metrics, notation",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/02_fedhep.md",
+    shortTitle: "2. FedHEP (Phase 1)",
+    subtitle: "Three-head model, formulas, changes vs FedAvg, reproduction",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/03_defended_fedhep.md",
+    shortTitle: "3. Defended FedHEP (Phases 1c, 2)",
+    subtitle: "SCCF and trust ledger, Phase 2 benchmark, failures",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/04_fedhep_plus.md",
+    shortTitle: "4. FedHEP+ (Phase 3)",
+    subtitle: "Robust z screen, results, follow-up diagnostics",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/05_ideas_that_did_not_work.md",
+    shortTitle: "5. Ideas That Did Not Work",
+    subtitle: "Drill-down, classic rules, dropped Phase 6 parts",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/06_fedhep_guard.md",
+    shortTitle: "6. FedHEP-Guard (Phase 6)",
+    subtitle: "Every mechanism: formula, legend, location, results",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/07_benchmark.md",
+    shortTitle: "7. Canonical Benchmark",
+    subtitle: "Every model, same attacks, one machine",
+    category: "0. Research Report",
+  },
+  {
+    path: "docs/report/08_configuration_reference.md",
+    shortTitle: "8. Configuration Reference",
+    subtitle: "Every config key, symbol, preset and run prefix",
+    category: "0. Research Report",
+  },
+  {
     path: "README.md",
     shortTitle: "RFL Lab Overview",
     subtitle: "Status, Phase 5–6 results, repo layout & reproducibility",
@@ -35,8 +89,8 @@ const DOC_CATALOG: DocMeta[] = [
   },
   {
     path: "docs/RESEARCH_SUMMARY.md",
-    shortTitle: "RFL Lab in Plain Words",
-    subtitle: "Visual walkthrough of every stage from Phase 1 to Phase 6",
+    shortTitle: "RFL Lab in Plain Words (earlier)",
+    subtitle: "Walkthrough to Phase 6, superseded by the report",
     category: "1. Start Here & Overview",
   },
   {
@@ -199,7 +253,7 @@ export default function Documentation() {
 
   useEffect(() => {
     const requested = new URL(window.location.href).searchParams.get("document");
-    setSelected(requested ?? "README.md");
+    setSelected(requested ?? "docs/report/00_index.md");
     fetch("/research/documentation.json")
       .then(async (response) => {
         if (!response.ok) throw Error("Documentation could not be loaded");
@@ -210,6 +264,7 @@ export default function Documentation() {
 
   const document =
     documents.find((item) => item.path === selected) ??
+    documents.find((item) => item.path === "docs/report/00_index.md") ??
     documents.find((item) => item.path === "README.md") ??
     documents[0];
 

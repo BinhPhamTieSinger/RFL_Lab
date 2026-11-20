@@ -1,0 +1,25 @@
+flowchart TD
+  C["Clients train as in FedHEP"]:::same --> UP["updates Δ_i of clients not isolated"]:::same
+  UP --> S["[1] score s_i = cos(Δ_i, r) on root-head rows<br/>r = coordinate-wise median update"]:::changed
+  S --> Z["[2] robust z_i = (s_i − med s) / max(1.4826 MAD s, 0.1 |med s|)"]:::new
+  Z --> EX{"[3] z_i < −2.5 ?"}:::new
+  EX -->|yes| OUT["left out this round"]:::new
+  EX -->|no| KEEP["kept"]:::same
+  Z --> EV["[4] evidence E_i ← 0.7 E_i + 0.3 z_i"]:::new
+  EV --> ISO{"E_i < −1.5 ?"}:::new
+  ISO -->|yes| PERM["isolated for good"]:::new
+  KEEP --> RG["[5] regroup kept clients by weight similarity<br/>(BatchNorm buffers left out)"]:::changed
+  RG --> AG["parents and Global: SCCF over kept clients only"]:::same
+  TL["trust ledger (q_i < 0.25)"]:::gone
+  subgraph LEG["Legend"]
+    direction LR
+    l1["unchanged from the previous model"]:::same
+    l2["new in this model"]:::new
+    l3["changed in this model"]:::changed
+    l4["removed in this model"]:::gone
+  end
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  style LEG fill:#fcfcfb,stroke:#e4e3df

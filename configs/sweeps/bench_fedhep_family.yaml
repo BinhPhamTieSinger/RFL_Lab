@@ -1,0 +1,49 @@
+# Canonical benchmark, part 1 of 2 (GPU server only): every FedHEP-family model from every phase, under the same
+# seven attacks, in the two settings of the report, on one machine. The report's comparison charts (chapter 7) are
+# drawn from these runs only (scripts/plot_benchmark.py). Part 2 (bench_fedavg_family.yaml) adds FedAvg and
+# Multi-Krum, which cannot run the coordinated attacks.
+#
+# D1: 15 clients, alpha 0.5, 3 attackers.   D2: 20 clients, alpha 0.2, 4 attackers.
+# ALIE z from Baruch et al. (2019): s = floor(n/2 + 1) - m, z = Phi^-1((n - s)/n): 0.431 (D1), 0.385 (D2).
+# Robust rules are told the true attacker count (f = m).
+# 2 settings x 7 attacks x 13 models x 3 seeds = 546 runs of 30 rounds. Methods innermost: whole cells finish
+# together. Names: bm_d1__sign__guard_s42.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  run.deterministic: true
+  fedhep.exit_guard: true          # evaluation only; also reports each model with the depth-exit guard
+axes:
+  - bm_d1: {data.num_clients: 15, data.alpha: 0.5, attack.count: 3, attack.alie_z: 0.431,
+            robust.assumed_attackers: 3, plus.global_f: 3}
+    bm_d2: {data.num_clients: 20, data.alpha: 0.2, attack.count: 4, attack.alie_z: 0.385,
+            robust.assumed_attackers: 4, plus.global_f: 4}
+  - clean: {}
+    sign: {attack.kind: sign_flip}
+    label: {attack.kind: label_flip}
+    alie: {attack.kind: alie, attack.knowledge: colluders}
+    minmax: {attack.kind: min_max, attack.knowledge: omniscient}
+    backdoor: {attack.kind: backdoor}
+    stealth: {attack.kind: stealth_backdoor}
+  # Phase 1: the published models
+  - fedhep: {config: configs/cifar100_fedhep.yaml}
+    defended: {config: configs/cifar100_fedhep_defended.yaml}
+    # Phase 3: FedHEP+ as confirmed in Phase 3b (median reference, regrouping, one-sided screen)
+    plus: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+           plus.regroup: true}
+    # Phase 4b: FedHEP+ with the drill-down (parent check, member alignment as evidence), as tested
+    drill: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+            plus.drill_down: true, plus.drill_mode: evidence, plus.min_group: 3}
+    # Phase 5: established rules in FedHEP's Global step
+    median: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: median}
+    tmean: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: trimmed_mean}
+    bulyan: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: bulyan}
+    flame: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: flame}
+    fltrust: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: fltrust}
+    # Phase 6: the FedHEP-Guard ladder
+    l0: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_robust, robust.rule: arc_nnm_tm}
+    r2: &r2 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+             plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+             plus.global_rule: arc_nnm_tm}
+    r3: &r3 {<<: *r2, plus.gap_gate: 8}
+    guard: {<<: *r3, plus.signal: weights_critical, plus.rewind: trunk_root}

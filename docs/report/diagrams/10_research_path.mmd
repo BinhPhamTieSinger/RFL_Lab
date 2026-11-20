@@ -1,0 +1,19 @@
+flowchart LR
+  P1["Phase 1<br/>Reproduce FedAvg, FedHEP,<br/>Defended FedHEP<br/>(matches the paper)"]:::k --> P2["Phase 2<br/>Benchmark harness:<br/>attacks, backdoor, detection<br/>(Defended never isolates,<br/>79% backdoor)"]:::k
+  P2 --> P3["Phase 3<br/>FedHEP+: robust z screen,<br/>permanent isolation, regroup<br/>(+8.3 sign flip, backdoor 21%)"]:::k
+  P3 --> P4["Phase 4<br/>Drill-down by parent<br/>(failed: members alike)"]:::x
+  P3 --> P5["Phase 5<br/>Classic rules in FedHEP<br/>(none better overall)"]:::x
+  P4 --> FU["Follow-up diagnostics<br/>FedHEP+ fails at α = 0.2,<br/>misses ALIE / Min-Max,<br/>backdoor persists"]:::w
+  P5 --> FU
+  FU --> P6["Phase 6<br/>FedHEP-Guard: L0, two-sided,<br/>gap gate, union screen, rewind"]:::k
+  P6 --> B["Canonical benchmark<br/>every model, one machine"]:::k
+  subgraph LEG["Legend"]
+    direction LR
+    lk["result carried forward"]:::k
+    lx["idea rejected"]:::x
+    lw["diagnosis of a failure"]:::w
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

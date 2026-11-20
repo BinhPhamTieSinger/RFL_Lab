@@ -1,0 +1,16 @@
+flowchart LR
+  X["image x<br/>32×32×3"] --> PREP["prep<br/>conv 3→32"]
+  subgraph TRUNK["Shared trunk (aggregated by Global, shared by all clients)"]
+    PREP --> L1["layer1<br/>conv 32→64, pool"] --> R1["res1<br/>2 convs + skip"] --> L2["layer2<br/>conv 64→128, pool"] --> L3["layer3<br/>conv 128→256, pool"] --> R2["res2<br/>2 convs + skip"] --> GAP["global average pool<br/>feature h(x), 256-d"]
+  end
+  GAP --> HR["root head W_r<br/>256→100<br/>shared by everyone (Global)"]
+  GAP --> HP["parent head W_p<br/>256→100<br/>shared within the client's group"]
+  GAP --> HL["local head W_l<br/>256→100<br/>private, never uploaded"]
+  HR --> ENS["ensemble<br/>p = softmax(Σ_h π_h z_h)<br/>classes the client never saw masked (ACLM)"]
+  HP --> ENS
+  HL --> ENS
+  ENS --> Y["prediction ŷ"]
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  class PREP,L1,R1,L2,L3,R2,GAP trunk
+  class HR,HP,HL head

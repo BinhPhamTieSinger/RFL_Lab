@@ -1,0 +1,37 @@
+flowchart TD
+  C["Clients train as in FedHEP<br/>(three heads, 5 local epochs)"]:::same --> UP["updates Δ_i of clients not isolated"]:::same
+  UP --> SW["[1a] whole-update signal:<br/>cos(Δ_i without BatchNorm, median update)"]:::new
+  UP --> SC["[1b] critical-layer signal:<br/>mean cos on the k = 5 most disputed trunk/root layers"]:::new
+  SW --> ZW["[2] robust z, two-sided: z ← −|z|"]:::changed
+  SC --> ZC["[2] robust z, two-sided: z ← −|z|"]:::changed
+  ZW --> GW{"[3] gap gate: scores split?<br/>g ≥ 8"}:::new
+  ZC --> GC{"[3] gap gate: scores split?<br/>g ≥ 8"}:::new
+  GW -->|"no: z ← max(z, 0)"| U["[1c] union: z_i = min(z_i^weights, z_i^critical)"]:::new
+  GW -->|yes| U
+  GC -->|"no: z ← max(z, 0)"| U
+  GC -->|yes| U
+  U --> EX{"[4] z_i < −2.5 for 3 rounds in a row?"}:::changed
+  EX -->|yes| OUT["left out this round"]:::same
+  U --> EV["evidence E_i ← 0.7 E_i + 0.3 z_i"]:::same
+  EV --> ISO{"[4] E_i < −1.5 and z_i < −1.5<br/>for 3 rounds in a row?"}:::changed
+  ISO -->|yes| PERM["isolated for good"]:::same
+  PERM --> RW["[6] rewind: trunk + root head back to the stored Global<br/>from before the client's first suspicious round"]:::new
+  EX -->|no| KEEP["kept clients"]:::same
+  KEEP --> RG["regroup by weight similarity"]:::same
+  RG --> PAR["parents: SCCF over kept members"]:::same
+  KEEP --> L0["[5] Global: L0 = ARC clip → NNM mixing → trimmed mean (f)<br/>replaces SCCF at the Global step"]:::new
+  L0 --> GLOB["Global model"]:::same
+  RW --> GLOB
+  GLOB --> INF["[7] optional at prediction: depth-exit guard<br/>(linear exits at res1, layer2, layer3 vote when they disagree)"]:::new
+  subgraph LEG["Legend"]
+    direction LR
+    l1["unchanged from the previous model"]:::same
+    l2["new in this model"]:::new
+    l3["changed in this model"]:::changed
+    l4["removed in this model"]:::gone
+  end
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  style LEG fill:#fcfcfb,stroke:#e4e3df

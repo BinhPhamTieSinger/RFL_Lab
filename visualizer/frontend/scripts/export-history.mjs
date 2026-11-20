@@ -145,6 +145,11 @@ const documents = [];
 for (const relative of [
   "README.md",
   ...fs
+    .readdirSync(path.join(root, "docs", "report"))
+    .filter((name) => name.endsWith(".md"))
+    .sort()
+    .map((name) => "docs/report/" + name),
+  ...fs
     .readdirSync(path.join(root, "docs"))
     .filter((name) => name.endsWith(".md"))
     .map((name) => "docs/" + name),
