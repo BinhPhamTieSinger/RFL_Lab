@@ -53,7 +53,8 @@ Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/rep
 - **Every number** is a mean over seeds 42, 123 and 7 unless marked, from runs stored in `outputs*/`.
 - **Every table names its machine.** Methods are only compared within one machine ([chapter 1.3](01_federated_learning.md)).
 - **D1** = 15 clients, α = 0.5, 3 attackers. **D2** = 20 clients, α = 0.2, 4 attackers.
-- **Diagrams** colour what each model changes against the previous one: green new, yellow changed, red dashed removed, grey unchanged.
+- **Diagrams** colour what each model changes against the previous one: green new, yellow changed, red dashed removed, grey unchanged. Their labels are typeset in LaTeX (`scripts/draw_report_diagrams.py`).
+- **Click any figure or diagram** in the visualizer to enlarge it; inside the enlarged view, click again (or "Actual size") for full resolution, and press Escape to close.
 
 ## The lab notebook
 

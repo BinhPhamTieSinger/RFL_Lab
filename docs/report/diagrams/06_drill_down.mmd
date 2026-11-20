@@ -1,20 +1,33 @@
 flowchart TD
-  P["FedHEP+ screening (unchanged)"]:::same --> G["each parent g with ≥ 3 eligible members"]:::new
-  G --> GS["parent score = cos(mean of members' updates, r)"]:::new
-  GS --> NULL["compare with 64 random groups of the same size<br/>→ parent z (permutation test)"]:::new
-  NULL --> F{"parent z < −2 ?"}:::new
-  F -->|"v1 (Phase 4)"| V1["members face a stricter cut this round: z_i < −1"]:::new
-  F -->|"v2 (Phase 4b)"| V2["alignment a_i = cos(Δ_i − r, mean of the other members' Δ_j − r)<br/>scored against clients outside the parent"]:::new
-  V2 --> E2["evidence uses min(z_i, −alignment z_i)"]:::new
-  subgraph LEG["Legend"]
+  P["$$\begin{array}{c}\text{FedHEP+ screening, unchanged}\end{array}$$"]:::same
+  G["$$\begin{array}{c}\text{each parent }g\text{ with at least 3 eligible members}\end{array}$$"]:::new
+  GS["$$\begin{array}{c}\text{parent score} \cr \displaystyle c_g = \cos(\bar v_g, \tilde r)\end{array}$$"]:::new
+  NULL["$$\begin{array}{c}\text{permutation test against 64 random groups of the same size} \cr \displaystyle z_g = \frac{c_g - \mathrm{med}(\mathrm{null})}{1.4826\,\mathrm{MAD}(\mathrm{null})}\end{array}$$"]:::new
+  F{"$$\begin{array}{c}\displaystyle z_g \lt  -2\ ?\end{array}$$"}:::new
+  V1["$$\begin{array}{c}\text{v1, Phase 4: stricter member cut this round} \cr \displaystyle z_i \lt  -1\end{array}$$"]:::new
+  V2["$$\begin{array}{c}\text{v2, Phase 4b: alignment with the other members} \cr \displaystyle a_i = \cos\Big(u_i,\ \frac{1}{|g| - 1}\sum_{j \neq i} u_j\Big), \quad u_i = v_i - \tilde r\end{array}$$"]:::new
+  E2["$$\begin{array}{c}\text{evidence update uses} \cr \displaystyle \min\big(z_i,\ -z_i^{\mathrm{align}}\big)\end{array}$$"]:::new
+  P --> G
+  G --> GS
+  GS --> NULL
+  NULL --> F
+  F -->|"$$\begin{array}{c}\text{v1}\end{array}$$"| V1
+  F -->|"$$\begin{array}{c}\text{v2}\end{array}$$"| V2
+  V2 --> E2
+  subgraph LEG[" "]
     direction LR
-    l1["unchanged from the previous model"]:::same
-    l2["new in this model"]:::new
-    l3["changed in this model"]:::changed
-    l4["removed in this model"]:::gone
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{new in this model}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{changed in this model}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{removed in this model}\end{array}$$"]:::gone
   end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
-  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

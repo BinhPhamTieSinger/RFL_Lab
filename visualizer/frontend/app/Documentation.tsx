@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import DocAdvisor from "./DocAdvisor";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,6 +25,9 @@ type DecisionItem = {
   decision: string;
   why: string;
 };
+
+// Magnification steps of the figure overlay, relative to the fitted size.
+const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6];
 
 const DOC_CATALOG: DocMeta[] = [
   {
@@ -247,6 +250,21 @@ export default function Documentation() {
   const [selected, setSelected] = useState("README.md");
   const [error, setError] = useState("");
   const [decisionFilterStatus, setDecisionFilterStatus] = useState<string>("all");
+  // Click-to-zoom for figures and diagrams: the overlay opens fitted to the screen; + and − (or clicking the
+  // image) magnify it relative to that fit, and the overlay scrolls. Escape or a click on the backdrop closes it.
+  const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
+  const [zoomStep, setZoomStep] = useState(0);
+  const fitWidth = useRef(0);
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setZoomed(null);
+      if (event.key === "+" || event.key === "=") setZoomStep((step) => Math.min(step + 1, ZOOM_STEPS.length - 1));
+      if (event.key === "-") setZoomStep((step) => Math.max(step - 1, 0));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomed]);
   const [decisionFilterTrack, setDecisionFilterTrack] = useState<string>("all");
   const [decisionSearch, setDecisionSearch] = useState<string>("");
   const [advisorOpen, setAdvisorOpen] = useState(false);
@@ -670,18 +688,37 @@ export default function Documentation() {
                   }
                   return <a href={href}>{children}</a>;
                 },
-                img: ({ src, alt }) => (
-                  <img
-                    className="doc-img"
-                    src={
-                      typeof src === "string" && !/^https?:|^data:/.test(src)
-                        ? `/research/documents/${relativePath(src)}`
-                        : src
-                    }
-                    alt={alt ?? "Research figure"}
-                    loading="lazy"
-                  />
-                ),
+                img: ({ src, alt }) => {
+                  const url =
+                    typeof src === "string" && !/^https?:|^data:/.test(src)
+                      ? `/research/documents/${relativePath(src)}`
+                      : typeof src === "string"
+                        ? src
+                        : "";
+                  const label = alt ?? "Research figure";
+                  const open = () => {
+                    setZoomStep(0);
+                    setZoomed({ src: url, alt: label });
+                  };
+                  return (
+                    <img
+                      className="doc-img zoomable"
+                      src={url}
+                      alt={label}
+                      title="Click to enlarge"
+                      loading="lazy"
+                      role="button"
+                      tabIndex={0}
+                      onClick={open}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          open();
+                        }
+                      }}
+                    />
+                  );
+                },
                 pre: ({ children }) => {
                   const childProps =
                     children && typeof children === "object" && "props" in children
@@ -725,6 +762,62 @@ export default function Documentation() {
             >
               {preparedContent}
             </Markdown>
+            {zoomed && (
+              <div
+                className="doc-lightbox"
+                role="dialog"
+                aria-modal="true"
+                aria-label={zoomed.alt}
+                onClick={() => setZoomed(null)}
+              >
+                <div className="doc-lightbox-bar" onClick={(event) => event.stopPropagation()}>
+                  <span className="doc-lightbox-title">{zoomed.alt}</span>
+                  <button
+                    type="button"
+                    aria-label="Zoom out"
+                    disabled={zoomStep === 0}
+                    onClick={() => setZoomStep((step) => Math.max(step - 1, 0))}
+                  >
+                    −
+                  </button>
+                  <span className="doc-lightbox-scale">{Math.round(ZOOM_STEPS[zoomStep] * 100)}%</span>
+                  <button
+                    type="button"
+                    aria-label="Zoom in"
+                    disabled={zoomStep === ZOOM_STEPS.length - 1}
+                    onClick={() => setZoomStep((step) => Math.min(step + 1, ZOOM_STEPS.length - 1))}
+                  >
+                    +
+                  </button>
+                  <button type="button" disabled={zoomStep === 0} onClick={() => setZoomStep(0)}>
+                    Fit
+                  </button>
+                  <a href={zoomed.src} target="_blank" rel="noreferrer">
+                    Open in new tab
+                  </a>
+                  <button type="button" onClick={() => setZoomed(null)} aria-label="Close enlarged figure">
+                    Close
+                  </button>
+                </div>
+                <div className={zoomStep > 0 ? "doc-lightbox-stage zoomed" : "doc-lightbox-stage"}>
+                  <img
+                    src={zoomed.src}
+                    alt={zoomed.alt}
+                    style={zoomStep > 0 && fitWidth.current ? { width: fitWidth.current * ZOOM_STEPS[zoomStep] } : undefined}
+                    ref={(element) => {
+                      if (element && zoomStep === 0 && element.clientWidth) fitWidth.current = element.clientWidth;
+                    }}
+                    onLoad={(event) => {
+                      if (zoomStep === 0) fitWidth.current = event.currentTarget.clientWidth;
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setZoomStep((step) => (step === 0 ? 2 : 0));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </article>
 
           {headings.length > 1 && (

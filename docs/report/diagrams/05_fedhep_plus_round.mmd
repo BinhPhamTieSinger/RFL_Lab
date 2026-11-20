@@ -1,25 +1,40 @@
 flowchart TD
-  C["Clients train as in FedHEP"]:::same --> UP["updates Δ_i of clients not isolated"]:::same
-  UP --> S["[1] score s_i = cos(Δ_i, r) on root-head rows<br/>r = coordinate-wise median update"]:::changed
-  S --> Z["[2] robust z_i = (s_i − med s) / max(1.4826 MAD s, 0.1 |med s|)"]:::new
-  Z --> EX{"[3] z_i < −2.5 ?"}:::new
-  EX -->|yes| OUT["left out this round"]:::new
-  EX -->|no| KEEP["kept"]:::same
-  Z --> EV["[4] evidence E_i ← 0.7 E_i + 0.3 z_i"]:::new
-  EV --> ISO{"E_i < −1.5 ?"}:::new
-  ISO -->|yes| PERM["isolated for good"]:::new
-  KEEP --> RG["[5] regroup kept clients by weight similarity<br/>(BatchNorm buffers left out)"]:::changed
-  RG --> AG["parents and Global: SCCF over kept clients only"]:::same
-  TL["trust ledger (q_i < 0.25)"]:::gone
-  subgraph LEG["Legend"]
+  UP["$$\begin{array}{c}\text{updates }\Delta_i\text{ of clients not isolated}\end{array}$$"]:::same
+  S["$$\begin{array}{c}\text{[1] score against the coordinate-wise median} \cr \displaystyle s_i = \cos(v_i, \tilde r), \quad \tilde r_j = \mathrm{med}_k\, v_{k,j}\end{array}$$"]:::changed
+  Z["$$\begin{array}{c}\text{[2] robust z-score} \cr \displaystyle z_i = \frac{s_i - \mathrm{med}(s)}{\max\big(1.4826\,\mathrm{MAD}(s),\ 0.1\,|\mathrm{med}(s)|\big)}\end{array}$$"]:::new
+  EX{"$$\begin{array}{c}\text{[3]} \cr \displaystyle z_i \lt  -2.5\ ?\end{array}$$"}:::new
+  OUT["$$\begin{array}{c}\text{left out this round}\end{array}$$"]:::new
+  KEEP["$$\begin{array}{c}\text{kept}\end{array}$$"]:::same
+  EV["$$\begin{array}{c}\text{[4] evidence} \cr \displaystyle E_i \leftarrow 0.7\,E_i + 0.3\,z_i\end{array}$$"]:::new
+  ISO{"$$\begin{array}{c}\displaystyle E_i \lt  -1.5\ ?\end{array}$$"}:::new
+  PERM["$$\begin{array}{c}\text{isolated for good}\end{array}$$"]:::new
+  RG["$$\begin{array}{c}\text{[5] regroup kept clients by weight similarity} \cr \text{BatchNorm buffers left out}\end{array}$$"]:::changed
+  AG["$$\begin{array}{c}\text{parents and Global: SCCF over kept clients only}\end{array}$$"]:::same
+  TL["$$\begin{array}{c}\text{trust ledger}\end{array}$$"]:::gone
+  UP --> S
+  S --> Z
+  Z --> EX
+  EX -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| OUT
+  EX -->|"$$\begin{array}{c}\text{no}\end{array}$$"| KEEP
+  Z --> EV
+  EV --> ISO
+  ISO -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| PERM
+  KEEP --> RG
+  RG --> AG
+  subgraph LEG[" "]
     direction LR
-    l1["unchanged from the previous model"]:::same
-    l2["new in this model"]:::new
-    l3["changed in this model"]:::changed
-    l4["removed in this model"]:::gone
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{new in this model}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{changed in this model}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{removed in this model}\end{array}$$"]:::gone
   end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
-  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

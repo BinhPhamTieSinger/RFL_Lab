@@ -1,23 +1,36 @@
 flowchart TD
-  G["Global model: trunk + root head (+ parent heads, one per group)"]:::same -->|"client i gets trunk, root head,<br/>its group's parent head, its own local head"| C["Client i trains 5 local epochs<br/>loss = m_r CE_root + m_p CE_parent + m_l CE_local"]:::changed
-  C --> UP["upload Δ_i (trunk, root head, parent head)"]:::same
-  C --> LH["local head stays on the client"]:::new
-  UP --> GA["Global: w ← w + FedAvg(Δ_i) over all clients"]:::same
-  UP --> PA["Parent g: copy Global if its members agree<br/>(mean cosine > 0.5), else average members,<br/>with adaptive momentum"]:::new
-  UP --> GR["Grouping: k-means on random projections<br/>of the updates; regroup when groups drift"]:::new
+  G["$$\begin{array}{c}\text{Global: trunk and root head }W_r \cr \text{parent heads }W_p^{(g)}\text{, one per group}\end{array}$$"]:::same
+  C["$$\begin{array}{c}\text{Client }i\text{ trains }E = 5\text{ epochs on three losses} \cr \displaystyle \mathcal{L}_i = m_r\,\mathrm{CE}(z_r) + m_p\,\mathrm{CE}(\tilde z_p) + m_l\,\mathrm{CE}(\tilde z_l) \cr \text{weights }m_h\text{ from the label-skew score }r_i\end{array}$$"]:::changed
+  LH["$$\begin{array}{c}\text{local head }W_l\text{ stays on the client}\end{array}$$"]:::new
+  UP["$$\begin{array}{c}\text{upload }\Delta_i\end{array}$$"]:::same
+  GA["$$\begin{array}{c}\text{Global: FedAvg over all clients} \cr \displaystyle w \leftarrow w + \sum_i \frac{n_i}{N}\,\Delta_i\end{array}$$"]:::same
+  PA["$$\begin{array}{c}\text{Parent }g\text{ copies Global if its members agree} \cr \displaystyle \overline{\cos}(\Delta_i, \Delta_j)_{i,j \in g} \gt  0.5 \cr \text{otherwise it averages them; adaptive momentum}\end{array}$$"]:::new
+  GR["$$\begin{array}{c}\text{Grouping: k-means on random projections of }\Delta_i \cr \text{regroup when groups drift}\end{array}$$"]:::new
+  PR["$$\begin{array}{c}\text{Prediction: ensemble of the three heads} \cr \displaystyle p(y \mid x) = \mathrm{softmax}\Big(\sum_h \pi_h\, \tilde z_h(x)\Big)\end{array}$$"]:::new
+  G -->|"$$\begin{array}{c}\text{trunk, }W_r\text{, own group's }W_p\text{, own }W_l\end{array}$$"| C
+  C --> UP
+  C --> LH
+  UP --> GA
+  UP --> PA
+  UP --> GR
   GR --> PA
   GA --> G
   PA --> G
-  C --> PR["Prediction: ensemble of the 3 heads,<br/>weights from confidence, loss and a learned prior"]:::new
-  subgraph LEG["Legend"]
+  C --> PR
+  subgraph LEG[" "]
     direction LR
-    l1["unchanged from the previous model"]:::same
-    l2["new in this model"]:::new
-    l3["changed in this model"]:::changed
-    l4["removed in this model"]:::gone
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{new in this model}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{changed in this model}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{removed in this model}\end{array}$$"]:::gone
   end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
-  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

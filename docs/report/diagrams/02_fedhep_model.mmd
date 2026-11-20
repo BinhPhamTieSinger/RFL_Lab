@@ -1,16 +1,38 @@
-flowchart LR
-  X["image x<br/>32×32×3"] --> PREP["prep<br/>conv 3→32"]
-  subgraph TRUNK["Shared trunk (aggregated by Global, shared by all clients)"]
-    PREP --> L1["layer1<br/>conv 32→64, pool"] --> R1["res1<br/>2 convs + skip"] --> L2["layer2<br/>conv 64→128, pool"] --> L3["layer3<br/>conv 128→256, pool"] --> R2["res2<br/>2 convs + skip"] --> GAP["global average pool<br/>feature h(x), 256-d"]
+flowchart TD
+  X["$$\begin{array}{c}\text{image }x \cr \text{32 by 32 by 3}\end{array}$$"]:::same
+  subgraph TRUNK["Shared trunk"]
+    PREP["$$\begin{array}{c}\text{prep, conv 3 to 32}\end{array}$$"]:::trunk
+    L1["$$\begin{array}{c}\text{layer1, conv 32 to 64, pool}\end{array}$$"]:::trunk
+    R1["$$\begin{array}{c}\text{res1, 2 convs + skip}\end{array}$$"]:::trunk
+    L2["$$\begin{array}{c}\text{layer2, conv 64 to 128, pool}\end{array}$$"]:::trunk
+    L3["$$\begin{array}{c}\text{layer3, conv 128 to 256, pool}\end{array}$$"]:::trunk
+    R2["$$\begin{array}{c}\text{res2, 2 convs + skip}\end{array}$$"]:::trunk
+    GAP["$$\begin{array}{c}\text{average pool: features }h(x) \in \mathbb{R}^{256}\end{array}$$"]:::trunk
   end
-  GAP --> HR["root head W_r<br/>256→100<br/>shared by everyone (Global)"]
-  GAP --> HP["parent head W_p<br/>256→100<br/>shared within the client's group"]
-  GAP --> HL["local head W_l<br/>256→100<br/>private, never uploaded"]
-  HR --> ENS["ensemble<br/>p = softmax(Σ_h π_h z_h)<br/>classes the client never saw masked (ACLM)"]
+  X --> PREP
+  PREP --> L1
+  L1 --> R1
+  R1 --> L2
+  L2 --> L3
+  L3 --> R2
+  R2 --> GAP
+  HR["$$\begin{array}{c}\text{root head }W_r \cr \text{shared by all clients}\end{array}$$"]:::head
+  HP["$$\begin{array}{c}\text{parent head }W_p \cr \text{shared within a group}\end{array}$$"]:::head
+  HL["$$\begin{array}{c}\text{local head }W_l \cr \text{private, never shared}\end{array}$$"]:::head
+  ENS["$$\begin{array}{c}\text{ensemble with class mask (ACLM)} \cr \displaystyle p(y \mid x) = \mathrm{softmax}\Big(\sum_{h} \pi_h\, \tilde z_h(x)\Big)\end{array}$$"]:::same
+  GAP -->|"$$\begin{array}{c}z_r\end{array}$$"| HR
+  GAP -->|"$$\begin{array}{c}z_p\end{array}$$"| HP
+  GAP -->|"$$\begin{array}{c}z_l\end{array}$$"| HL
+  HR --> ENS
   HP --> ENS
   HL --> ENS
-  ENS --> Y["prediction ŷ"]
+  style TRUNK fill:#fcfcfb,stroke:#2a78d6
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
   classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
   classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
-  class PREP,L1,R1,L2,L3,R2,GAP trunk
-  class HR,HP,HL head
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

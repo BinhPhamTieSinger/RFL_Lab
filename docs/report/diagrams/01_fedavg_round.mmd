@@ -1,10 +1,20 @@
 flowchart LR
-  S["Server: global model w_t"]:::same -->|"send w_t to every client"| C1["Client i: copy w_t"]:::same
-  C1 -->|"E local epochs of SGD<br/>on its own data D_i"| T["trained model w_t^i"]:::same
-  T -->|"upload update Δ_i = w_t^i − w_t"| A["Server: weighted mean<br/>Δ = Σ_i (n_i / n) Δ_i"]:::same
-  A -->|"w_{t+1} = w_t + Δ"| S
-  M["Malicious client a:<br/>uploads any vector Δ_a"]:::gone -.->|"poisoned update"| A
+  S["$$\begin{array}{c}\text{Server} \cr \text{global model }w_t\end{array}$$"]:::same
+  C["$$\begin{array}{c}\text{Client }i\text{ copies }w_t\text{ and trains} \cr E\text{ epochs of SGD on its data }D_i\end{array}$$"]:::same
+  U["$$\begin{array}{c}\text{upload the update} \cr \displaystyle \Delta_i = w_t^i - w_t\end{array}$$"]:::same
+  A["$$\begin{array}{c}\text{Server: weighted mean} \cr \displaystyle w_{t+1} = w_t + \sum_i \frac{n_i}{N}\,\Delta_i\end{array}$$"]:::same
+  M["$$\begin{array}{c}\text{Malicious client }a \cr \text{uploads any vector }\Delta_a\end{array}$$"]:::gone
+  S -->|"$$\begin{array}{c}\text{send }w_t\end{array}$$"| C
+  C --> U
+  U --> A
+  A -->|"$$\begin{array}{c}w_{t+1}\end{array}$$"| S
+  M -.->|"$$\begin{array}{c}\text{poisoned update}\end{array}$$"| A
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

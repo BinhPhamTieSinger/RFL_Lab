@@ -2,8 +2,8 @@
 
   python scripts/plot_report_figures.py
 
-guard_coverage.png: which parts of the multi-head ResNet-9 each FedHEP-Guard mechanism reads or changes. Diagram
-sources for the flow charts are docs/report/diagrams/*.mmd (render with mmdc)."""
+guard_coverage.png: which parts of the multi-head ResNet-9 each FedHEP-Guard mechanism reads or changes. The flow
+charts come from scripts/draw_report_diagrams.py."""
 from __future__ import annotations
 
 import importlib.util

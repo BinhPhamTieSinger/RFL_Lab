@@ -1,37 +1,63 @@
 flowchart TD
-  C["Clients train as in FedHEP<br/>(three heads, 5 local epochs)"]:::same --> UP["updates Δ_i of clients not isolated"]:::same
-  UP --> SW["[1a] whole-update signal:<br/>cos(Δ_i without BatchNorm, median update)"]:::new
-  UP --> SC["[1b] critical-layer signal:<br/>mean cos on the k = 5 most disputed trunk/root layers"]:::new
-  SW --> ZW["[2] robust z, two-sided: z ← −|z|"]:::changed
-  SC --> ZC["[2] robust z, two-sided: z ← −|z|"]:::changed
-  ZW --> GW{"[3] gap gate: scores split?<br/>g ≥ 8"}:::new
-  ZC --> GC{"[3] gap gate: scores split?<br/>g ≥ 8"}:::new
-  GW -->|"no: z ← max(z, 0)"| U["[1c] union: z_i = min(z_i^weights, z_i^critical)"]:::new
-  GW -->|yes| U
-  GC -->|"no: z ← max(z, 0)"| U
-  GC -->|yes| U
-  U --> EX{"[4] z_i < −2.5 for 3 rounds in a row?"}:::changed
-  EX -->|yes| OUT["left out this round"]:::same
-  U --> EV["evidence E_i ← 0.7 E_i + 0.3 z_i"]:::same
-  EV --> ISO{"[4] E_i < −1.5 and z_i < −1.5<br/>for 3 rounds in a row?"}:::changed
-  ISO -->|yes| PERM["isolated for good"]:::same
-  PERM --> RW["[6] rewind: trunk + root head back to the stored Global<br/>from before the client's first suspicious round"]:::new
-  EX -->|no| KEEP["kept clients"]:::same
-  KEEP --> RG["regroup by weight similarity"]:::same
-  RG --> PAR["parents: SCCF over kept members"]:::same
-  KEEP --> L0["[5] Global: L0 = ARC clip → NNM mixing → trimmed mean (f)<br/>replaces SCCF at the Global step"]:::new
-  L0 --> GLOB["Global model"]:::same
+  C["$$\begin{array}{c}\text{clients train as in FedHEP} \cr \text{three heads, }E = 5\text{ epochs}\end{array}$$"]:::same
+  UP["$$\begin{array}{c}\text{updates }\Delta_i\text{ of clients not isolated}\end{array}$$"]:::same
+  SW["$$\begin{array}{c}\text{[1a] whole-update signal} \cr \displaystyle s_i^{\mathrm{w}} = \cos\big(\Delta_i^{\setminus \mathrm{BN}},\ \mathrm{med}_k\,\Delta_k^{\setminus \mathrm{BN}}\big)\end{array}$$"]:::new
+  SC["$$\begin{array}{c}\text{[1b] critical-layer signal} \cr \displaystyle s_i^{\mathrm{c}} = \frac{1}{k}\sum_{\ell \in L^\star} \cos\big(\Delta_i^{(\ell)}, \tilde r^{(\ell)}\big) \cr L^\star\text{: the }k = 5\text{ most disputed layers}\end{array}$$"]:::new
+  ZW["$$\begin{array}{c}\text{[2] robust z, two-sided} \cr \displaystyle z_i^{\mathrm{w}} \leftarrow -|z_i^{\mathrm{w}}|\end{array}$$"]:::changed
+  ZC["$$\begin{array}{c}\text{[2] robust z, two-sided} \cr \displaystyle z_i^{\mathrm{c}} \leftarrow -|z_i^{\mathrm{c}}|\end{array}$$"]:::changed
+  GW{"$$\begin{array}{c}\text{[3] gap gate} \cr \displaystyle g = \frac{\max_k \delta_k}{\mathrm{med}_k\,\delta_k} \ge 8\ ?\end{array}$$"}:::new
+  GC{"$$\begin{array}{c}\text{[3] gap gate} \cr \displaystyle g = \frac{\max_k \delta_k}{\mathrm{med}_k\,\delta_k} \ge 8\ ?\end{array}$$"}:::new
+  U["$$\begin{array}{c}\text{[1c] union of the two screens} \cr \displaystyle z_i = \min\big(z_i^{\mathrm{w}},\ z_i^{\mathrm{c}}\big)\end{array}$$"]:::new
+  EX{"$$\begin{array}{c}\text{[4] }z_i \lt  -2.5 \cr \text{in 3 rounds in a row?}\end{array}$$"}:::changed
+  OUT["$$\begin{array}{c}\text{left out this round}\end{array}$$"]:::same
+  KEEP["$$\begin{array}{c}\text{kept clients}\end{array}$$"]:::same
+  EV["$$\begin{array}{c}\text{evidence} \cr \displaystyle E_i \leftarrow 0.7\,E_i + 0.3\,z_i\end{array}$$"]:::same
+  ISO{"$$\begin{array}{c}\text{[4] }E_i \lt  -1.5\text{ and }z_i \lt  -1.5 \cr \text{in 3 rounds in a row?}\end{array}$$"}:::changed
+  PERM["$$\begin{array}{c}\text{isolated for good}\end{array}$$"]:::same
+  RW["$$\begin{array}{c}\text{[6] rewind trunk and root head} \cr \displaystyle w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w \cr t^\star\text{: before the first suspicious round}\end{array}$$"]:::new
+  RG["$$\begin{array}{c}\text{regroup by weight similarity}\end{array}$$"]:::same
+  PAR["$$\begin{array}{c}\text{parents: SCCF over kept members}\end{array}$$"]:::same
+  L0["$$\begin{array}{c}\text{[5] Global step: L0, replaces SCCF} \cr \displaystyle \Delta = \mathrm{TM}_f\Big(\mathrm{NNM}_f\big(\mathrm{ARC}_f(\Delta_1, \dots, \Delta_n)\big)\Big)\end{array}$$"]:::new
+  GLOB["$$\begin{array}{c}\text{Global model}\end{array}$$"]:::same
+  INF["$$\begin{array}{c}\text{[7] optional, at prediction: depth-exit guard} \cr \displaystyle s(x) = 1 - \tfrac{1}{3}\sum_d e_d[\hat y] \gt  \tau_i \ \Rightarrow\ \text{exits vote}\end{array}$$"]:::new
+  C --> UP
+  UP --> SW
+  UP --> SC
+  SW --> ZW
+  SC --> ZC
+  ZW --> GW
+  ZC --> GC
+  GW -->|"$$\begin{array}{c}\text{no: }z \leftarrow \max(z, 0)\end{array}$$"| U
+  GW -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| U
+  GC -->|"$$\begin{array}{c}\text{no: }z \leftarrow \max(z, 0)\end{array}$$"| U
+  GC -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| U
+  U --> EX
+  EX -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| OUT
+  EX -->|"$$\begin{array}{c}\text{no}\end{array}$$"| KEEP
+  U --> EV
+  EV --> ISO
+  ISO -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| PERM
+  PERM --> RW
+  KEEP --> RG
+  RG --> PAR
+  KEEP --> L0
+  L0 --> GLOB
   RW --> GLOB
-  GLOB --> INF["[7] optional at prediction: depth-exit guard<br/>(linear exits at res1, layer2, layer3 vote when they disagree)"]:::new
-  subgraph LEG["Legend"]
+  GLOB --> INF
+  subgraph LEG[" "]
     direction LR
-    l1["unchanged from the previous model"]:::same
-    l2["new in this model"]:::new
-    l3["changed in this model"]:::changed
-    l4["removed in this model"]:::gone
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{new in this model}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{changed in this model}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{removed in this model}\end{array}$$"]:::gone
   end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
-  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

@@ -1,19 +1,33 @@
 flowchart LR
-  P1["Phase 1<br/>Reproduce FedAvg, FedHEP,<br/>Defended FedHEP<br/>(matches the paper)"]:::k --> P2["Phase 2<br/>Benchmark harness:<br/>attacks, backdoor, detection<br/>(Defended never isolates,<br/>79% backdoor)"]:::k
-  P2 --> P3["Phase 3<br/>FedHEP+: robust z screen,<br/>permanent isolation, regroup<br/>(+8.3 sign flip, backdoor 21%)"]:::k
-  P3 --> P4["Phase 4<br/>Drill-down by parent<br/>(failed: members alike)"]:::x
-  P3 --> P5["Phase 5<br/>Classic rules in FedHEP<br/>(none better overall)"]:::x
-  P4 --> FU["Follow-up diagnostics<br/>FedHEP+ fails at α = 0.2,<br/>misses ALIE / Min-Max,<br/>backdoor persists"]:::w
+  P1["$$\begin{array}{c}\text{Phase 1} \cr \text{reproduce FedAvg, FedHEP,} \cr \text{Defended FedHEP} \cr \text{matches the paper}\end{array}$$"]:::k
+  P2["$$\begin{array}{c}\text{Phase 2} \cr \text{fair benchmark: attacks,} \cr \text{backdoor, detection} \cr \text{Defended never isolates;} \cr \text{backdoor 79\%}\end{array}$$"]:::k
+  P3["$$\begin{array}{c}\text{Phase 3} \cr \text{FedHEP+: robust z screen,} \cr \text{permanent isolation, regroup} \cr \text{sign flip +8.3; backdoor 21\%}\end{array}$$"]:::k
+  P4["$$\begin{array}{c}\text{Phase 4} \cr \text{drill-down by parent} \cr \text{failed: members alike}\end{array}$$"]:::x
+  P5["$$\begin{array}{c}\text{Phase 5} \cr \text{classic rules in FedHEP} \cr \text{none better overall}\end{array}$$"]:::x
+  FU["$$\begin{array}{c}\text{Follow-up diagnostics} \cr \text{FedHEP+ fails at }\alpha = 0.2\text{,} \cr \text{misses ALIE and Min-Max,} \cr \text{backdoor persists}\end{array}$$"]:::w
+  P6["$$\begin{array}{c}\text{Phase 6} \cr \text{FedHEP-Guard: L0, two-sided,} \cr \text{gap gate, union screen, rewind}\end{array}$$"]:::k
+  B["$$\begin{array}{c}\text{Canonical benchmark} \cr \text{every model, one machine}\end{array}$$"]:::k
+  P1 --> P2
+  P2 --> P3
+  P3 --> P4
+  P3 --> P5
+  P4 --> FU
   P5 --> FU
-  FU --> P6["Phase 6<br/>FedHEP-Guard: L0, two-sided,<br/>gap gate, union screen, rewind"]:::k
-  P6 --> B["Canonical benchmark<br/>every model, one machine"]:::k
-  subgraph LEG["Legend"]
+  FU --> P6
+  P6 --> B
+  subgraph LEG[" "]
     direction LR
-    lk["result carried forward"]:::k
-    lx["idea rejected"]:::x
-    lw["diagnosis of a failure"]:::w
+    l0["$$\begin{array}{c}\text{result carried forward}\end{array}$$"]:::k
+    l1["$$\begin{array}{c}\text{idea rejected}\end{array}$$"]:::x
+    l2["$$\begin{array}{c}\text{diagnosis of a failure}\end{array}$$"]:::w
   end
   style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
   classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
   classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
   classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

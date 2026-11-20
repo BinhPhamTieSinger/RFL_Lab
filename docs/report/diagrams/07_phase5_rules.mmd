@@ -1,18 +1,26 @@
 flowchart LR
-  C["Clients train as in FedHEP"]:::same --> UP["updates Δ_i"]:::same
-  UP --> PAR["parents: SCCF over the clients the rule accepts"]:::same
-  UP --> RULE["Global step replaced by one rule:<br/>Median · Trimmed mean (f per side) · Bulyan (f)<br/>FLAME (HDBSCAN cluster, clip, noise) · FLTrust (server root data)"]:::changed
-  RULE --> GLOB["Global model"]:::same
-  TL["trust ledger"]:::gone
-  subgraph LEG["Legend"]
+  UP["$$\begin{array}{c}\text{updates }\Delta_i\text{ from clients trained as in FedHEP}\end{array}$$"]:::same
+  PAR["$$\begin{array}{c}\text{parents: SCCF over the clients the rule accepts}\end{array}$$"]:::same
+  RULE["$$\begin{array}{c}\text{Global step replaced by one rule} \cr \text{Median: }\mathrm{med}_i\,\Delta_{i,j}\text{ per coordinate} \cr \displaystyle \text{Trimmed mean: } \mathrm{TM}_f(X)_j = \frac{1}{n - 2f}\sum_{i=f+1}^{n-f} X_{(i),j} \cr \text{Bulyan: Krum selection, then a trimmed mean} \cr \text{FLAME: HDBSCAN cluster, clip to median norm, add noise} \cr \text{FLTrust: }\mathrm{ReLU}(\cos(\Delta_i, \Delta_0))\text{ with server root data}\end{array}$$"]:::changed
+  GLOB["$$\begin{array}{c}\text{Global model}\end{array}$$"]:::same
+  TL["$$\begin{array}{c}\text{trust ledger}\end{array}$$"]:::gone
+  UP --> PAR
+  UP --> RULE
+  RULE --> GLOB
+  subgraph LEG[" "]
     direction LR
-    l1["unchanged from the previous model"]:::same
-    l2["new in this model"]:::new
-    l3["changed in this model"]:::changed
-    l4["removed in this model"]:::gone
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{new in this model}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{changed in this model}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{removed in this model}\end{array}$$"]:::gone
   end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
   classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
   classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
   classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
   classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
-  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b
