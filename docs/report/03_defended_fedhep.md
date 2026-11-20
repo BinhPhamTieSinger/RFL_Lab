@@ -45,6 +45,18 @@ $$q_i \leftarrow 0.85\,q_i + 0.15\,\min(1,\ n\,t_i), \qquad q_i < 0.25 \Rightarr
 | $q_i$ | ledger score of client $i$, starting at 1 |
 | $n$ | number of senders in this aggregation ($n\,t_i = 1$ is an equal share) |
 
+### Why each part is in Defended FedHEP
+
+| Part | What it is for | Why it is in the model | What we measured |
+|---|---|---|---|
+| [a] Norm bound | caps each update's length | one huge update (noise, gradient ascent, a boosted backdoor) would otherwise dominate any weighted sum | random noise: FedHEP 5.4% → Defended FedHEP 45.8% |
+| [b] Root-head signal | what trust is computed on | the root head's rows for a client's own classes are small, cheap to compare and class-specific | it misses backdoors, which live mostly in the trunk (chapter 6.4) |
+| [c] Mean-direction reference | what "normal" looks like | the direction most honest clients share | a coordinated minority pulls it: backdoor attackers looked *more* trustworthy than honest clients (AUROC 0.36) |
+| [d] Softmax trust, hard reject | down-weight dissenters smoothly; drop clearly reversed updates | a soft weight keeps honest but unusual clients; a hard cut removes updates pointing backwards | sign flip +4.4 over FedHEP, but the weights flatten late in training (3.5) |
+| [e] BatchNorm median | robust BatchNorm statistics | running means and variances are not checked by the cosine signal and are easy to poison | part of the noise robustness |
+| [f] Trust ledger | memory across rounds, and removal | an attacker should be removed, not only down-weighted every round | never isolated anyone in 24 runs |
+| Random fixed groups | groups that do not depend on the updates | the authors' code does not say why; our reading is that attackers then cannot steer which group they join | — |
+
 ## 3.2 What it changes against FedHEP
 
 | | FedHEP | Defended FedHEP |

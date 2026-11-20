@@ -2,16 +2,16 @@
 
 Each idea here was a hypothesis with a pass criterion set before the runs. None met its criterion. They are reported in full because each one explains part of FedHEP-Guard's design ([chapter 6](06_fedhep_guard.md)).
 
-| Phase | Idea | What it changed | Why it failed |
-|---|---|---|---|
-| 4 | Drill-down v1 | flagged groups' members face a stricter cut | one-round exclusion hid the backdoor attackers: backdoor 21.5% → 39.7% |
-| 4b | Drill-down v2 | flagged groups' members gain evidence if they share the group's direction | members of a FedHEP group are genuinely alike: honest groups isolated together (−1.1 to −1.7 points) |
-| 5 | Classic robust rules at FedHEP's Global step | Median, Trimmed mean, Bulyan, FLAME, FLTrust | none beats FedHEP+ overall; Bulyan and FLAME stop the backdoor but cost 3.9–5.6 points with no attack |
-| 6 | Worker momentum under L0 | each client's update averaged over rounds before aggregation | worse in every setting |
-| 6 | Output-space and sign signals | probe logits, head gap, sign alignment | miss the backdoor or the sign flippers |
-| 6 | Head-agreement inference | personal heads overrule the ensemble when they agree against it | removes only 3–9 points of backdoor success (Mac; 0.5–19 on the GPU) |
-| 6 | Holding f fixed | L0 keeps assuming $f$ attackers after the screen removed them | −1.1 points under ALIE |
-| 6 | Rewinding every shared weight | rewind personal heads too | costs about 0.8 points for no gain |
+| Phase | Idea | Why we tried it | What it changed | Why it failed |
+|---|---|---|---|---|
+| 4 | Drill-down v1 | FedHEP+ still let 21% of the backdoor through; attackers pushing one direction should stand out more **together** than alone (in a synthetic test, 3 backdoor attackers each looked normal, z > −0.4, while their group scored −2.5 to −4.3) | flagged groups' members face a stricter cut | one-round exclusion hid the backdoor attackers: backdoor 21.5% → 39.7% |
+| 4b | Drill-down v2 | v1 failed because a one-round exclusion hides the attacker; evidence that builds over rounds does not | flagged groups' members gain evidence if they share the group's direction | members of a FedHEP group are genuinely alike: honest groups isolated together (−1.1 to −1.7 points) |
+| 5 | Classic robust rules at FedHEP's Global step | before inventing a defense, check whether a published one already fixes FedHEP+'s weak spots | Median, Trimmed mean, Bulyan, FLAME, FLTrust | none beats FedHEP+ overall; Bulyan and FLAME stop the backdoor but cost 3.9–5.6 points with no attack |
+| 6 | Worker momentum under L0 | the robust-learning literature shows that averaging each client's updates over rounds shrinks the noise attackers hide in | each client's update averaged over rounds before aggregation | worse in every setting |
+| 6 | Output-space and sign signals | a backdoor might show in what the model predicts (probe images) or in the sign pattern of the update (AlignIns), where a cosine might miss it | probe logits, head gap, sign alignment | miss the backdoor or the sign flippers |
+| 6 | Head-agreement inference | personal heads are trained only on the client's own clean data, so they might not carry the backdoor | personal heads overrule the ensemble when they agree against it | removes only 3–9 points of backdoor success (Mac; 0.5–19 on the GPU): the parent head carries it too |
+| 6 | Holding f fixed | R3 lost 1.8 points under ALIE; lowering $f$ after exclusions might let ALIE back into the trimmed mean | L0 keeps assuming $f$ attackers after the screen removed them | −1.1 points under ALIE: it made things worse |
+| 6 | Rewinding every shared weight | the personal heads might also hold part of the backdoor | rewind personal heads too | costs about 0.8 points for no gain |
 
 ## 5.1 Phase 4: check groups first, then their members
 

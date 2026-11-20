@@ -26,8 +26,9 @@ type DecisionItem = {
   why: string;
 };
 
-// Magnification steps of the figure overlay, relative to the fitted size.
-const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6];
+// Figure overlay zoom, relative to the whole figure fitted on screen (1 = fit page).
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 8;
 
 const DOC_CATALOG: DocMeta[] = [
   {
@@ -182,10 +183,12 @@ function prepareMarkdown(raw: string): string {
     /<details>\s*<summary>[^<]*<\/summary>\s*(```mermaid[\s\S]*?```)\s*<\/details>/gi,
     "$1",
   );
-  // 2. Convert single-line $$...$$ display math into multi-line fenced math blocks for remark-math v6
+  // 2. Convert single-line $$...$$ display math into multi-line fenced math blocks for remark-math v6.
+  // A function replacement: in a replacement string "$$" means one literal "$", which turned every displayed
+  // formula into inline math.
   cleaned = cleaned.replace(
     /(^|\n)\$\$([^\n$]+?)\$\$(?=\s*(\n|$))/g,
-    "\n\n$$\n$2\n$$\n\n",
+    (_match, _start, body) => `\n\n$$\n${body}\n$$\n\n`,
   );
   return cleaned;
 }
@@ -250,17 +253,21 @@ export default function Documentation() {
   const [selected, setSelected] = useState("README.md");
   const [error, setError] = useState("");
   const [decisionFilterStatus, setDecisionFilterStatus] = useState<string>("all");
-  // Click-to-zoom for figures and diagrams: the overlay opens fitted to the screen; + and − (or clicking the
-  // image) magnify it relative to that fit, and the overlay scrolls. Escape or a click on the backdrop closes it.
+  // Click-to-zoom for figures and diagrams. The overlay opens at "fit width" (the figure as wide as the window,
+  // scroll for the rest) when that is larger than the whole figure on screen, as for tall diagrams; otherwise at
+  // "fit page". + and − zoom by 1.5x, clicking the image switches between the two fits, Escape closes.
   const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
-  const [zoomStep, setZoomStep] = useState(0);
-  const fitWidth = useRef(0);
+  const [zoom, setZoom] = useState(1);
+  const fitPage = useRef(0); // image width in px when the whole figure fits the stage
+  const widthZoom = useRef(1); // zoom at which the figure is as wide as the stage
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const clampZoom = (value: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
   useEffect(() => {
     if (!zoomed) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setZoomed(null);
-      if (event.key === "+" || event.key === "=") setZoomStep((step) => Math.min(step + 1, ZOOM_STEPS.length - 1));
-      if (event.key === "-") setZoomStep((step) => Math.max(step - 1, 0));
+      if (event.key === "+" || event.key === "=") setZoom((value) => clampZoom(value * 1.5));
+      if (event.key === "-") setZoom((value) => clampZoom(value / 1.5));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -697,7 +704,8 @@ export default function Documentation() {
                         : "";
                   const label = alt ?? "Research figure";
                   const open = () => {
-                    setZoomStep(0);
+                    fitPage.current = 0;
+                    setZoom(1);
                     setZoomed({ src: url, alt: label });
                   };
                   return (
@@ -775,22 +783,25 @@ export default function Documentation() {
                   <button
                     type="button"
                     aria-label="Zoom out"
-                    disabled={zoomStep === 0}
-                    onClick={() => setZoomStep((step) => Math.max(step - 1, 0))}
+                    disabled={zoom <= ZOOM_MIN}
+                    onClick={() => setZoom((value) => clampZoom(value / 1.5))}
                   >
                     −
                   </button>
-                  <span className="doc-lightbox-scale">{Math.round(ZOOM_STEPS[zoomStep] * 100)}%</span>
+                  <span className="doc-lightbox-scale">{Math.round(zoom * 100)}%</span>
                   <button
                     type="button"
                     aria-label="Zoom in"
-                    disabled={zoomStep === ZOOM_STEPS.length - 1}
-                    onClick={() => setZoomStep((step) => Math.min(step + 1, ZOOM_STEPS.length - 1))}
+                    disabled={zoom >= ZOOM_MAX}
+                    onClick={() => setZoom((value) => clampZoom(value * 1.5))}
                   >
                     +
                   </button>
-                  <button type="button" disabled={zoomStep === 0} onClick={() => setZoomStep(0)}>
-                    Fit
+                  <button type="button" onClick={() => setZoom(1)}>
+                    Fit page
+                  </button>
+                  <button type="button" onClick={() => setZoom(clampZoom(widthZoom.current))}>
+                    Fit width
                   </button>
                   <a href={zoomed.src} target="_blank" rel="noreferrer">
                     Open in new tab
@@ -799,20 +810,26 @@ export default function Documentation() {
                     Close
                   </button>
                 </div>
-                <div className={zoomStep > 0 ? "doc-lightbox-stage zoomed" : "doc-lightbox-stage"}>
+                <div
+                  ref={stageRef}
+                  className={zoom > 1 ? "doc-lightbox-stage zoomed" : "doc-lightbox-stage"}
+                >
                   <img
                     src={zoomed.src}
                     alt={zoomed.alt}
-                    style={zoomStep > 0 && fitWidth.current ? { width: fitWidth.current * ZOOM_STEPS[zoomStep] } : undefined}
-                    ref={(element) => {
-                      if (element && zoomStep === 0 && element.clientWidth) fitWidth.current = element.clientWidth;
-                    }}
+                    style={zoom > 1 && fitPage.current ? { width: fitPage.current * zoom } : undefined}
                     onLoad={(event) => {
-                      if (zoomStep === 0) fitWidth.current = event.currentTarget.clientWidth;
+                      const stage = stageRef.current;
+                      const image = event.currentTarget;
+                      if (!stage || fitPage.current) return;
+                      fitPage.current = image.clientWidth;
+                      const usable = stage.clientWidth - 32;
+                      widthZoom.current = image.clientWidth ? usable / image.clientWidth : 1;
+                      if (widthZoom.current > 1.3) setZoom(clampZoom(widthZoom.current));
                     }}
                     onClick={(event) => {
                       event.stopPropagation();
-                      setZoomStep((step) => (step === 0 ? 2 : 0));
+                      setZoom((value) => (value > 1 ? 1 : clampZoom(Math.max(widthZoom.current, 2))));
                     }}
                   />
                 </div>

@@ -42,6 +42,18 @@ $$E_i \leftarrow 0.7\,E_i + 0.3\,z_i, \qquad E_i < -1.5 \Rightarrow i \text{ iso
 | $E_i$, $0.7$ | evidence and its decay | `plus.evidence_decay: 0.7` |
 | $-1.5$ | isolation cut | `plus.evidence_cut: 1.5` |
 
+### Why each part is in FedHEP+
+
+Each part answers one of Defended FedHEP's failures ([chapter 3.5](03_defended_fedhep.md)).
+
+| Part | What it is for | Why it is in the model (the failure it answers) | Evidence it helps |
+|---|---|---|---|
+| [1] Median reference | what "normal" looks like | the mean is pulled toward a coordinated minority, so backdoor attackers looked more trustworthy than honest clients (AUROC 0.36) | backdoor success, seed 42: 80% with the mean reference → 33% with the median |
+| [2] Robust z-score | how unusual a client is, in units that do not drift | Defended FedHEP ranked sign flippers correctly (AUROC 0.97) but never acted: its fixed temperature fades as all cosines shrink. A z-score is unchanged when everything shrinks together | sign and label flippers isolated in round 1 |
+| [3] Exclusion at $z < -2.5$ | keep a suspicious update out this round | evidence takes rounds to build, and the damage happens meanwhile | not measured on its own |
+| [4] Evidence and permanent isolation | remove persistent offenders, forgive one bad round | the trust ledger never removed anyone; letting isolated clients back in readmitted attackers (backdoor 21% → 39%) | sign flip +8.3, label flip +3.1, backdoor 79% → 21% |
+| [5] Regrouping by weights | groups that reflect real similarity after removals | FedHEP's grouping cosine is dominated by BatchNorm counters (2.5), and isolations empty groups | limited the false-isolation cascade (4.4) |
+
 ## 4.2 What it changes against Defended FedHEP
 
 | | Defended FedHEP | FedHEP+ |

@@ -64,6 +64,19 @@ The mixing weights come from each head's confidence (entropy $H_h$), its recent 
 | $H_h$, $\ell_h$, $\alpha_h$ | head $h$'s prediction entropy, recent loss and learned prior |
 | $T$, $\beta$ | temperature and loss weight of the mixing rule (authors' values) |
 
+### Why each part is in FedHEP
+
+FedHEP is the authors' design. The reasons below are its design rationale; our own runs test the model as a whole, not each part separately (except the parents, 2.5).
+
+| Part | What it is for | Why it is in the model | Evidence |
+|---|---|---|---|
+| Three heads on one trunk | general features learned from everyone; decision rules at three levels | under label skew one classifier cannot fit every client. The trunk can still learn from all data while each client keeps its own decision rule | at α = 0.05: FedHEP 65.5% against FedAvg 29.4% |
+| Loss weights from label skew ($m_r, m_p, m_l$) | how much each head learns on each client | a client with a few classes is served best by its local head, a balanced client by the root head | design choice; not tested separately |
+| Class mask (ACLM) | the parent and local heads predict only the client's own classes | heads trained on a few classes would otherwise give probability to classes the client never sees | design choice; not tested separately |
+| Parents (groups) | a middle tier shared by similar clients | clients with similar label mixes should help each other more than the whole population does | on CIFAR-100 the parents always copied Global (2.5), so this tier changed nothing measurable |
+| Local head kept on the client | the most personal part is never shared | it needs no aggregation, and other clients cannot poison it | — |
+| Ensemble mixing weights ($\pi_h$) | choose, per input, which head to trust | a head's reliability varies by client and input; confidence and recent loss pick the better one | design choice; not tested separately |
+
 ## 2.3 What FedHEP changes against FedAvg
 
 | | FedAvg | FedHEP |

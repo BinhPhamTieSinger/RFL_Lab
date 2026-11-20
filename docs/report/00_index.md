@@ -38,6 +38,7 @@
 | What did FedHEP+ achieve? | `figures/phase3b_confirm.png` | FedHEP+ vs Defended, paired by seed | 4.3 |
 | Why is FedHEP+ not enough? | `figures/followup_alpha02.png`, `figures/followup_adaptive.png`, `figures/followup_backdoor_persists.png` | — | 4.5 |
 | Why not just use FLAME or Bulyan? | `figures/phase5_three_seeds.png` | Phase 5 table | 5.2 |
+| Why is each mechanism in the model? | — | "Why each part" tables; FedHEP-Guard summary of changes | 2.2, 3.1, 4.1, 5, 6.1 |
 | How does FedHEP-Guard work? | `report/figures/diagrams/08_fedhep_guard_round.png`, `report/figures/guard_coverage.png` | summary of changes | 6.1 |
 | Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png` | ladder tables | 6.8 |
 | Why two signals? | `figures/phase6_signals.png` | signals table | 5.3, 6.4 |

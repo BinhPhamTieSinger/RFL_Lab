@@ -15,21 +15,29 @@ FedHEP-Guard is FedHEP+ with seven changes, numbered [1]–[7] below. It was bui
 
 ## 6.1 Summary of the changes
 
-| # | Mechanism | Where in the round | What it fixes | Config |
-|---|---|---|---|---|
-| [1a] | Whole-update signal | screening | the root head alone hides a backdoor that lives in the trunk | `plus.signal: weights_critical` |
-| [1b] | Critical-layer signal | screening | the whole update dilutes a backdoor that sits in a few layers | (same) |
-| [1c] | Union of the two | screening | each signal misses the backdoor on a different seed | (same) |
-| [2] | Two-sided screen | screening | ALIE and Min-Max sit *above* the others | `plus.two_sided: true` |
-| [3] | Gap gate | screening | no blame in rounds without a separate group: fewer honest isolations | `plus.gap_gate: 8` |
-| [4] | Patience 3 | exclusion and isolation | one bad round no longer isolates an honest client | `plus.exclusion_patience: 3`, `plus.isolation_patience: 3` |
-| [5] | L0 influence bound | Global step | an attacker that is not caught still has bounded influence | `plus.global_rule: arc_nnm_tm`, `plus.global_f` |
-| [6] | Rewind on isolation | after isolation | removes what a late-caught attacker already put in the trunk | `plus.rewind: trunk_root` |
-| [7] | Depth-exit guard (optional) | prediction | halves any backdoor that gets through | `fedhep.exit_guard: true` |
+Each row says what the mechanism does, **why it is in the model** (the failure it answers, with the run that showed the failure), and the evidence that it helps. Sections 6.2–6.7 give each one's formula, legend and full reasoning.
+
+| # | Mechanism | What it does | Why it is in the model | Evidence it helps | Config |
+|---|---|---|---|---|---|
+| [1a] | Whole-update signal | scores the whole update, not just the root head | the root head is 1.5% of the weights; a backdoor lives mostly in the trunk, so the root-head screen missed it (32 / 70 / 68% success, GPU) | backdoor 0.6% on 2 of 3 seeds | `plus.signal: weights_critical` |
+| [1b] | Critical-layer signal | scores the 5 layers where clients disagree most | one cosine over 1.7 million weights dilutes a backdoor that sits in a few layers | caught the seed the whole update missed (0.5%) | (same) |
+| [1c] | Union of the two | either signal can flag a client | each signal alone missed the backdoor on a different seed | stealth backdoor 0.2–0.5% on every seed | (same) |
+| [2] | Two-sided screen | also flags clients too close to the typical update | ALIE and Min-Max hide by sitting *closer* to the median than honest clients; the one-sided screen caught none of them | 9 of 9 ALIE and 9 of 9 Min-Max attackers caught (D1) | `plus.two_sided: true` |
+| [3] | Gap gate | blames no one in a round whose scores do not split into two groups | with the two-sided screen and strong skew, honest clients were flagged every round (R2 at D2: 38 honest isolations over 3 runs, no attack) | 38 → 2–3 honest isolations; +2.6 points at D2 | `plus.gap_gate: 8` |
+| [4] | Patience 3 | needs 3 bad rounds in a row before acting | around round 14 the z denominator is smallest, and one ordinary round could isolate an honest client for good | false isolations −42% | `plus.exclusion_patience: 3`, `plus.isolation_patience: 3` |
+| [5] | L0 influence bound | clips, mixes and trims every update at the Global step | a screen acts only after evidence builds, and misses some attackers; whatever it lets through must still have bounded influence | best D2 accuracy under sign flip (54.26, with [2]–[4]) | `plus.global_rule: arc_nnm_tm`, `plus.global_f` |
+| [6] | Rewind on isolation | resets trunk and root head to before the attacker's first suspicious round | removing an attacker does not remove its backdoor: success kept rising 17–47 points after isolation | 100 rounds: 1 / 17 / 1% → 0 / 1 / 0% | `plus.rewind: trunk_root` |
+| [7] | Depth-exit guard (optional) | at prediction, early-layer classifiers vote when they disagree with the final answer | every training-time screen misses some backdoors; a trigger fools the last layers more than the early ones | undetected backdoor halved (79 → 42%) | `fedhep.exit_guard: true` |
 
 **Unchanged from FedHEP+:** median reference, robust z with relative floor, evidence $E_i$ with exclusion at $-2.5$ and isolation at $-1.5$, permanent isolation, regrouping by weight similarity, and SCCF at the parents.
 
 ## 6.2 [5] L0: bound every client's influence
+
+> **Why it is in the model.** A screen can only act after evidence builds up over rounds. Until then, and for every attacker it never catches, the attacker's update enters the Global step. FedHEP+ used SCCF there, whose trust weights flatten late in training ([chapter 3.5](03_defended_fedhep.md)), so a missed attacker had nearly full influence. Phase 5 also showed that robust rules and screening fail in complementary ways ([chapter 5.2](05_ideas_that_did_not_work.md)). L0 makes the Global step itself robust: no single update, caught or not, can move the model far.
+>
+> **What it buys.** Alone, L0 is the most accurate defense at D2 with no attack, and it has the lowest D2 backdoor success (37.7%). Under the screen, it gives the best D2 accuracy under sign flip (54.26, R3).
+>
+> **What it costs.** It needs an assumed attacker count $f$, which hardly matters under the screen (6.11). Alone at D1 it lets sign flip through (41.65), because mixing pulls reversed updates in. That is why it sits under a screen, not instead of one.
 
 The Global step replaces SCCF with three robust operations in sequence (Allouah et al., 2023 and 2024):
 
@@ -58,6 +66,14 @@ Under the screen, $f$ shrinks by the number of clients the screen already exclud
 
 ## 6.3 [2] Two-sided screen and [3] gap gate
 
+> **Why the two-sided screen is in the model.** ALIE and Min-Max are built to sit inside the honest spread. Their updates are *closer* to the median than honest clients' are, so their z is far above everyone else's. FedHEP+ looked only below, and isolated none of them in any run.
+>
+> **Why the gap gate is in the model.** Looking both ways has a price. Under strong skew, honest clients spread widely, and some are always far from the median on one side or the other. R2 (two-sided, no gate) isolated 38 honest clients over 3 runs at D2 with no attack. The gate asks one question first: do the round's scores actually split into two groups? Attackers usually form a separate group; honest skew usually does not.
+>
+> **What they buy.** Every ALIE and Min-Max attacker is caught at D1 (9 of 9 each). Honest isolations at D2 fall from 38 to 2–3, and D2 accuracy with no attack rises from 52.13 (R2) to 54.72 (R3).
+>
+> **What they cost.** In rounds without a clear gap, attackers collect no evidence either. With the root-head signal, R3 let the backdoor in (51–62% at D1), which [1] fixes.
+
 **Two-sided.** A client is suspicious if its score is far from the others in **either** direction. ALIE and Min-Max attackers sit right on the reference, so their z is far above everyone's:
 
 $$z_i \leftarrow -\lvert z_i\rvert$$
@@ -75,6 +91,16 @@ With $\gamma = 8$, a round of honest but spread-out clients has no outstanding g
 | $\gamma$ | gate threshold (0 = off; 8 and 12 tested) | `plus.gap_gate` |
 
 ## 6.4 [1] Two signals and their union
+
+> **Why it is in the model.** What a defense cannot see, it cannot screen. FedHEP+ scored only the root head's rows for each client's classes, a small part of the root head, which is itself 1.5% of the model's 1.72 million weights. A backdoor is learned mostly in the trunk, so the root-head screen missed it on every seed at D1 on the GPU (32 / 70 / 68%).
+>
+> - **[1a] The whole update** sees the trunk, but one cosine over every weight averages a few poisoned layers with many normal ones.
+> - **[1b] The critical-layer signal** looks only where clients disagree most, so a backdoor in a few layers stays visible.
+> - **[1c] The union.** The two signals fail on different seeds, and the union keeps the stronger alarm of the two.
+>
+> **What it buys.** Backdoor success under 1.5% on every seed at D1 (Mac), including the stealth backdoor that beat the whole-update signal alone (6.10).
+>
+> **What it costs.** More honest isolations: 14 over 3 runs against 9 (stealth runs), and 4–6 per run with no attack (Acer). This is the main open problem (6.13).
 
 **[1a] Whole update.** The cosine of every weight in the update (trunk and all three heads, BatchNorm buffers excluded) to the median update:
 
@@ -99,9 +125,21 @@ $$z_i = \min\bigl(\tilde z^{\,\mathrm{w}}_i,\ \tilde z^{\,\mathrm{c}}_i\bigr)$$
 
 ## 6.5 [4] Patience
 
+> **Why it is in the model.** The follow-up diagnostics ([chapter 4.5a](04_fedhep_plus.md)) showed that around round 14 the z-score's denominator is at its smallest. An ordinary round can then give an honest client an extreme z. With patience 1, one such round excluded it, and a few isolated it for good. Real attackers misbehave every round, so asking for 3 bad rounds in a row costs little against them.
+>
+> **What it buys.** 42% fewer false isolations in the follow-up test.
+>
+> **What it costs.** Attackers are acted on two rounds later. L0 bounds their influence in the meantime.
+
 A client is left out only after $z_i < -2.5$ in **3 consecutive rounds**. It is isolated only when $E_i < -1.5$ **and** $z_i < -1.5$ in 3 consecutive rounds. In the follow-up diagnostics this alone cut false isolations by 42% ([chapter 4.5a](04_fedhep_plus.md)).
 
 ## 6.6 [6] Rewind on isolation
+
+> **Why it is in the model.** Isolating an attacker stops new poison, but not what is already in the model. With 20 clients and 5 backdoor attackers, FedHEP+ isolated every attacker by rounds 11–15, and backdoor success still rose 17–47 points by round 30 ([chapter 4.5e](04_fedhep_plus.md)). Over 100 rounds on the Acer, a late catch let the backdoor grow from 13% to 17% with no attacker left (6.9). The only way to remove what is already learned is to go back to a model from before it was learned.
+>
+> **What it buys.** With the whole-update signal over 100 rounds, backdoor success goes from 1 / 17 / 1% to 0 / 1 / 0%.
+>
+> **What it costs.** 0.4 points of accuracy on average, and one skipped Global step per rewind. It does nothing when nobody is caught, so it depends on [1].
 
 A backdoor that reached the trunk before its attackers were caught keeps growing without them ([chapter 4.5e](04_fedhep_plus.md)). When clients $I_{\text{new}}$ are isolated in round $r$, the trunk and root head go back to the Global model stored before their suspicion began:
 
@@ -116,6 +154,12 @@ That round's Global aggregation is skipped. Parents are restored too.
 | window | Global models kept for rewinding (one per round) | `plus.rewind_window: 10` |
 
 ## 6.7 [7] Depth-exit guard (prediction time, optional)
+
+> **Why it is in the model.** Every training-time defense misses some backdoors (6.10: up to 20% with 5 plain attackers). The guard is a last line of defense at prediction time that does not depend on catching anyone. A trigger mostly changes what the last layers conclude, while early layers still see an ordinary image. When the early-layer classifiers disagree with the final answer, the input is suspect and the exits decide.
+>
+> **What it buys.** An undetected backdoor is roughly halved (79% → 42%, GPU; 72% → 39% over 100 rounds, Acer).
+>
+> **What it costs.** 0.3 points of accuracy with no attack, because 3% of clean inputs are answered by the exits. It is optional because training is unchanged.
 
 After Orion (IJCAI 2023). Each honest client fits three small linear classifiers ("exits") on its own training images. They read pooled features after `res1`, `layer2` and `layer3`. A backdoor trigger usually fools the final head but not the early exits:
 
