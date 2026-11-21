@@ -246,6 +246,12 @@ D1: 15 clients, α = 0.5, 3 attackers. D2: 20 clients, α = 0.2, 4 attackers. Ma
 
 - **A backdoor nobody catches stays at 64–75%** for 50 rounds after the attack ends.
 - **The rewind matters when the catch is late.** On seed 42 the whole-update screen isolated the attackers after part of the backdoor had reached the trunk, and it grew to 17% after they stopped. With the rewind, the same seed stayed at 1%. It costs 0.4 points on average.
+- **Why seed 42 is different.** Seed 42 draws attackers 0, 9 and 11. It is the hard seed for every signal and machine: 70–71% for the root head and the whole update on the GPU too (chapter 5.3).
+  - **The attackers stay hidden for 15 rounds.** With the root head, their z stays between −2.2 and +1.1 for the first 15 rounds, and no round's gap ratio reaches 8 before round 16. On seeds 123 and 7 their z falls below −2 by rounds 6–10, and they are isolated in rounds 13–14. Their data sizes (540–705 images) are ordinary (honest clients: 470–873).
+  - **When they are caught:** without the rewind, attackers 9 and 11 are isolated only in round 40 and attacker 0 never. By then the backdoor is at 70%, and nothing removes it after the attack stops: the flat 71% line.
+  - **With the rewind:** this is a separate run, and XPU runs are not bit-for-bit repeatable, so the two runs part ways early. Here the attackers are caught in rounds 21–24 and the model is rewound to rounds 19–22. Success drops from 13% to 8%, but the rewind reaches back only as far as the attackers' evidence trail (at most 10 rounds). The poisoning from rounds 1–18 stays in, and it grows back to 28% by round 100, as a backdoor does once it is in (chapter 4.5e).
+  - **The whole-update screen catches them earlier,** in rounds 12–17. With the rewind, seed 42 then stays at 1%.
+- **Honest isolations are the price of the whole-update signal.** Over 100 rounds the root-head screens isolate 1–2 honest clients in 3 runs, the whole-update screens 12–18, or 4–6 per run. FedHEP-Guard's union screen contains the whole-update signal, so it pays the same price (6.12, 6.13). The gap gate removed FedHEP+'s honest isolations for the root-head signal (6.8). It has not done so for the signals that catch the backdoor.
 
 ## 6.10 Results: an adaptive backdoor (Mac, D1)
 
