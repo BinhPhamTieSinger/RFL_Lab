@@ -90,6 +90,13 @@ With $\gamma = 8$, a round of honest but spread-out clients has no outstanding g
 | $g$ | gap ratio, logged every round as `score_stats.gap_ratio` | — |
 | $\gamma$ | gate threshold (0 = off; 8 and 12 tested) | `plus.gap_gate` |
 
+**Why 8 and not 12.** Both were tested on the ladder (6.8), with the root-head signal:
+- **Accuracy** is the same within 0.2 points at D1, under every attack.
+- **Gate 12 isolates fewer honest clients:** 0–0.3 per run at D1 against 0.7–1.0, and 2 / 1 / 0 / 6 over 3 runs at D2 against 3 / 6 / 8 / 7.
+- **Gate 12 lets more backdoor in:** 62% against 51% at D1, because the gate also stops the attackers' evidence when their split is weaker than 12.
+
+The decision came with the union screen. FedHEP-Guard needs the backdoor attackers caught, and in the GPU grid their split is weak. In the rounds where the largest gap separated exactly the backdoor attackers (union screen, 15 clients, α = 0.5), the gap ratio reached 8 in 76% of rounds but 12 in only 45%. In honest rounds the gate opened 25% of the time at 8 and 11% at 12. Gate 12 would roughly halve the chance openings, and also lose about four in ten backdoor catches. Gate 12 with the union screen has not been run; this comes from the logs, not from a run. Why no fixed threshold solves this, and the experiment that replaces it, are in 6.12 and 6.15.
+
 ## 6.4 [1] Two signals and their union
 
 > **Why it is in the model.** What a defense cannot see, it cannot screen. FedHEP+ scored only the root head's rows for each client's classes, a small part of the root head, which is itself 1.5% of the model's 1.72 million weights. A backdoor is learned mostly in the trunk, so the root-head screen missed it on every seed at D1 on the GPU (32 / 70 / 68%).
@@ -364,6 +371,17 @@ So the gap ratio cannot tell an honest client with unusual data from a backdoor 
 4. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.
 
 ## 6.14 FedHEP-Guard's exact configuration
+
+FedHEP-Guard is **R3 with gate 8** (the L0 Global step, two-sided screen, gap gate 8, patience 3) plus **the union screen** [1] and **the trunk-and-root rewind** [6]. "R3" alone in a table or chart means the ladder rung with the root-head signal, not FedHEP-Guard.
+
+**What has been run so far.** No run has all of FedHEP-Guard's parts yet:
+
+| Run | Has | Lacks | Where |
+|---|---|---|---|
+| FedHEP-Guard without rewind (`r3wc`) | everything but the rewind | [6] | GPU grid (all attacks), Mac stealth study, Acer |
+| R3 whole update with rewind (`r3w_tr`) | rewind; whole-update half of the union | critical-layer half of [1] | Mac (30 rounds), Acer (100 rounds) |
+| FedHEP-Guard (`guard`) | all parts | — | queued: GPU benchmark `bm_*__guard`, Acer `x9__r3wc_tr` |
+
 
 ```yaml
 config: configs/cifar100_fedhep_defended.yaml    # FedHEP model and training, Defended FedHEP's SCCF at parents

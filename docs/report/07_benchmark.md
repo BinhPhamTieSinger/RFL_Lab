@@ -81,16 +81,18 @@ The charts are made by `python scripts/plot_all_models.py outputs`, which also w
 
 ### Mac (MPS)
 
-| Attack | Chart | Models | Best accuracy | Note |
-|---|---|---|---|---|
-| No attack | `figures/all_models_mac_clean.png` | 31 | Defended FedHEP 48.4 | the FedHEP family sits within 1.5 points; FLAME 42.8, Multi-Krum 23.4 |
-| Sign flip | `figures/all_models_mac_sign_flip.png` | 23 | FedHEP+ (full population) 46.4, R3 46.1–46.2 | every screen holds; Defended FedHEP 38.1, FedHEP 33.7, FedAvg 8.5 |
-| Label flip | `figures/all_models_mac_label_flip.png` | 17 | FedHEP+ 46.3 | the FedHEP+ family takes the top 7 places |
-| Random noise | `figures/all_models_mac_random_noise.png` | 17 | Median 46.6 | FedHEP 5.4 and FedAvg 1.2 collapse |
-| ALIE | `figures/all_models_mac_alie.png` | 14 | FedHEP 47.8, L0 47.6, FedHEP+ 47.6 | the two-sided screens lose 1.7–3.1 points (the ALIE puzzle, 5.3f); FLAME 40.8 |
-| Min-Max | `figures/all_models_mac_min_max.png` | 11 | R3 46.0–46.1 | Bulyan 37.5 |
-| Backdoor | `figures/all_models_mac_backdoor.png` | 31 | R3, gate 12 47.0 | success under 1%: whole-update screen (with or without rewind), union screen, Bulyan, FLAME, Multi-Krum |
-| Stealth backdoor | `figures/all_models_mac_stealth_backdoor.png` | 7 | L0 46.9 | success under 1%: union screen (0.4%) and FLAME (0.8%) |
+FedHEP-Guard itself (union screen **and** rewind) has not been run yet; its first runs are the benchmark (`bm_*__guard`) and the Acer's `x9__` sweep. The charts therefore mark its closest relative, **FedHEP-Guard without rewind** (the union screen, `r3wc`), in bold. "R3 gate 8, root head" is the Phase 6 rung FedHEP-Guard is built on, not FedHEP-Guard (chapter 6.8, 6.14).
+
+| Attack | Chart | Models | Best accuracy | FedHEP-Guard without rewind | Note |
+|---|---|---|---|---|---|
+| No attack | `figures/all_models_mac_clean.png` | 31 | Defended FedHEP 48.4 | not run on the Mac | the FedHEP family sits within 1.5 points; FLAME 42.8, Multi-Krum 23.4 |
+| Sign flip | `figures/all_models_mac_sign_flip.png` | 23 | FedHEP+ (full population) 46.4; R3 gate 8 and 12, root head, 46.1–46.2 | not run on the Mac | every screen holds; Defended FedHEP 38.1, FedHEP 33.7, FedAvg 8.5 |
+| Label flip | `figures/all_models_mac_label_flip.png` | 17 | FedHEP+ 46.3 | not run on the Mac | the FedHEP+ family takes the top 7 places |
+| Random noise | `figures/all_models_mac_random_noise.png` | 17 | Median 46.6 | not run on the Mac | FedHEP 5.4 and FedAvg 1.2 collapse |
+| ALIE | `figures/all_models_mac_alie.png` | 14 | FedHEP 47.8, L0 47.6, FedHEP+ 47.6 | not run on the Mac | the two-sided screens lose 1.7–3.1 points (the ALIE puzzle, 5.3f); FLAME 40.8 |
+| Min-Max | `figures/all_models_mac_min_max.png` | 11 | R3 gate 8 and 12, root head, 46.0–46.1 | not run on the Mac | Bulyan 37.5 |
+| Backdoor | `figures/all_models_mac_backdoor.png` | 31 | R3 gate 12, root head, 47.0 (success 62%) | 46.1, rank 21 of 31; success **0.8%** | success under 1%: whole-update screen (with or without rewind), union screen, Bulyan, FLAME, Multi-Krum |
+| Stealth backdoor | `figures/all_models_mac_stealth_backdoor.png` | 7 | L0 46.9 (success 69%) | 45.2, rank 6 of 7; success **0.4%** | success under 1%: union screen and FLAME (0.8%) only |
 
 ![Every model, no attack, Mac](../figures/all_models_mac_clean.png)
 
@@ -110,13 +112,13 @@ The charts are made by `python scripts/plot_all_models.py outputs`, which also w
 
 ### GPU server (CUDA)
 
-| Attack | Chart | Models | Best accuracy | Note |
-|---|---|---|---|---|
-| No attack | `figures/all_models_gpu_clean.png` | 16 | FedHEP 49.2 | R3 and its variants 47.4–48.1; FLAME 43.1 |
-| Sign flip | `figures/all_models_gpu_sign_flip.png` | 13 | FedHEP+ 46.3, R3 46.1 | L0 41.6, Defended FedHEP 38.8, FedHEP 33.8 |
-| ALIE | `figures/all_models_gpu_alie.png` | 16 | FedHEP+ 47.8 | union screen 45.3; FLAME 41.7 |
-| Min-Max | `figures/all_models_gpu_min_max.png` | 12 | R3 with sign alignment 46.4 | FLAME 43.1 |
-| Backdoor | `figures/all_models_gpu_backdoor.png` | 12 | Defended FedHEP 47.5 | success under 1%: union screen (0.6%) and FLAME (0.5%) only |
+| Attack | Chart | Models | Best accuracy | FedHEP-Guard without rewind | Note |
+|---|---|---|---|---|---|
+| No attack | `figures/all_models_gpu_clean.png` | 16 | FedHEP 49.2 | 47.4, rank 15 of 16 | R3 and its variants 47.4–48.1; FLAME 43.1 |
+| Sign flip | `figures/all_models_gpu_sign_flip.png` | 13 | FedHEP+ 46.3; R3 gate 8, root head, 46.1 | 45.8, rank 9 of 13 | L0 41.6, Defended FedHEP 38.8, FedHEP 33.8 |
+| ALIE | `figures/all_models_gpu_alie.png` | 16 | FedHEP+ 47.8 | 45.3, rank 14 of 16 | FLAME 41.7 |
+| Min-Max | `figures/all_models_gpu_min_max.png` | 12 | R3 gate 8, sign alignment, 46.4 | 45.6, rank 8 of 12 | FLAME 43.1 |
+| Backdoor | `figures/all_models_gpu_backdoor.png` | 12 | Defended FedHEP 47.5 (success 79%) | 44.8, rank 10 of 12; success **0.6%** | success under 1%: union screen and FLAME (0.5%) only |
 
 ![Every model, no attack, GPU](../figures/all_models_gpu_clean.png)
 

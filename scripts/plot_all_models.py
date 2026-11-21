@@ -36,7 +36,8 @@ ATTACKS = [("clean", "No attack"), ("sign_flip", "Sign flip"), ("label_flip", "L
 FAMILIES = [("Baselines (FedAvg, Multi-Krum)", "#9a9893"), ("Published FedHEP models", "#52514e"),
             ("Established robust rules in FedHEP (Phase 5)", pr.SLOT[0]),
             ("FedHEP+ and its variants (Phases 3-4)", pr.SLOT[1]),
-            ("L0, R2, R3 and the screen variants (Phase 6)", pr.SLOT[2]), ("FedHEP-Guard (union screen)", pr.SLOT[3])]
+            ("L0, R2, R3 and the screen variants (Phase 6)", pr.SLOT[2]),
+            ("FedHEP-Guard, bold (without rewind until its runs are in)", pr.SLOT[3])]
 EVAL_ONLY = {("fedhep", "exit_guard"), ("fedhep", "head_agreement"), ("run", "eval_every"), ("run", "output_dir"),
              ("run", "device"), ("run", "seed"), ("run", "deterministic")}
 
@@ -99,11 +100,11 @@ def label(cfg: dict) -> tuple[str, int]:
         extra.append({"trunk": "rewind trunk", "trunk_root": "rewind trunk + root", "all": "rewind all"}[rw])
     if p.get("global_rule") == "arc_nnm_tm":
         if p.get("signal") == "weights_critical":
-            name = "FedHEP-Guard" if rw == "trunk_root" else "FedHEP-Guard screen (union, no rewind)"
+            name = "FedHEP-Guard" if rw == "trunk_root" else "FedHEP-Guard without rewind"
             return name + "".join(f", {x}" for x in extra if not x.startswith("rewind")), 5
         gate = p.get("gap_gate", 0)
-        name = "R2" if not gate else ("R3" if gate == 8 else f"R3, gate {gate:g}")
-        return name + sig + "".join(f", {x}" for x in extra), 4
+        name = "R2" if not gate else f"R3 gate {gate:g}"
+        return name + (sig or ", root head") + "".join(f", {x}" for x in extra), 4
     # SCCF Global step: FedHEP+ and its Phase 3-4 variants
     head = "FedHEP+"
     if p.get("drill_down"):
@@ -193,9 +194,18 @@ def chart(dev: str, att: str, title: str, rows: dict) -> None:
         for y, (m_, s_) in enumerate(zip(mu, sd, strict=True)):
             ax.text(m_ + s_ + 0.4, y, f"{m_:.1f}", va="center", fontsize=7.5)
         ax.set_xlabel(xlabel, fontsize=9)
-        ax.set_xlim(0, max(mu) * 1.12 + 2)
+        ax.set_xlim(0, max(m_ + s_ for m_, s_ in zip(mu, sd, strict=True)) * 1.1 + 3)
         ax.grid(axis="y", visible=False)
     axes[0][0].set_yticks(list(ys), [name for name, _ in items], fontsize=8)
+    for tick, (name, v) in zip(axes[0][0].get_yticklabels(), items, strict=True):
+        if v["family"] == 5:   # FedHEP-Guard (or, until its runs exist, FedHEP-Guard without the rewind)
+            tick.set_fontweight("bold")
+            tick.set_color(pr.INK)
+    for ax_row in axes[0]:
+        for bar, (_, v) in zip(ax_row.patches, items, strict=False):
+            if v["family"] == 5:
+                bar.set_edgecolor(pr.INK)
+                bar.set_linewidth(1.2)
     used = sorted({v["family"] for _, v in items})
     handles = [plt.Rectangle((0, 0), 1, 1, color=FAMILIES[f][1]) for f in used]
     fig.legend(handles, [FAMILIES[f][0] for f in used], loc="lower center", ncols=min(3, len(used)), fontsize=8,
