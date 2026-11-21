@@ -64,3 +64,73 @@ These are set before the results, so the results can refute them (in the style o
 1. **FedHEP-Guard against FedHEP+.** FedHEP-Guard wins under ALIE, Min-Max and both backdoors at D1. At D2 it loses less than 1 point with no attack, where FedHEP+ loses 2.
 2. **FedHEP-Guard against FLAME and Bulyan.** It matches their backdoor protection (under 2%) at D1, with 3–6 points more accuracy with no attack.
 3. **The open question:** whether any model stops the backdoor at D2. None did on the Mac.
+
+## 7.5 Until the benchmark is in: every model tested so far, one chart per attack
+
+Before the benchmark runs, the runs already made give one chart per attack and machine. Each chart holds every model ever run in setting D1 on that machine. Machines are never mixed (chapter 1.3), so the Mac and the GPU server each get their own set.
+
+**What is included:**
+- Setting D1: 15 clients, α = 0.5, 10,000 training images, 30 rounds. Under attack, exactly 3 attackers, placed at random, with no boost and no stop.
+- Only models with all three seeds (42, 123, 7). The bar is the mean, the line ±1 standard deviation.
+- **Models are identified by their training configuration**, so a model run in two studies appears once. Evaluation-only switches such as the exit guard do not count.
+- FedAvg and Multi-Krum use the authors' 3 local epochs (E = 3); every FedHEP-family model uses 5.
+- **Colours are model families:** grey baselines, dark grey the published FedHEP models, blue the established robust rules (Phase 5), orange FedHEP+ and its variants (Phases 3–4), green L0, R2, R3 and their variants (Phase 6), yellow FedHEP-Guard's union screen.
+- The Acer's 30-round D1 runs hold only L0 and the union screen with different $f$ (chapter 6.11), so it has no charts here.
+
+The charts are made by `python scripts/plot_all_models.py outputs`, which also writes the numbers to `docs/results/all_models.json`.
+
+### Mac (MPS)
+
+| Attack | Chart | Models | Best accuracy | Note |
+|---|---|---|---|---|
+| No attack | `figures/all_models_mac_clean.png` | 31 | Defended FedHEP 48.4 | the FedHEP family sits within 1.5 points; FLAME 42.8, Multi-Krum 23.4 |
+| Sign flip | `figures/all_models_mac_sign_flip.png` | 23 | FedHEP+ (full population) 46.4, R3 46.1–46.2 | every screen holds; Defended FedHEP 38.1, FedHEP 33.7, FedAvg 8.5 |
+| Label flip | `figures/all_models_mac_label_flip.png` | 17 | FedHEP+ 46.3 | the FedHEP+ family takes the top 7 places |
+| Random noise | `figures/all_models_mac_random_noise.png` | 17 | Median 46.6 | FedHEP 5.4 and FedAvg 1.2 collapse |
+| ALIE | `figures/all_models_mac_alie.png` | 14 | FedHEP 47.8, L0 47.6, FedHEP+ 47.6 | the two-sided screens lose 1.7–3.1 points (the ALIE puzzle, 5.3f); FLAME 40.8 |
+| Min-Max | `figures/all_models_mac_min_max.png` | 11 | R3 46.0–46.1 | Bulyan 37.5 |
+| Backdoor | `figures/all_models_mac_backdoor.png` | 31 | R3, gate 12 47.0 | success under 1%: whole-update screen (with or without rewind), union screen, Bulyan, FLAME, Multi-Krum |
+| Stealth backdoor | `figures/all_models_mac_stealth_backdoor.png` | 7 | L0 46.9 | success under 1%: union screen (0.4%) and FLAME (0.8%) |
+
+![Every model, no attack, Mac](../figures/all_models_mac_clean.png)
+
+![Every model, sign flip, Mac](../figures/all_models_mac_sign_flip.png)
+
+![Every model, label flip, Mac](../figures/all_models_mac_label_flip.png)
+
+![Every model, random noise, Mac](../figures/all_models_mac_random_noise.png)
+
+![Every model, ALIE, Mac](../figures/all_models_mac_alie.png)
+
+![Every model, Min-Max, Mac](../figures/all_models_mac_min_max.png)
+
+![Every model, backdoor, Mac](../figures/all_models_mac_backdoor.png)
+
+![Every model, stealth backdoor, Mac](../figures/all_models_mac_stealth_backdoor.png)
+
+### GPU server (CUDA)
+
+| Attack | Chart | Models | Best accuracy | Note |
+|---|---|---|---|---|
+| No attack | `figures/all_models_gpu_clean.png` | 16 | FedHEP 49.2 | R3 and its variants 47.4–48.1; FLAME 43.1 |
+| Sign flip | `figures/all_models_gpu_sign_flip.png` | 13 | FedHEP+ 46.3, R3 46.1 | L0 41.6, Defended FedHEP 38.8, FedHEP 33.8 |
+| ALIE | `figures/all_models_gpu_alie.png` | 16 | FedHEP+ 47.8 | union screen 45.3; FLAME 41.7 |
+| Min-Max | `figures/all_models_gpu_min_max.png` | 12 | R3 with sign alignment 46.4 | FLAME 43.1 |
+| Backdoor | `figures/all_models_gpu_backdoor.png` | 12 | Defended FedHEP 47.5 | success under 1%: union screen (0.6%) and FLAME (0.5%) only |
+
+![Every model, no attack, GPU](../figures/all_models_gpu_clean.png)
+
+![Every model, sign flip, GPU](../figures/all_models_gpu_sign_flip.png)
+
+![Every model, ALIE, GPU](../figures/all_models_gpu_alie.png)
+
+![Every model, Min-Max, GPU](../figures/all_models_gpu_min_max.png)
+
+![Every model, backdoor, GPU](../figures/all_models_gpu_backdoor.png)
+
+**How to read them together.** No single model is best everywhere:
+- The undefended and lightly defended models are the most accurate with no attack and under ALIE, and collapse under sign flip, noise or the backdoor.
+- The screens give up 1–2 points with no attack and hold under every attack.
+- Only two models stay under 1% backdoor success on both machines, and against the stealth backdoor on the Mac: FedHEP-Guard's union screen and FLAME. The union screen is about 3 points more accurate than FLAME under the backdoor on both machines (46.1 against 43.1 on the Mac, 44.8 against 41.9 on the GPU).
+
+The benchmark (7.3) will replace these charts with one machine, one set of attackers and every model, including D2.

@@ -51,6 +51,7 @@
 | Does it remove a backdoor? | `figures/phase6_rewind.png`, `figures/phase6_durability.png` | 100-round table | 6.9 |
 | Does it survive an adaptive attacker? | `figures/phase6_stealth.png` | stealth table | 6.10 |
 | What if the attacker count is unknown? | `figures/phase6_fmis.png` | f table | 6.11 |
+| All models side by side, one chart per attack | `figures/all_models_mac_<attack>.png`, `figures/all_models_gpu_<attack>.png` | one row per chart | 7.5 |
 | Which model is best overall? | `report/figures/bench_d1_*.png`, `bench_d2_*.png` | benchmark tables | 7 (when the GPU results are in) |
 
 Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/report/figures/`.
