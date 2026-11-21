@@ -72,7 +72,10 @@ class PlusConfig:
     probe_size: int = 200                # probe images for the output signals (FLTrust-style root set)
     critical_k: int = 5                  # "critical" signal: most disputed shared layers screened per round
     sign_topk: float = 0.3               # "sign_align" signal: share of largest coordinates compared (AlignIns)
-    reference: str = "mean_direction"    # "mean_direction" (SCCF's) | "median"
+    reference: str = "mean_direction"    # "mean_direction" (SCCF's) | "median" | "peer" (Phase 7: each client
+                                         # against the median of the clients holding the most similar classes)
+    peer_share: float = 0.333            # "peer": share of the other clients used as a client's peers
+    shadow_reference: str = ""           # also score against this reference and log it, without acting
     z_cut: float = 2.5                   # leave a client out this round when its robust z < -z_cut
     evidence_cut: float = 1.5            # isolate for good when its running z falls below -evidence_cut
     evidence_decay: float = 0.7

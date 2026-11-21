@@ -1348,3 +1348,39 @@ The GPU server's `gpu_grid_n15` and `gpu_grid_n30` parts are in: 8 models at α 
 - **Honest isolations grow with n:** 4.3 per run at 15 clients, 14.7 at 30 (α 0.5, no attack). Diagnosis: the fixed gap gate (ratio ≥ 8) opens by chance more often with more scores: 18% at 15, 51% at 30, 81% at 50 for normal scores with no attacker. Logged gate-open rates in the no-attack runs agree (whole update 32% → 44%, critical layers 14% → 43%, from 15 to 30 clients). Proposed next experiment: a size-calibrated gate γ(n) at the 95th percentile of the null gap ratio (about 12, 19 and 28 at 15, 30 and 50 clients), calibrated on real honest rounds.
 
 New charts: `docs/figures/phase6_isolation_rounds_n15.png` and `_n30.png` (cumulative honest isolations per round, `scripts/plot_phase6.py`). Report chapters 6.12 and 6.13 are updated.
+
+## 2026-11-21 · Analysis: why raising the gap gate is not the fix; team code review; run plan for Phase 7
+
+**The gap gate (GPU grid logs, no new runs).** For every round of the 15- and 30-client grid, the gap ratio of both union-screen signals was set against what the largest gap separated (`fig_gap_gate_tradeoff` in `scripts/plot_phase6.py`):
+
+| Rounds | 15 clients: median / 95th percentile | 30 clients: median / 95th percentile |
+|---|---|---|
+| no attack (honest rounds, R3 with every signal) | 5.3 / 13.7 | 6.2 / 20.8 |
+| backdoor, largest gap separates exactly the attackers (r3wc) | 8.6 / 24.5 | 14.1 / 33.1 |
+| sign flip, ALIE, Min-Max, same | 62 / 571 | 129 / 500 |
+
+![Gap ratios of honest rounds and of the rounds that split off the attackers](figures/phase6_gap_gate_tradeoff.png)
+
+A gate at the honest 95th percentile (14 and 21) would remove most chance openings, and also about three quarters of the backdoor catches. Model poisoning is far above either threshold. The size-calibrated gate proposed in the previous entry is therefore expected to trade backdoor protection for fewer honest isolations, and is not run first. Report 6.12 is corrected.
+
+**Team code (Topology-aware-FDL).**
+- The attached "Updated FedHEP" changelog describes `topo_v4`: E = 3, cached Stage-2 local head, a Newton simplex for the head blend, root-head clustering with Hungarian ID alignment and a leave-one-out parent gate.
+  - It is not on GitHub (latest commit 2026-11-12), so it cannot be run here yet.
+  - Its own notes say the defended engine still runs the old round loop, and falsely isolated 14–15 of 15 clients at q = 0.4 (seed 42).
+  - Its ablation finds K = 1 within 0.1–1 point of K = 3 at every α, as our 2.5 (parents always copy Global) predicts.
+- The `oreh` package (2026-11-11/12) adds IPM (an ε-cosine variant of Xie et al.), an "adaptive cosine" attack and a delayed-onset attack against Defended FedHEP. Its K sweep (1–15 groups) moves accuracy by at most 1 point.
+  - Their adaptive-cosine update reduces to $(1-2w)\mu$, a scaled reversed mean, since $\operatorname{sign}(\mu)\lvert\mu\rvert = \mu$.
+  - IPM and delayed onset are not in RFL_Lab yet. They are candidates for the GPU after the benchmark.
+
+**Literature read for this step:**
+- BoBa (arXiv 2407.09658): compare clients only within groups of similar inferred data, because under non-IID honest outliers look like attackers.
+- FedMAST (arXiv 2609.27760): seven structural evidence axes. Its benign false-positive rate is 24–29% under non-IID, the same weakness as ours.
+- FedSurrogate (arXiv 2605.11122): already the source of our critical-layer signal. It rescues suspects with time-accumulated scores.
+
+**Run plan: Phase 7, the peer reference (Acer, `configs/sweeps/acer_c10_peer.yaml`, prefix `x10_`, 24 runs, about 7–8 hours).**
+- Each client is scored against the coordinate median of the third of clients whose class masks are most similar (Jaccard), instead of the global median (`plus.reference: peer`, report 6.15).
+- Every run also logs the other reference's scores without acting (`plus.shadow_reference`), so the two are compared on identical updates.
+- Setting: union screen without rewind, 15 clients, α 0.1 and 0.5, no attack and 3 backdoor attackers, seeds 42 / 123 / 7.
+- Predictions P22–P25 were written before the runs.
+- Charts: `python scripts/plot_phase7.py outputs` writes `docs/figures/phase7_peer_paired.png` and `phase7_peer_outcomes.png`.
+- Tests: `tests/test_peer_reference.py`, 9 tests covering peer choice, the colluder limit, critical layers, and shadow runs being identical to plain runs.

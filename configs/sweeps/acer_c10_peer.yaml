@@ -1,0 +1,23 @@
+# Acer (XPU), Phase 7: the peer reference. FedHEP-Guard's screen (R3 + union screen, no rewind; as r3wc in the GPU
+# grid) scored against the global median (as now) or against each client's peer median (the median of the third of
+# clients holding the most similar classes, Jaccard of class masks). Each arm logs the other reference's scores
+# without acting on them, so both references are compared on the same training runs (P22, P23); the two arms
+# compare acting on them (P24, P25). 15 clients, alpha 0.1 and 0.5, no attack and 3 backdoor attackers.
+# 2 alphas x 2 attacks x 2 arms x 3 seeds = 24 runs of 30 rounds, about 7-8 hours; resumable.
+seeds: [42, 123, 7]
+common:
+  data.num_clients: 15
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  plus.global_f: 3
+axes:
+  - x10_a01: {data.alpha: 0.1}
+    x10_a05: {data.alpha: 0.5}
+  - clean: {}
+    backdoor3: {attack.kind: backdoor, attack.count: 3}
+  - r3wc_shp: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                   plus.shadow_reference: peer, plus.regroup: true, plus.two_sided: true,
+                   plus.isolation_patience: 3, plus.exclusion_patience: 3, plus.global_rule: arc_nnm_tm,
+                   plus.gap_gate: 8, plus.signal: weights_critical}
+    r3wc_peer: {<<: *r3, plus.reference: peer, plus.shadow_reference: median}

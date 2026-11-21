@@ -27,6 +27,7 @@ against the same shrunken group):
     that population; isolation stays permanent."""
 from __future__ import annotations
 
+import math
 import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -63,6 +64,8 @@ class ScreenOptions:
     gap_gate: float = 0.0              # > 0: bad evidence only in rounds whose scores split (gap_ratio >= this)
     critical_k: int = 5                # "critical": layers screened per round (most disputed shared layers)
     sign_topk: float = 0.3             # "sign_align": share of each update's largest coordinates compared
+    peer_share: float = 1 / 3          # reference "peer": share of the other reference clients used as peers
+    shadow_reference: str = ""         # also score against this reference and log it, without acting ("" = off)
 
 
     def __post_init__(self) -> None:
@@ -73,8 +76,12 @@ class ScreenOptions:
         if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
                                "weights_critical"):
             raise ValueError(f"Unknown screening signal {self.signal!r}")
-        if self.reference not in ("mean_direction", "median"):
+        if self.reference not in ("mean_direction", "median", "peer"):
             raise ValueError(f"Unknown screening reference {self.reference!r}")
+        if self.shadow_reference not in ("", "mean_direction", "median", "peer"):
+            raise ValueError(f"Unknown shadow reference {self.shadow_reference!r}")
+        if not 0 < self.peer_share <= 1:
+            raise ValueError("peer_share must be in (0, 1]")
         if self.population not in ("kept", "all"):
             raise ValueError(f"Unknown screening population {self.population!r}")
         if self.drill_mode not in ("exclude", "evidence"):
@@ -97,23 +104,62 @@ def _signal(updates: Sequence[torch.Tensor], layout: FlatLayout, class_masks: to
 
 
 def _reference(vecs: torch.Tensor, opts: ScreenOptions, reference_rows: torch.Tensor | None) -> torch.Tensor:
+    if opts.reference == "peer":
+        raise ValueError("the peer reference is per client: use peer_references")
     base = vecs if reference_rows is None else vecs[reference_rows.to(vecs.device)]
     if opts.reference == "median":
         return coordinate_median(base)
     return F.normalize(base, dim=1, eps=1e-10).mean(dim=0)
 
 
+def peer_sets(class_masks: torch.Tensor, share: float, reference_rows: torch.Tensor | None = None
+              ) -> list[torch.Tensor]:
+    """Phase 7 (after BoBa, arXiv 2407.09658): each client's peers are the clients holding the most similar set of
+    classes. Similarity = Jaccard index of the class masks |Y_i & Y_j| / |Y_i | Y_j|; peers = the
+    ceil(share x m) most similar reference rows other than the client itself (m = their number); ties go to the
+    lower index, so the choice does not depend on the device. The share trades specificity for robustness:
+      * an honest group with unusual data is judged by its own kind only if it fills more than half of its
+        members' peer sets (share 1/3, 15 clients: 5 peers, so a group of 4 or more);
+      * colluders that all pick each other (e.g. by reporting one mask) take over a colluder's peer median once
+        they fill half of its peers: with share 1/3 that is 4 colluders of 15 and 6 of 30. A tight cluster pulls
+        a coordinate median well before half, so the margin below that is smaller than the count suggests."""
+    m = class_masks.float().cpu()
+    inter = m @ m.T
+    union = m.sum(dim=1, keepdim=True) + m.sum(dim=1) - inter
+    sim = inter / union.clamp_min(1.0)
+    pool = torch.ones(len(m), dtype=torch.bool) if reference_rows is None else reference_rows.cpu().bool()
+    out = []
+    for i in range(len(m)):
+        cand = [j for j in range(len(m)) if pool[j] and j != i]
+        k = max(1, math.ceil(share * len(cand)))
+        cand.sort(key=lambda j: (-float(sim[i, j]), j))
+        out.append(torch.tensor(cand[:k], dtype=torch.long))
+    return out
+
+
+def peer_references(vecs: torch.Tensor, peers: Sequence[torch.Tensor]) -> torch.Tensor:
+    """[n, d]: row i is the coordinate median of the signal vectors of client i's peers."""
+    return torch.stack([coordinate_median(vecs[p.to(vecs.device)]) for p in peers])
+
+
 def screening_scores(updates: Sequence[torch.Tensor], layout: FlatLayout, class_masks: torch.Tensor | None,
                      opts: ScreenOptions, reference_rows: torch.Tensor | None = None) -> torch.Tensor:
     """Cosine of each sender's (norm-bounded) update to the reference, on the chosen signal. The reference is
-    built from the rows in `reference_rows` (bool), default all."""
+    built from the rows in `reference_rows` (bool), default all. Reference "peer": each sender's own reference,
+    the coordinate median of its peers (peer_sets), needs the class masks."""
     if opts.signal == "critical":
-        return critical_layer_scores(updates, layout, opts, reference_rows)
+        return critical_layer_scores(updates, layout, opts, reference_rows, class_masks)
     if opts.signal == "sign_align":
         return sign_alignment_scores(updates, layout, opts.sign_topk, reference_rows)
     vecs, mask = _signal(updates, layout, class_masks, opts)
-    ref = _reference(vecs, opts, reference_rows)
-    target = ref.unsqueeze(0) * mask if mask is not None else ref.unsqueeze(0).expand_as(vecs)
+    if opts.reference == "peer":
+        if class_masks is None:
+            raise ValueError("the peer reference needs the class masks")
+        refs = peer_references(vecs, peer_sets(class_masks, opts.peer_share, reference_rows))
+        target = refs * mask if mask is not None else refs
+    else:
+        ref = _reference(vecs, opts, reference_rows)
+        target = ref.unsqueeze(0) * mask if mask is not None else ref.unsqueeze(0).expand_as(vecs)
     return F.cosine_similarity(vecs, target, dim=1, eps=1e-10)
 
 
@@ -121,22 +167,31 @@ PERSONAL_HEADS = ("fc2_parent", "fc2_local")   # differ by design between client
 
 
 def critical_layer_scores(updates: Sequence[torch.Tensor], layout: FlatLayout, opts: ScreenOptions,
-                          reference_rows: torch.Tensor | None = None) -> torch.Tensor:
+                          reference_rows: torch.Tensor | None = None,
+                          class_masks: torch.Tensor | None = None) -> torch.Tensor:
     """Layer-level screening (after FedSurrogate, arXiv 2605.11122): for every shared parameter tensor l, each
     client's cosine c_il between its (norm-bounded) layer-l update and the layer-l reference; the round's k most
     disputed layers are those whose c_il vary most across the reference rows (standard deviation); score_i = mean
     of c_il over those k layers. A backdoor that sits in a few trunk layers shows there, where the whole-update
-    cosine dilutes it."""
+    cosine dilutes it. Reference "peer": layer l of each client's own peer median (peer_sets)."""
     stack = torch.stack(list(updates)).float()
     params = bound_update_norms(stack[:, ~layout.buffer_mask.to(stack.device)], opts.norm_bound)
     rows = slice(None) if reference_rows is None else reference_rows.to(params.device)
+    refs = None
+    if opts.reference == "peer":
+        if class_masks is None:
+            raise ValueError("the peer reference needs the class masks")
+        refs = peer_references(params, peer_sets(class_masks, opts.peer_share, reference_rows))
     cos = []
     for name, s, e in layout.params:
         if name.startswith(PERSONAL_HEADS):
             continue
         layer = params[:, s:e]
-        ref = _reference(layer, opts, None if reference_rows is None else reference_rows)
-        cos.append(F.cosine_similarity(layer, ref.unsqueeze(0).expand_as(layer), dim=1, eps=1e-10))
+        if refs is not None:
+            target = refs[:, s:e]
+        else:
+            target = _reference(layer, opts, reference_rows).unsqueeze(0).expand_as(layer)
+        cos.append(F.cosine_similarity(layer, target, dim=1, eps=1e-10))
     if not cos:
         raise ValueError("layer-level screening needs the parameter layout (FlatLayout.params)")
     c = torch.stack(cos, dim=1)                      # [n, layers]

@@ -342,7 +342,11 @@ The large grid (`gpu_grid_n{15,30}`, 1,239 runs so far; the 50-client part is st
 
 The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, the whole-update gate opened in 44% of rounds and the critical-layer gate in 43%, against 32% and 14% at 15 clients. The union acts when either gate is open, so it blames someone in most rounds.
 
-**The fix this points to:** a gate threshold set by the number of clients, $\gamma(n)$, as the 95th percentile of the gap ratio of $n$ scores with no attacker (about 12 at 15 clients, 19 at 30, 28 at 50). It should be calibrated on real honest rounds, since real scores have heavier tails than a normal distribution. This is the next experiment for FedHEP-Guard.
+**A larger gate is not the fix.** The obvious repair is a threshold that grows with the number of clients, $\gamma(n)$, for example the 95th percentile of the gap ratio in honest rounds (14 at 15 clients, 21 at 30). The logs show what it would cost. In the rounds where the largest gap split off exactly the backdoor attackers, the gap ratio was only 8.6 (median, 15 clients) and 14.1 (30 clients), inside the honest range. A gate at the honest 95th percentile would have kept about a quarter of those catches. Sign flip, ALIE and Min-Max split off at ratios of 60–130 (median) and are not at risk.
+
+![Gap ratios: honest rounds, backdoor catches and model-poisoning catches](../figures/phase6_gap_gate_tradeoff.png)
+
+So the gap ratio cannot tell an honest client with unusual data from a backdoor attacker: both stand a little apart from the rest. The problem is the yardstick, one median for every client, not the threshold. The next experiment changes the yardstick (6.15).
 
 ## 6.13 What it costs, and what is still open
 
@@ -354,7 +358,7 @@ The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, t
 - The best worst-case accuracy under model poisoning in 3 of 4 grid settings, and backdoor success of at most 1.2% at 30 clients, α = 0.5, even with 9 attackers (GPU).
 
 **Costs and open problems:**
-1. **Honest isolations, growing with the number of clients.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer), and 14.7 of 30 at 30 clients (GPU). The cause is a gap gate whose threshold does not scale with $n$ (6.12). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
+1. **Honest isolations, growing with the number of clients.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer), and 14.7 of 30 at 30 clients (GPU). The gap gate opens by chance more often as $n$ grows, but raising its threshold would also stop the backdoor catches (6.12); the next experiment changes the reference instead (6.15). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
 2. **Strong skew and backdoors.** At D2, no model tested so far stops the plain backdoor (37.7% for L0 to 46.9% for FedHEP; R3 45.3%). FedHEP-Guard's union screen and rewind have not yet been run at D2. The canonical benchmark covers it.
 3. **A third of the clients attacking with a plain backdoor** can get it in before the screen catches them (one seed at 20%, Mac). FLAME holds there.
 4. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.
@@ -378,3 +382,33 @@ fedhep.exit_guard: true         # [7] optional, prediction only
 ```
 
 It is the `guard` model in `configs/sweeps/bench_fedhep_family.yaml`.
+
+## 6.15 Next: the peer reference (Phase 7, running on the Acer)
+
+**Idea.** Judge each client against the clients that hold similar data, not against everyone. Under strong skew an honest client with unusual classes is far from the global median, so it looks like an attacker (6.12, chapter 4.5c). Against clients holding similar classes it should look normal, while a backdoor attacker still differs from its peers by the trigger. This follows BoBa (arXiv 2407.09658, 2024), which compares clients only within groups of similar inferred data.
+
+**What changes.** Only the reference in step [1]: each client $i$ gets its own reference $\tilde r_i$ instead of the shared $\tilde r$. Everything after it (robust z, two-sided cut, gap gate, patience, evidence, isolation, rewind) is unchanged.
+
+$$J_{ij} = \frac{\lvert Y_i \cap Y_j\rvert}{\lvert Y_i \cup Y_j\rvert}, \qquad P_i = \text{the } \lceil \kappa\,(m-1) \rceil \text{ clients } j \neq i \text{ with the largest } J_{ij}$$
+
+$$\tilde r_{i} = \operatorname{med}_{j \in P_i}\, v_j \ \text{(coordinate-wise)}, \qquad s_i = \cos(v_i, \tilde r_i)$$
+
+**Legend:**
+
+| Symbol | Meaning | Config key, value |
+|---|---|---|
+| $Y_i$ | the classes client $i$ holds (the class mask FedHEP already sends for ACLM) | — |
+| $J_{ij}$ | Jaccard similarity of two clients' class sets | — |
+| $\kappa$ | share of the other clients used as peers | `plus.peer_share: 0.333` |
+| $m$ | number of clients currently scored | — |
+| $P_i$ | client $i$'s peers (ties go to the lower index) | — |
+| $\tilde r_i$ | client $i$'s reference: the coordinate median of its peers' signals | `plus.reference: peer` |
+| $s_i$ | client $i$'s score, then the robust z of chapter 4 | — |
+
+For the critical-layer signal, layer $l$ of $\tilde r_i$ is the reference for layer $l$.
+
+**The trade-off in $\kappa$.** A small peer set fits a client's data better, but colluders who all pick each other (for example by reporting one class mask) take over a colluder's peer median once they fill half of its peers. With $\kappa = 1/3$ that happens at 4 colluders of 15 and 6 of 30. A tight cluster pulls a coordinate median before half, so the real margin is smaller. The unit tests check both sides: an honest group of 4 out of 15 is judged by its own kind with $\kappa = 1/3$ but not with $\kappa = 2/3$, and 3 colluders with one shared mask stay caught while 5 do not (`tests/test_peer_reference.py`).
+
+**Shadow scoring.** `plus.shadow_reference` scores the same updates against a second reference and logs it without acting. Every run of the experiment logs both references, so they are compared on identical updates, free of the differences between training runs.
+
+**The experiment** (`configs/sweeps/acer_c10_peer.yaml`, prefix `x10_`, 24 runs on the Acer): the union screen without the rewind, at 15 clients, α = 0.1 and 0.5, with no attack and with 3 backdoor attackers, 3 seeds. One arm acts on the median and logs the peer scores; the other acts on the peer reference and logs the median scores. Predictions P22–P25 were written before the runs (`docs/PREDICTIONS.md`). Charts: `scripts/plot_phase7.py` writes `docs/figures/phase7_peer_paired.png` and `phase7_peer_outcomes.png`.

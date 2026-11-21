@@ -273,6 +273,75 @@ def fig_fmis(runs: dict) -> None:
     pr.save(fig, "phase6_fmis.png")
 
 
+def _split_rounds(runs: dict, n: int) -> dict[str, list[float]]:
+    """Gap ratios (both signals of the union screen) in the GPU grid at n clients: honest rounds (no-attack runs of
+    R3 with any signal) and rounds whose largest gap separates exactly the attackers still scored (attacked
+    r3wc runs), split into backdoor and model poisoning."""
+    out: dict[str, list[float]] = {"honest": [], "backdoor": [], "poisoning": []}
+    for name, ms in runs.items():
+        parts = name.split("__")
+        if not name.startswith(f"gg{n}_") or len(parts) != 3 or not parts[2].startswith("r3"):
+            continue
+        attack = parts[1]
+        if attack != "clean" and parts[2] != "r3wc":
+            continue
+        for m in [m for m in ms if m["seed"] in SEEDS]:
+            bad = set(m["attackers"])
+            for d in m.get("diagnostics", []):
+                ss = d.get("score_stats") or {}
+                clients = [int(c) for c in d["scores"]]
+                for stats, scores in ((ss, list(d["scores"].values())), (ss.get("critical"), ss.get("critical_scores"))):
+                    if not stats or scores is None or "gap_ratio" not in stats:
+                        continue
+                    scores = list(scores.values()) if isinstance(scores, dict) else scores
+                    if attack == "clean":
+                        out["honest"].append(stats["gap_ratio"])
+                        continue
+                    seen = [c for c in clients if c in bad]
+                    if not seen:
+                        continue
+                    order = sorted(range(len(scores)), key=lambda i: scores[i])
+                    gaps = [scores[order[i + 1]] - scores[order[i]] for i in range(len(order) - 1)]
+                    k = max(range(len(gaps)), key=gaps.__getitem__)
+                    low = {clients[i] for i in order[:k + 1]}
+                    high = set(clients) - low
+                    if set(seen) in (low, high):
+                        out["backdoor" if attack.startswith("backdoor") else "poisoning"].append(stats["gap_ratio"])
+    return out
+
+
+def fig_gap_gate_tradeoff(runs: dict) -> None:
+    """Why a larger, size-calibrated gap gate is not a free fix: the gap ratios of honest rounds overlap those of
+    the rounds in which the backdoor attackers were split off; model poisoning splits off far above both."""
+    data = {n: _split_rounds(runs, n) for n in (15, 30)}
+    if not all(data[n]["honest"] and data[n]["backdoor"] for n in data):
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.2), sharey=True)
+    cats = [("honest", "no attack (honest rounds)", "#9a9893"), ("backdoor", "backdoor: split = attackers", pr.SLOT[1]),
+            ("poisoning", "sign flip, ALIE, Min-Max:\nsplit = attackers", pr.SLOT[0])]
+    for ax, n in zip(axes, (15, 30), strict=True):
+        for i, (key, _label, color) in enumerate(cats):
+            v = sorted(data[n][key])
+            if not v:
+                continue
+            ax.boxplot([v], positions=[i], widths=0.5, showfliers=False, patch_artist=True,
+                       boxprops={"facecolor": color, "alpha": 0.55}, medianprops={"color": pr.INK})
+            q95 = v[int(0.95 * (len(v) - 1))]
+            if key == "honest":
+                ax.axhline(q95, color="#9a9893", linestyle="--", linewidth=1)
+                ax.text(-0.45, q95 * 1.05, f"honest 95th percentile: {q95:.0f}", ha="left", fontsize=8)
+        ax.axhline(8, color=pr.INK, linewidth=1)
+        ax.text(-0.45, 8 * 0.84, "current gate: 8", ha="left", va="top", fontsize=8)
+        ax.set_yscale("log")
+        ax.set_xticks(range(3), [c[1] for c in cats], fontsize=8)
+        ax.set_title(f"{n} clients (GPU grid, both signals, α 0.1 and 0.5)", fontsize=10)
+    axes[0].set_ylabel("gap ratio (largest gap / median gap)")
+    fig.suptitle("A larger gap gate would stop the honest false alarms and the backdoor catches together",
+                 fontsize=11)
+    fig.tight_layout()
+    pr.save(fig, "phase6_gap_gate_tradeoff.png")
+
+
 def fig_isolation_rounds(runs: dict, n: int) -> None:
     """GPU grid: in which rounds each screen isolates honest clients. Cumulative honest clients isolated per round,
     mean over 3 seeds, for the screening models, with no attack and under three attacks at the middle attacker
@@ -381,6 +450,7 @@ def main() -> None:
     fig_rewind(runs)
     fig_stealth(runs)
     fig_fmis(runs)
+    fig_gap_gate_tradeoff(runs)
     fig_isolation_rounds(runs, 15)
     fig_isolation_rounds(runs, 30)
     fig_signals(runs)

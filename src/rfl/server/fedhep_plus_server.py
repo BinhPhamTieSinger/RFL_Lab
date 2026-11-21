@@ -240,6 +240,13 @@ class FedHEPPlusServer(DefendedFedHEPServer):
             score_stats = {"median": float(med), "mad": float(mad), "scale": scale,
                            "relative_floor": self.screen.relative_floor * abs(float(med)),
                            "absolute_floor": self.screen.mad_floor, "reference_n": int(in_ref.sum())}
+        if self.screen.shadow_reference and signal in ("weights", "critical", "root_head"):
+            # Logged only (Phase 7): the same signal scored against another reference, for paired comparisons.
+            shadow = screening_scores(updates, self.global_defense.layout, self._masks(scored),
+                                      replace(self.screen, signal=signal, reference=self.screen.shadow_reference),
+                                      reference_rows=in_ref)
+            score_stats["shadow_scores"] = shadow.tolist()
+            score_stats["shadow_gap_ratio"] = gap_ratio(shadow.tolist())
         raw_scores = dict(zip(scored, scores.tolist(), strict=True))
         zs = robust_z(scores, floor=self.screen.relative_floor, reference=ref_scores,
                       absolute_floor=self.screen.mad_floor)

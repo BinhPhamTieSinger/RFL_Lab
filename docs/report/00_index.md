@@ -44,6 +44,8 @@
 | Why two signals? | `figures/phase6_signals.png` | signals table | 5.3, 6.4 |
 | Does it isolate honest clients, and when? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` (compare `figures/phase3_cascade.png`) | grid summary; gap-gate table | 6.12 |
 | Does it hold at scale and under strong skew? | — | grid summary per setting | 6.12 |
+| Why not just raise the gap gate? | `figures/phase6_gap_gate_tradeoff.png` | — | 6.12 |
+| What is being tested next? | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` (when the Acer runs are in) | P22–P25 | 6.15 |
 | Does it remove a backdoor? | `figures/phase6_rewind.png`, `figures/phase6_durability.png` | 100-round table | 6.9 |
 | Does it survive an adaptive attacker? | `figures/phase6_stealth.png` | stealth table | 6.10 |
 | What if the attacker count is unknown? | `figures/phase6_fmis.png` | f table | 6.11 |

@@ -99,6 +99,10 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 |---|---|---|---|
 | P20 | The stealth backdoor (blended toward the honest mean until it sits inside Min-Max's bound) gets past the whole-update and union screens more often than the plain backdoor does, but carries less backdoor: with 3 attackers its success under no defense is lower than the plain backdoor's | 0.55 | the screens catch it as often as the plain backdoor, or its undefended success matches the plain one |
 | P21 | Telling the robust rules f = 6 when 3 attack costs L0 at least 1 point with no attack (it trims more honest updates), while R3 with the union screen loses less, because its trimmed mean only acts on the clients the screen kept; f = 1 lets sign flip through L0's trimmed mean but not R3's screen | 0.5 | R3 loses as much as L0 at f = 6, or L0 at f = 1 holds sign flip within 1 point |
+| P22 | (Phase 7, paired, Acer.) Scored on the same updates, the peer reference separates the 3 backdoor attackers from honest clients better than the global median at α 0.1 (mean per-round AUROC on \|z\|, whole update, at least 0.10 higher), and about as well at α 0.5 (within 0.05) | 0.4 | at α 0.1 the peer AUROC is not higher than the median's |
+| P23 | (Paired.) With no attack, the peer reference halves the share of honest client-rounds with \|z\| > 2.5 on the whole update at α 0.1; at α 0.5, where most clients hold most classes, it changes it by less than a third | 0.5 | the share falls by less than half at α 0.1 |
+| P24 | (Acting.) The union screen acting on the peer reference isolates at most half as many honest clients per run with no attack as the same screen on the median (both α), and still keeps backdoor success under 5% on every seed at α 0.5 | 0.35 | more than half as many honest isolations, or any α 0.5 seed above 5% |
+| P25 | (Acting.) At α 0.1 the peer reference lowers backdoor success by at least 10 points on average against the median reference (same seeds, Acer) | 0.3 | a smaller drop, or a rise |
 
 ## 3. The model we expect to publish
 
