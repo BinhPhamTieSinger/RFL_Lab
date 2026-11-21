@@ -278,7 +278,71 @@ The screen makes R3 almost indifferent to $f_0$: every attacker is caught under 
 
 ## 6.12 Results at scale (GPU server)
 
-The large grid `gpu_grid_n{15,30,50}` runs 15, 30 and 50 clients × α 0.1 and 0.5 × 10, 20 and 30% attackers × 8 models, 1,872 runs. Its results are written in here when the GPU server pushes them. The canonical benchmark ([chapter 7](07_benchmark.md)) compares FedHEP-Guard with every other model on one machine.
+The large grid (`gpu_grid_n{15,30}`, 1,239 runs so far; the 50-client part is still to run) repeats 8 models at 15 and 30 clients, α = 0.5 and 0.1, with 10, 20 and 30% attackers, 3 seeds, 30 rounds. Its FedHEP-Guard column is the **screen without the rewind** (R3 + union screen); the rewind arrives with the canonical benchmark.
+
+**The 15-client, α = 0.5, 3-attacker cell repeats GPU batch 1** under new names, and its whole-update runs give the same backdoor numbers (0.6 / 71.4 / 0.6%): the GPU server reproduces itself across jobs.
+
+**Summary per setting.** Columns:
+- *Worst under poisoning*: the lowest accuracy over sign flip, ALIE and Min-Max at all three attacker shares.
+- *Backdoor*: success at 10 / 20 / 30% attackers.
+- *Honest isolated*: per run, with no attack.
+
+| Setting | Model | No attack | Worst under poisoning | Backdoor | Honest isolated |
+|---|---|---|---|---|---|
+| 15 clients, α = 0.5 | FedHEP | 49.19 | 24.1 | 70 / 79 / 80% | 0 |
+| | Defended FedHEP | 48.68 | 32.1 | 72 / 79 / 80% | 0 |
+| | FedHEP+ | 48.48 | 34.7 | 2.0 / 22 / 58% | 2.7 |
+| | L0 | 48.21 | 37.0 | 40 / 64 / 76% | 0 |
+| | R3 (root head) | 47.89 | **44.6** | 14 / 57 / 71% | 1.3 |
+| | **FedHEP-Guard screen** | 47.36 | 43.3 | **0.4 / 0.6 / 12%** | 4.3 |
+| | FLAME | 43.12 | 38.8 | 0.4 / 0.5 / 0.4% | 0 |
+| 15 clients, α = 0.1 | FedHEP | 61.09 | 29.6 | 20 / 30 / 32% | 0 |
+| | Defended FedHEP | 60.76 | 46.4 | 21 / 25 / 26% | 0 |
+| | FedHEP+ | 59.93 | 54.0 | 22 / 29 / 29% | 7.7 |
+| | L0 | 60.32 | 52.5 | 19 / 23 / 23% | 0 |
+| | R3 (root head) | 60.43 | 29.9 | 18 / 28 / 32% | 1.3 |
+| | **FedHEP-Guard screen** | 60.21 | **57.8** | 15 / 20 / 31% | 1.7 |
+| | FLAME | 49.76 | 46.5 | **0.8 / 1.0 / 3.4%** | 0 |
+| 30 clients, α = 0.5 | FedHEP | 45.22 | 22.8 | 63 / 73 / 74% | 0 |
+| | Defended FedHEP | 44.28 | 25.7 | 62 / 72 / 74% | 0 |
+| | FedHEP+ | 44.41 | 26.6 | 22 / 58 / 63% | 4.3 |
+| | L0 | 44.69 | 36.6 | 17 / 61 / 68% | 0 |
+| | R3 (root head) | 44.34 | 39.5 | 34 / 61 / 65% | 0.7 |
+| | **FedHEP-Guard screen** | 43.30 | **40.2** | **0.5 / 0.9 / 1.2%** | **14.7** |
+| | FLAME | 38.29 | 30.1 | 0.5 / 0.5 / 0.7% | 0 |
+| 30 clients, α = 0.1 | FedHEP | 56.13 | 41.0 | 16 / 23 / 27% | 0 |
+| | Defended FedHEP | 55.62 | 47.5 | 13 / 21 / 24% | 0 |
+| | FedHEP+ | 55.64 | 50.7 | 16 / 21 / 25% | 2.3 |
+| | L0 | 55.11 | 49.0 | 6.0 / 19 / 23% | 0 |
+| | R3 (root head) | 55.29 | 40.3 | 15 / 23 / 25% | 5.0 |
+| | **FedHEP-Guard screen** | 55.36 | **54.4** | 1.0 / 17 / 25% | 7.0 |
+| | FLAME | 45.01 | 39.3 | **0.6 / 1.9 / 3.5%** | 0 |
+
+**What the grid shows:**
+- **The most robust model against model poisoning.** FedHEP-Guard's screen has the best worst-case accuracy in three of four settings. In the fourth it is 1.3 points behind R3. It never collapses: its worst case stays within 1–4 points of its no-attack accuracy. R3 with the root-head signal falls to 29.9 and 40.3 at α = 0.1.
+- **The best backdoor defense short of FLAME at α = 0.5:** at most 1.2% at 30 clients, even with 9 attackers. FLAME stops every backdoor in every setting, but costs 6–11 points with no attack and has a lower worst case.
+- **At α = 0.1 the backdoor is not solved.** The screen lets through up to 31%; only FLAME holds. Strong skew makes honest clients as different from each other as attackers are.
+- **Honest isolations grow with the number of clients:** 4.3 per run at 15 clients, **14.7 at 30**, which is half the clients with no attack. Accuracy hardly suffers, because isolated clients keep training on their own and keep their personal heads, but it is wrong to blame them. The charts below show when it happens.
+
+**In which rounds honest clients are isolated.** Cumulative honest clients isolated per round, mean of 3 runs, at the middle attacker share. Where the green line hides the orange one, the whole-update screen and the union screen isolated the same clients.
+
+![Honest isolations per round, 15 clients](../figures/phase6_isolation_rounds_n15.png)
+
+![Honest isolations per round, 30 clients](../figures/phase6_isolation_rounds_n30.png)
+
+**Why it grows with the number of clients: the gap gate does not scale.** The gate opens when the largest gap between neighbouring sorted scores is at least 8 times the median gap. With more clients there are more gaps, and the largest of them grows by chance alone. For scores drawn from one normal distribution (no attacker at all):
+
+| Clients | Chance the gate opens with no attacker | Median gap ratio | 95th percentile |
+|---|---|---|---|
+| 12 | 13% | 4.3 | 11.2 |
+| 15 | 18% | 4.9 | 12.1 |
+| 20 | 29% | 6.0 | 14.6 |
+| 30 | **51%** | 8.1 | 19.2 |
+| 50 | **81%** | 12.1 | 27.6 |
+
+The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, the whole-update gate opened in 44% of rounds and the critical-layer gate in 43%, against 32% and 14% at 15 clients. The union acts when either gate is open, so it blames someone in most rounds.
+
+**The fix this points to:** a gate threshold set by the number of clients, $\gamma(n)$, as the 95th percentile of the gap ratio of $n$ scores with no attacker (about 12 at 15 clients, 19 at 30, 28 at 50). It should be calibrated on real honest rounds, since real scores have heavier tails than a normal distribution. This is the next experiment for FedHEP-Guard.
 
 ## 6.13 What it costs, and what is still open
 
@@ -287,9 +351,10 @@ The large grid `gpu_grid_n{15,30,50}` runs 15, 30 and 50 clients × α 0.1 and 0
 - Plain and stealth backdoors held under 1.5% at D1 (Mac).
 - A backdoor that slipped in early removed by the rewind (0–1% over 100 rounds, Acer).
 - Indifferent to a wrong guess of $f$.
+- The best worst-case accuracy under model poisoning in 3 of 4 grid settings, and backdoor success of at most 1.2% at 30 clients, α = 0.5, even with 9 attackers (GPU).
 
 **Costs and open problems:**
-1. **Honest isolations.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
+1. **Honest isolations, growing with the number of clients.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer), and 14.7 of 30 at 30 clients (GPU). The cause is a gap gate whose threshold does not scale with $n$ (6.12). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
 2. **Strong skew and backdoors.** At D2, no model tested so far stops the plain backdoor (37.7% for L0 to 46.9% for FedHEP; R3 45.3%). FedHEP-Guard's union screen and rewind have not yet been run at D2. The canonical benchmark covers it.
 3. **A third of the clients attacking with a plain backdoor** can get it in before the screen catches them (one seed at 20%, Mac). FLAME holds there.
 4. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.

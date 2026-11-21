@@ -273,6 +273,45 @@ def fig_fmis(runs: dict) -> None:
     pr.save(fig, "phase6_fmis.png")
 
 
+def fig_isolation_rounds(runs: dict, n: int) -> None:
+    """GPU grid: in which rounds each screen isolates honest clients. Cumulative honest clients isolated per round,
+    mean over 3 seeds, for the screening models, with no attack and under three attacks at the middle attacker
+    share. The counterpart of Phase 3's cascade chart (phase3_cascade.png) for FedHEP-Guard's screen."""
+    mid = {15: 3, 30: 6}[n]
+    honest = {15: (15, 15 - mid), 30: (30, 30 - mid)}[n]
+    attacks = [("clean", "No attack"), (f"sign{mid}", "Sign flip"), (f"alie{mid}", "ALIE"),
+               (f"backdoor{mid}", "Backdoor")]
+    models = [("plus", "FedHEP+", pr.SLOT[0]), ("r3", "R3, root-head signal", "#9a9893"),
+              ("r3w", "R3, whole-update signal", pr.SLOT[1]),
+              ("r3wc", "FedHEP-Guard screen (R3, union)", "#0b7a52")]
+    rows = [("a05", "α = 0.5"), ("a01", "α = 0.1")]
+    if not all(len(_runs(runs, f"gg{n}_{a}__{att}__{m}")) == 3 for a, _ in rows for att, _ in attacks
+               for m, _, _ in models):
+        return
+    fig, axes = plt.subplots(2, 4, figsize=(16, 6.6), sharex=True, sharey=True)
+    for r, (alpha, alpha_label) in enumerate(rows):
+        for c, (attack, title) in enumerate(attacks):
+            ax = axes[r][c]
+            for model, label, color in models:
+                ms = _runs(runs, f"gg{n}_{alpha}__{attack}__{model}")
+                rounds = [d["round"] for d in ms[0]["diagnostics"]]
+                mean = [sum(len(set(m["diagnostics"][i]["isolated"]) - set(m["attackers"])) for m in ms) / len(ms)
+                        for i in range(len(rounds))]
+                ax.step(rounds, mean, where="post", color=color, linewidth=2.2 if model == "r3wc" else 1.6,
+                        label=label)
+            ax.set_title(f"{title}, {alpha_label}" if attack == "clean" else f"{title} ({mid} attackers), {alpha_label}",
+                         fontsize=9.5)
+            if r == 1:
+                ax.set_xlabel("round")
+        axes[r][0].set_ylabel("honest clients isolated\n(mean of 3 runs)")
+    total = honest[0]
+    fig.suptitle(f"In which rounds each screen isolates honest clients: GPU grid, {n} clients "
+                 f"({total} honest with no attack, {honest[1]} under attack)", fontsize=11)
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.legend(*axes[0][0].get_legend_handles_labels(), ncols=4, fontsize=9, loc="lower center", frameon=False)
+    pr.save(fig, f"phase6_isolation_rounds_n{n}.png")
+
+
 def fig_signals(runs: dict) -> None:
     """GPU batch gpu_d1_signals (CUDA, D1, 3 seeds): which screening signal catches the backdoor, and what each
     costs in honest clients isolated with no attack."""
@@ -342,6 +381,8 @@ def main() -> None:
     fig_rewind(runs)
     fig_stealth(runs)
     fig_fmis(runs)
+    fig_isolation_rounds(runs, 15)
+    fig_isolation_rounds(runs, 30)
     fig_signals(runs)
     if len(sys.argv) > 2:
         fig_devices(Path(sys.argv[2]))

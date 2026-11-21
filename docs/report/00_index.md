@@ -42,6 +42,8 @@
 | How does FedHEP-Guard work? | `report/figures/diagrams/08_fedhep_guard_round.png`, `report/figures/guard_coverage.png` | summary of changes | 6.1 |
 | Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png` | ladder tables | 6.8 |
 | Why two signals? | `figures/phase6_signals.png` | signals table | 5.3, 6.4 |
+| Does it isolate honest clients, and when? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` (compare `figures/phase3_cascade.png`) | grid summary; gap-gate table | 6.12 |
+| Does it hold at scale and under strong skew? | — | grid summary per setting | 6.12 |
 | Does it remove a backdoor? | `figures/phase6_rewind.png`, `figures/phase6_durability.png` | 100-round table | 6.9 |
 | Does it survive an adaptive attacker? | `figures/phase6_stealth.png` | stealth table | 6.10 |
 | What if the attacker count is unknown? | `figures/phase6_fmis.png` | f table | 6.11 |

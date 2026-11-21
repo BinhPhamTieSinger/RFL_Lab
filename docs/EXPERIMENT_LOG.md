@@ -1337,3 +1337,14 @@ The organized account now lives in `docs/report/` (chapters 0–8: federated lea
 
 ## 2026-11-20 · Stealth study complete (Mac, 84 of 84): the plain backdoor with 5 attackers
 The Mac's last runs fill the plain-backdoor, 5-attacker column (seeds 123 / 42 / 7): FedHEP 75 / 82 / 84%, Defended FedHEP 74 / 81 / 82%, L0 69 / 77 / 79%, FedHEP+ 40 / 64 / 65%, R3 whole update 20 / 4.4 / 3.8%, R3 union screen 20 / 4.0 / 0.7%, FLAME 0.4 / 0.6 / 0.4%. Both R3 screens isolate all 15 attackers, but on seed 123 the plain backdoor gets in before the catch. With a third of the clients attacking, FLAME is the only model under 1% on every seed (at about 3 points of accuracy). Report chapter 6.10 and `docs/figures/phase6_stealth.png` are updated. This was the Mac's last sweep: from now on it designs and analyses, and the Acer and the GPU server run.
+
+## 2026-11-21 · GPU grid at 15 and 30 clients (1,239 runs): strong against poisoning, honest isolations grow with n
+
+The GPU server's `gpu_grid_n15` and `gpu_grid_n30` parts are in: 8 models at α 0.5 and 0.1, 10/20/30% attackers, 3 seeds, 30 rounds (prefixes `gg15_*`, `gg30_*`). The 50-client part is still to run. Its FedHEP-Guard column (`r3wc`) is the union screen without the rewind.
+
+- **Model poisoning:** the union screen has the best worst-case accuracy over sign flip, ALIE and Min-Max in 3 of 4 settings (43.3, 57.8, 40.2, 54.4) and stays within 1–4 points of its no-attack accuracy. R3 with the root-head signal collapses under sign flip at α 0.1 (29.9 at 15 clients, 40.3 at 30).
+- **Backdoor:** at α 0.5 the union screen holds 0.4 / 0.6 / 12% (15 clients) and 0.5 / 0.9 / 1.2% (30 clients) at 10/20/30% attackers. At α 0.1 it lets through up to 31%. FLAME holds every backdoor (0.4–3.5%) but costs 6–11 points with no attack.
+- **P17 held exactly:** 0.6 / 0.5 / 0.6% on the three seeds where the whole-update screen alone gave 0.6 / 71.4 / 0.6%, with 13 honest isolations over 3 runs. The 15-client, α 0.5 cell repeats GPU batch 1 and gives the same whole-update numbers, so the server reproduces itself across jobs. P18 half refuted (see PREDICTIONS).
+- **Honest isolations grow with n:** 4.3 per run at 15 clients, 14.7 at 30 (α 0.5, no attack). Diagnosis: the fixed gap gate (ratio ≥ 8) opens by chance more often with more scores: 18% at 15, 51% at 30, 81% at 50 for normal scores with no attacker. Logged gate-open rates in the no-attack runs agree (whole update 32% → 44%, critical layers 14% → 43%, from 15 to 30 clients). Proposed next experiment: a size-calibrated gate γ(n) at the 95th percentile of the null gap ratio (about 12, 19 and 28 at 15, 30 and 50 clients), calibrated on real honest rounds.
+
+New charts: `docs/figures/phase6_isolation_rounds_n15.png` and `_n30.png` (cumulative honest isolations per round, `scripts/plot_phase6.py`). Report chapters 6.12 and 6.13 are updated.
