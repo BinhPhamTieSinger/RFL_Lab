@@ -371,7 +371,17 @@ So the gap ratio cannot tell an honest client with unusual data from a backdoor 
 - The best worst-case accuracy under model poisoning in 3 of 4 grid settings, and backdoor success of at most 1.2% at 30 clients, α = 0.5, even with 9 attackers (GPU).
 
 **Costs and open problems:**
-1. **Honest isolations, growing with the number of clients.** The union screen isolates 4–6 honest clients per run with no attack at D1 (Acer), and 14.7 of 30 at 30 clients (GPU). The gap gate opens by chance more often as $n$ grows, but raising its threshold would also stop the backdoor catches (6.12); the next experiment changes the reference instead (6.15). That leaves it 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below under ALIE with 3 attackers, an attack that barely hurts L0. Reducing these isolations is the main open problem.
+1. **Honest isolations: fixed for the root head, not for the union screen.**
+
+![Honest isolations by setting and signal](../figures/phase6_honest_isolation_summary.png)
+
+   - **The gap gate fixed them for the root-head signal:** 1.0 per run at D1 and at D2 on the Mac (FedHEP+: 3.0 and 9.0), and 0.7–1.3 at three of four GPU settings.
+   - **The union screen contains the whole-update signal and isolates more:** at α = 0.5, 4.3 per run at 15 clients and 14.7 at 30, above FedHEP+ (2.7 and 4.3).
+   - **Under strong skew it is the other way round:** at 15 clients and α = 0.1, 1.7 against FedHEP+'s 7.7.
+   - **The difference follows the gap gate.** With mild skew, honest whole-update scores are tight with the occasional outlier, so the largest gap stands out and the gate opens by chance: in 32% of honest rounds at 15 clients, α = 0.5, against 6% at α = 0.1 (6.12).
+   - **The D1 mean of 4.3 comes mostly from one seed** (10, 3 and 0 honest clients isolated).
+   - **The union screen has not been run at D2.** The D2 figure in 6.8 is the root-head R3, not FedHEP-Guard; the benchmark will give it.
+   - **Costs:** the honest isolations leave FedHEP-Guard 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below it under ALIE with 3 attackers. Reducing them is the main open problem, and the next experiment (6.15) targets it.
 2. **Strong skew and backdoors.** At D2, no model tested so far stops the plain backdoor (37.7% for L0 to 46.9% for FedHEP; R3 45.3%). FedHEP-Guard's union screen and rewind have not yet been run at D2. The canonical benchmark covers it.
 3. **A third of the clients attacking with a plain backdoor** can get it in before the screen catches them (one seed at 20%, Mac). FLAME holds there.
 4. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.

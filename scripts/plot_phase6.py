@@ -417,6 +417,41 @@ def fig_dropped(runs: dict) -> None:
     pr.save(fig, "phase6_dropped_components.png")
 
 
+def fig_honest_isolation_summary(runs: dict) -> None:
+    """Honest clients isolated per run with no attack, by setting: FedHEP+, R3 with the root head, and
+    FedHEP-Guard's union screen without rewind. Each group is one machine; the union screen was not run with no
+    attack on the Mac."""
+    groups = [("Mac\n15 clients, α 0.5\n(D1)", "p3__zmr__clean", "p6__r3g8__clean", None),
+              ("Mac\n20 clients, α 0.2\n(D2)", "a02__plus__clean", "a02__r3g8__clean", None),
+              ("GPU\n15 clients, α 0.5", "gg15_a05__clean__plus", "gg15_a05__clean__r3", "gg15_a05__clean__r3wc"),
+              ("GPU\n15 clients, α 0.1", "gg15_a01__clean__plus", "gg15_a01__clean__r3", "gg15_a01__clean__r3wc"),
+              ("GPU\n30 clients, α 0.5", "gg30_a05__clean__plus", "gg30_a05__clean__r3", "gg30_a05__clean__r3wc"),
+              ("GPU\n30 clients, α 0.1", "gg30_a01__clean__plus", "gg30_a01__clean__r3", "gg30_a01__clean__r3wc")]
+    models = [("FedHEP+", pr.SLOT[1]), ("R3 gate 8, root head", pr.SLOT[2]),
+              ("FedHEP-Guard without rewind (union screen)", pr.SLOT[3])]
+    fig, ax = plt.subplots(figsize=(13, 4.4))
+    w = 0.26
+    for i, (label, *names) in enumerate(groups):
+        for j, name in enumerate(names):
+            x = i + (j - 1) * w
+            ms = _runs(runs, name) if name else []
+            if len(ms) != 3:
+                ax.text(x, 0.3, "not run", rotation=90, ha="center", va="bottom", fontsize=7, color="#9a9893")
+                continue
+            vals = [_false(m) for m in ms]
+            mu = sum(vals) / 3
+            ax.bar(x, mu, w - 0.03, color=models[j][1], label=models[j][0] if i == 2 else None)
+            ax.scatter([x] * 3, vals, color=pr.INK, s=9, zorder=3)
+            ax.text(x, mu + 0.4, f"{mu:.1f}", ha="center", fontsize=7.5)
+    ax.set_xticks(range(len(groups)), [g[0] for g in groups], fontsize=8.5)
+    ax.set_ylabel("honest clients isolated per run\n(no attack, 30 rounds; dots = seeds)")
+    ax.set_title("Honest isolations depend on the signal and the setting: the gate fixed them for the root head, "
+                 "not for the union screen", fontsize=10.5)
+    ax.legend(fontsize=8, loc="upper left")
+    fig.tight_layout()
+    pr.save(fig, "phase6_honest_isolation_summary.png")
+
+
 def fig_isolation_rounds(runs: dict, n: int) -> None:
     """GPU grid: in which rounds each screen isolates honest clients. Cumulative honest clients isolated per round,
     mean over 3 seeds, for the screening models, with no attack and under three attacks at the middle attacker
@@ -527,6 +562,7 @@ def main() -> None:
     fig_fmis(runs)
     fig_gap_gate_tradeoff(runs)
     fig_dropped(runs)
+    fig_honest_isolation_summary(runs)
     fig_isolation_rounds(runs, 15)
     fig_isolation_rounds(runs, 30)
     fig_signals(runs)
