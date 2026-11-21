@@ -3,7 +3,9 @@ flowchart TD
   NB["$$\begin{array}{c}\text{[a] norm bound} \cr \displaystyle \Delta_i \leftarrow \Delta_i \cdot \min\Big(1,\ \frac{k\,Q_{0.25}(\|\Delta\|)}{\|\Delta_i\|}\Big) \cr k = 2\text{ at parents, }k = 3\text{ at Global}\end{array}$$"]:::new
   SIG["$$\begin{array}{c}\text{[b] signal: root-head rows of client }i\text{'s classes} \cr \displaystyle v_i = \mathrm{rows}_{Y_i}(\Delta W_r)\end{array}$$"]:::new
   REF["$$\begin{array}{c}\text{[c] reference: mean of unit vectors} \cr \displaystyle r = \frac{1}{n}\sum_i \frac{v_i}{\|v_i\|}\end{array}$$"]:::new
-  TW["$$\begin{array}{c}\text{[d] trust weight} \cr \displaystyle t_i = \mathrm{softmax}_i\big(\cos(v_i, r) / T\big) \cr \text{Global: }t_i = 0\text{ if }\cos(v_i, r) \lt  -0.1\end{array}$$"]:::new
+  CON{"$$\begin{array}{c}\text{consensus?} \cr \displaystyle \|r\| \ge 0.2\ ?\end{array}$$"}:::new
+  EQ["$$\begin{array}{c}\text{no consensus: [d] skipped} \cr \displaystyle t_i = 1/n \text{ for every sender}\end{array}$$"]:::new
+  TW["$$\begin{array}{c}\text{[d] trust weight} \cr \displaystyle t_i = \mathrm{softmax}_i\big(\cos(v_i, r) / T\big) \cr \text{Global: }t_i = 0\text{ if }\cos(v_i, r) \lt  -0.1 \cr \text{(all rejected: }t_i = 1/n\text{)}\end{array}$$"]:::new
   AGG["$$\begin{array}{c}\text{[e] SCCF step} \cr \displaystyle \Delta = \sum_i t_i\,\Delta_i \cr \text{BatchNorm buffers: coordinate median}\end{array}$$"]:::changed
   TL["$$\begin{array}{c}\text{[f] trust ledger} \cr \displaystyle q_i \leftarrow 0.85\,q_i + 0.15\,\min(1,\ n\,t_i) \cr \text{isolated for good if }q_i \lt  0.25\end{array}$$"]:::new
   PAR["$$\begin{array}{c}\text{parents and Global both aggregate with SCCF}\end{array}$$"]:::changed
@@ -12,9 +14,13 @@ flowchart TD
   UP --> NB
   NB --> SIG
   SIG --> REF
-  REF --> TW
+  REF --> CON
+  CON -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| TW
+  CON -->|"$$\begin{array}{c}\text{no}\end{array}$$"| EQ
   TW --> AGG
+  EQ --> AGG
   TW --> TL
+  EQ --> TL
   AGG --> PAR
   GRP --> PAR
   subgraph LEG[" "]

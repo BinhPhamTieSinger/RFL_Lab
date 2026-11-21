@@ -140,8 +140,11 @@ def defended_round() -> str:
                      "$$v_i = \\mathrm{rows}_{Y_i}(\\Delta W_r)$$"], "new"),
         node("REF", ["[c] reference: mean of unit vectors", "$$r = \\frac{1}{n}\\sum_i \\frac{v_i}{\\|v_i\\|}$$"],
              "new"),
+        node("CON", ["consensus?", "$$\\|r\\| \\ge 0.2\\ ?$$"], "new", "decision"),
+        node("EQ", ["no consensus: [d] skipped", "$$t_i = 1/n \\text{ for every sender}$$"], "new"),
         node("TW", ["[d] trust weight", "$$t_i = \\mathrm{softmax}_i\\big(\\cos(v_i, r) / T\\big)$$",
-                    "Global: $t_i = 0$ if $\\cos(v_i, r) < -0.1$"], "new"),
+                    "Global: $t_i = 0$ if $\\cos(v_i, r) < -0.1$",
+                    "(all rejected: $t_i = 1/n$)"], "new"),
         node("AGG", ["[e] SCCF step", "$$\\Delta = \\sum_i t_i\\,\\Delta_i$$",
                      "BatchNorm buffers: coordinate median"], "changed"),
         node("TL", ["[f] trust ledger", "$$q_i \\leftarrow 0.85\\,q_i + 0.15\\,\\min(1,\\ n\\,t_i)$$",
@@ -149,8 +152,9 @@ def defended_round() -> str:
         node("PAR", ["parents and Global both aggregate with SCCF"], "changed"),
         node("GRP", ["groups: random, fixed for the whole run"], "changed"),
         node("OLD", ["FedAvg mean; similarity grouping"], "gone"),
-        edge("UP", "NB"), edge("NB", "SIG"), edge("SIG", "REF"), edge("REF", "TW"), edge("TW", "AGG"),
-        edge("TW", "TL"), edge("AGG", "PAR"), edge("GRP", "PAR"),
+        edge("UP", "NB"), edge("NB", "SIG"), edge("SIG", "REF"), edge("REF", "CON"), edge("CON", "TW", "yes"),
+        edge("CON", "EQ", "no"), edge("TW", "AGG"), edge("EQ", "AGG"), edge("TW", "TL"), edge("EQ", "TL"),
+        edge("AGG", "PAR"), edge("GRP", "PAR"),
         CHANGE_LEGEND, STYLE])
 
 

@@ -14,13 +14,13 @@ $$\mathrm{bound}(\Delta_i) = \Delta_i \cdot \min\Bigl(1, \frac{k\,Q_{0.25}(\lVer
 
 **[b] Signal.** Trust looks only at the **root head's weight rows for the classes client $i$ holds**: $v_i = \mathrm{rows}_{Y_i}(W_r)$ of the bounded update. The trunk, the other heads and BatchNorm play no part.
 
-**[c] Reference.** The mean of the unit vectors, $r = \frac1n\sum_i v_i/\lVert v_i\rVert$. If $\lVert r\rVert < 0.2$ there is no consensus, and every sender gets the same weight $1/n$.
+**[c] Reference.** The mean of the unit vectors, $r = \frac1n\sum_i v_i/\lVert v_i\rVert$. If $\lVert r\rVert < 0.2$ there is no consensus: step [d] is skipped entirely (no cosines, no hard rejection, no softmax) and every sender gets the same weight $t_i = 1/n$. [e] then takes the plain mean of the bounded updates, and [f] gives every client full credit, $\min(1, n\cdot\tfrac1n) = 1$.
 
 **[d] Trust weight.** Each sender's weight is a softmax of its cosine to the reference, at temperature $T$:
 
 $$t_i = \frac{\exp\bigl(\cos(v_i, r)/T\bigr)}{\sum_j \exp\bigl(\cos(v_j, r)/T\bigr)}$$
 
-$T = 0.5$, multiplied by 0.9 when the cosines vary and by 1.05 otherwise. At Global, a sender with $\cos(v_i, r) < -0.1$ is rejected outright ($t_i = 0$).
+$T = 0.5$, multiplied by 0.9 when the cosines vary and by 1.05 otherwise. At Global, a sender with $\cos(v_i, r) < -0.1$ is rejected outright ($t_i = 0$); if every sender is rejected, all get $1/n$ again.
 
 **[e] SCCF step.** The aggregate is the trust-weighted sum of the bounded updates. BatchNorm buffers take the coordinate-wise median instead:
 
@@ -107,7 +107,7 @@ $$q_i \leftarrow 0.85\,q_i + 0.15\,\min(1,\ n\,t_i), \qquad q_i < 0.25 \Rightarr
 **Still fails:**
 1. **It never removes an attacker.** No client was isolated in any of 24 runs (9 in Phase 1c, 15 attacked runs in Phase 2). Attackers keep a 0.5–0.8 share of the weight every round. A ledger score settles near the average of $\min(1, n t_i)$, so it never reaches 0.25, and sign flip still costs 10.3 points.
 2. **It does nothing against the backdoor**: 78.7% success, the same as no defense. Backdoor attackers even look **more** trustworthy than honest clients (AUROC 0.36), because half their data is normal and their root-head updates point with the consensus.
-3. **The defense fades during training.** The temperature is fixed while all cosines shrink. When the mean direction gets short ($\lVert r\rVert < 0.2$), everyone gets equal weight; this happens in 7–73% of runs in each of the last five rounds. The trust scores often rank attackers correctly (AUROC 0.97 for sign flip) but never act on that ranking.
+3. **The defense fades during training.** The temperature is fixed while all cosines shrink. When the mean direction gets short ($\lVert r\rVert < 0.2$), [d] is skipped and everyone gets equal weight; this happens in 7–73% of runs in each of the last five rounds. In those rounds the ledger also gives every client, attackers included, full credit, which pushes every score back toward 1. The trust scores often rank attackers correctly (AUROC 0.97 for sign flip) but never act on that ranking.
 
 ![Why the defense fades](../figures/defended_failure_diagnosis.png)
 
