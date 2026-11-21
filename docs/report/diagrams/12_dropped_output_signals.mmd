@@ -1,0 +1,29 @@
+flowchart LR
+  UP["$$\begin{array}{c}\text{uploaded model }\theta_i\text{ of client }i\end{array}$$"]:::same
+  PR["$$\begin{array}{c}\text{server runs }\theta_i\text{ on 200 probe images }x_1..x_P \cr \text{(FLTrust root set, no labels)}\end{array}$$"]:::new
+  PL["$$\begin{array}{c}\text{probe logits} \cr \displaystyle p_i = \mathrm{vec}\big(z_r(x_1), \dots, z_r(x_P)\big) \cr \displaystyle s_i = \cos\big(p_i,\ \mathrm{med}_k\, p_k\big)\end{array}$$"]:::new
+  HG["$$\begin{array}{c}\text{head gap} \cr \displaystyle s_i = \frac{1}{P}\sum_{x} \big[\mathrm{KL}(q_r \| q_l) + \mathrm{KL}(q_r \| q_p)\big]\end{array}$$"]:::new
+  SIG["$$\begin{array}{c}\text{[1] screening signal (replaced)} \cr \text{root head, whole update}\end{array}$$"]:::changed
+  Z["$$\begin{array}{c}\text{[2]-[4] robust z, two-sided, gap gate, patience, evidence} \cr \text{unchanged (R3)}\end{array}$$"]:::same
+  UP --> PR
+  PR --> PL
+  PR --> HG
+  PL -->|"$$\begin{array}{c}\text{or}\end{array}$$"| Z
+  HG -->|"$$\begin{array}{c}\text{or}\end{array}$$"| Z
+  SIG -.->|"$$\begin{array}{c}\text{instead of}\end{array}$$"| Z
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

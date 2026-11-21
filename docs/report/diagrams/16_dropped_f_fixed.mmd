@@ -1,0 +1,25 @@
+flowchart LR
+  S["$$\begin{array}{c}\text{screen: excluded set }X\text{ this round} \cr \text{(attackers caught so far)}\end{array}$$"]:::same
+  NOW["$$\begin{array}{c}\text{FedHEP-Guard: }f\text{ shrinks with the exclusions} \cr \displaystyle f = \max\big(0, \min(f_0 - |X|,\ \lfloor (n_{\mathrm{kept}}-1)/2 \rfloor)\big)\end{array}$$"]:::changed
+  FIX["$$\begin{array}{c}\text{tested: }f\text{ held at the assumed count} \cr \displaystyle f = \min\big(f_0,\ \lfloor (n_{\mathrm{kept}}-1)/2 \rfloor\big)\end{array}$$"]:::new
+  L0["$$\begin{array}{c}\text{L0 over kept clients: ARC, NNM, TM} \cr \text{TM drops }f\text{ values per side, per coordinate}\end{array}$$"]:::same
+  S --> NOW
+  S --> FIX
+  NOW -->|"$$\begin{array}{c}\text{current}\end{array}$$"| L0
+  FIX -->|"$$\begin{array}{c}\text{tested}\end{array}$$"| L0
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

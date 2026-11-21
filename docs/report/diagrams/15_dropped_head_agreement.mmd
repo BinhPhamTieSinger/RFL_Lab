@@ -1,0 +1,28 @@
+flowchart LR
+  X["$$\begin{array}{c}\text{test input }x\text{ of client }i \cr \text{(prediction time only)}\end{array}$$"]:::same
+  H["$$\begin{array}{c}\text{three heads on the shared trunk} \cr \text{root }z_r\text{, parent }z_p\text{, local }z_l\end{array}$$"]:::same
+  E["$$\begin{array}{c}\text{FedHEP ensemble} \cr \displaystyle \hat y_{\mathrm{ens}} = \arg\max \sum_h \pi_h \tilde z_h\end{array}$$"]:::same
+  Q{"$$\begin{array}{c}\text{personal heads agree} \cr \text{and disagree with the ensemble?} \cr \displaystyle \hat y_p = \hat y_l \ne \hat y_{\mathrm{ens}}\end{array}$$"}:::new
+  P["$$\begin{array}{c}\text{predict with the personal heads} \cr \displaystyle z = \frac{z_l}{\sigma(z_l)} + \frac{z_p}{\sigma(z_p)}\end{array}$$"]:::new
+  K["$$\begin{array}{c}\text{keep the ensemble}\end{array}$$"]:::same
+  X --> H
+  H --> E
+  E --> Q
+  Q -->|"$$\begin{array}{c}\text{yes}\end{array}$$"| P
+  Q -->|"$$\begin{array}{c}\text{no}\end{array}$$"| K
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

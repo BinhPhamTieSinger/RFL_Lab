@@ -1,0 +1,29 @@
+flowchart LR
+  UP["$$\begin{array}{c}\text{updates }\Delta_i\text{ (weights only)}\end{array}$$"]:::same
+  P["$$\begin{array}{c}\text{principal sign over the reference clients} \cr \displaystyle \pi = \mathrm{sgn}\Big(\sum_k \mathrm{sgn}(\Delta_k)\Big)\end{array}$$"]:::new
+  T["$$\begin{array}{c}\text{each client's top 30\% coordinates by size} \cr \displaystyle T_i = \mathrm{top}_{0.3d}\,|\Delta_i|\end{array}$$"]:::new
+  R["$$\begin{array}{c}\text{share of them that agree with }\pi \cr \displaystyle s_i = \frac{1}{|T_i|}\sum_{j \in T_i} \mathbb{1}\big[\mathrm{sgn}(\Delta_{i,j}) = \pi_j\big]\end{array}$$"]:::new
+  Z["$$\begin{array}{c}\text{[2]-[4] unchanged (R3)}\end{array}$$"]:::same
+  SIG["$$\begin{array}{c}\text{[1] screening signal (replaced)}\end{array}$$"]:::changed
+  UP --> P
+  UP --> T
+  P --> R
+  T --> R
+  R --> Z
+  SIG -.->|"$$\begin{array}{c}\text{instead of}\end{array}$$"| Z
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

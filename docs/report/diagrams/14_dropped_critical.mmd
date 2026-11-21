@@ -1,0 +1,28 @@
+flowchart LR
+  UP["$$\begin{array}{c}\text{updates }\Delta_i\text{, shared layers }\ell \cr \text{(personal heads left out)}\end{array}$$"]:::same
+  C["$$\begin{array}{c}\text{per layer: cosine to the layer's median} \cr \displaystyle c_{i\ell} = \cos\big(\Delta_i^{(\ell)},\ \mathrm{med}_k\,\Delta_k^{(\ell)}\big)\end{array}$$"]:::new
+  D["$$\begin{array}{c}\text{the }k = 5\text{ most disputed layers} \cr \displaystyle L^\star = \mathrm{top}_5\ \mathrm{std}_i\, c_{i\ell}\end{array}$$"]:::new
+  S["$$\begin{array}{c}\text{score} \cr \displaystyle s_i = \frac{1}{5}\sum_{\ell \in L^\star} c_{i\ell}\end{array}$$"]:::new
+  Z["$$\begin{array}{c}\text{[2]-[4] unchanged (R3)}\end{array}$$"]:::same
+  SIG["$$\begin{array}{c}\text{[1] screening signal (replaced)}\end{array}$$"]:::changed
+  UP --> C
+  C --> D
+  D --> S
+  S --> Z
+  SIG -.->|"$$\begin{array}{c}\text{instead of}\end{array}$$"| Z
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

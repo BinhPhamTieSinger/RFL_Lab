@@ -268,6 +268,116 @@ def guard_round() -> str:
         CHANGE_LEGEND, STYLE])
 
 
+DROPPED_LEGEND = legend(("unchanged part of the model", "same"), ("the tested component", "new"),
+                        ("what it replaces or changes", "changed"))
+
+
+def dropped_momentum() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("UP", ["round-$t$ updates $\\Delta_i^{(t)}$", "(L0 alone, no screen)"], "same"),
+        node("M", ["worker momentum, kept by the server",
+                   "$$m_i^{(t)} = \\beta\\, m_i^{(t-1)} + (1-\\beta)\\,\\Delta_i^{(t)}, \\quad \\beta = 0.5$$"], "new"),
+        node("L0", ["L0 on the momenta instead of the updates",
+                    "$$\\Delta = \\mathrm{TM}_f\\Big(\\mathrm{NNM}_f\\big(\\mathrm{ARC}_f(m_1, \\dots, m_n)\\big)\\Big)$$"],
+             "changed"),
+        node("G", ["Global model $w \\leftarrow w + \\Delta$"], "same"),
+        edge("UP", "M"), edge("M", "L0"), edge("L0", "G"),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_output_signals() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("UP", ["uploaded model $\\theta_i$ of client $i$"], "same"),
+        node("PR", ["server runs $\\theta_i$ on 200 probe images $x_1..x_P$", "(FLTrust root set, no labels)"], "new"),
+        node("PL", ["probe logits", "$$p_i = \\mathrm{vec}\\big(z_r(x_1), \\dots, z_r(x_P)\\big)$$",
+                    "$$s_i = \\cos\\big(p_i,\\ \\mathrm{med}_k\\, p_k\\big)$$"], "new"),
+        node("HG", ["head gap", "$$s_i = \\frac{1}{P}\\sum_{x} \\big[\\mathrm{KL}(q_r \\| q_l) + "
+                    "\\mathrm{KL}(q_r \\| q_p)\\big]$$"], "new"),
+        node("SIG", ["[1] screening signal (replaced)", "root head, whole update"], "changed"),
+        node("Z", ["[2]-[4] robust z, two-sided, gap gate, patience, evidence", "unchanged (R3)"], "same"),
+        edge("UP", "PR"), edge("PR", "PL"), edge("PR", "HG"), edge("PL", "Z", "or"), edge("HG", "Z", "or"),
+        edge("SIG", "Z", "instead of", dotted=True),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_sign_align() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("UP", ["updates $\\Delta_i$ (weights only)"], "same"),
+        node("P", ["principal sign over the reference clients",
+                   "$$\\pi = \\mathrm{sgn}\\Big(\\sum_k \\mathrm{sgn}(\\Delta_k)\\Big)$$"], "new"),
+        node("T", ["each client's top 30% coordinates by size", "$$T_i = \\mathrm{top}_{0.3d}\\,|\\Delta_i|$$"],
+             "new"),
+        node("R", ["share of them that agree with $\\pi$",
+                   "$$s_i = \\frac{1}{|T_i|}\\sum_{j \\in T_i} \\mathbb{1}\\big[\\mathrm{sgn}(\\Delta_{i,j}) = \\pi_j\\big]$$"],
+             "new"),
+        node("Z", ["[2]-[4] unchanged (R3)"], "same"),
+        node("SIG", ["[1] screening signal (replaced)"], "changed"),
+        edge("UP", "P"), edge("UP", "T"), edge("P", "R"), edge("T", "R"), edge("R", "Z"),
+        edge("SIG", "Z", "instead of", dotted=True),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_critical() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("UP", ["updates $\\Delta_i$, shared layers $\\ell$", "(personal heads left out)"], "same"),
+        node("C", ["per layer: cosine to the layer's median",
+                   "$$c_{i\\ell} = \\cos\\big(\\Delta_i^{(\\ell)},\\ \\mathrm{med}_k\\,\\Delta_k^{(\\ell)}\\big)$$"], "new"),
+        node("D", ["the $k = 5$ most disputed layers", "$$L^\\star = \\mathrm{top}_5\\ \\mathrm{std}_i\\, c_{i\\ell}$$"],
+             "new"),
+        node("S", ["score", "$$s_i = \\frac{1}{5}\\sum_{\\ell \\in L^\\star} c_{i\\ell}$$"], "new"),
+        node("Z", ["[2]-[4] unchanged (R3)"], "same"),
+        node("SIG", ["[1] screening signal (replaced)"], "changed"),
+        edge("UP", "C"), edge("C", "D"), edge("D", "S"), edge("S", "Z"), edge("SIG", "Z", "instead of", dotted=True),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_head_agreement() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("X", ["test input $x$ of client $i$", "(prediction time only)"], "same"),
+        node("H", ["three heads on the shared trunk", "root $z_r$, parent $z_p$, local $z_l$"], "same"),
+        node("E", ["FedHEP ensemble", "$$\\hat y_{\\mathrm{ens}} = \\arg\\max \\sum_h \\pi_h \\tilde z_h$$"], "same"),
+        node("Q", ["personal heads agree", "and disagree with the ensemble?",
+                   "$$\\hat y_p = \\hat y_l \\ne \\hat y_{\\mathrm{ens}}$$"], "new", "decision"),
+        node("P", ["predict with the personal heads",
+                   "$$z = \\frac{z_l}{\\sigma(z_l)} + \\frac{z_p}{\\sigma(z_p)}$$"], "new"),
+        node("K", ["keep the ensemble"], "same"),
+        edge("X", "H"), edge("H", "E"), edge("E", "Q"), edge("Q", "P", "yes"), edge("Q", "K", "no"),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_f_fixed() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("S", ["screen: excluded set $X$ this round", "(attackers caught so far)"], "same"),
+        node("NOW", ["FedHEP-Guard: $f$ shrinks with the exclusions",
+                     "$$f = \\max\\big(0, \\min(f_0 - |X|,\\ \\lfloor (n_{\\mathrm{kept}}-1)/2 \\rfloor)\\big)$$"],
+             "changed"),
+        node("FIX", ["tested: $f$ held at the assumed count",
+                     "$$f = \\min\\big(f_0,\\ \\lfloor (n_{\\mathrm{kept}}-1)/2 \\rfloor\\big)$$"], "new"),
+        node("L0", ["L0 over kept clients: ARC, NNM, TM", "TM drops $f$ values per side, per coordinate"], "same"),
+        edge("S", "NOW"), edge("S", "FIX"), edge("NOW", "L0", "current"), edge("FIX", "L0", "tested"),
+        DROPPED_LEGEND, STYLE])
+
+
+def dropped_rewind_all() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("I", ["client $i$ isolated in round $t$"], "same"),
+        node("T", ["target round $t^\\star$", "first round of its evidence trail (at most 10 back)"], "same"),
+        node("TR", ["FedHEP-Guard: restore trunk and root head",
+                    "$$M_j = 1 \\text{ for trunk and } W_r, \\ 0 \\text{ for } W_p, W_l$$"], "changed"),
+        node("ALL", ["tested: restore every shared coordinate",
+                     "$$M_j = 1 \\text{ for all } j \\text{ (parent and local heads too)}$$"], "new"),
+        node("W", ["Global model and every parent", "$$w \\leftarrow M \\odot w_{t^\\star} + (1 - M) \\odot w$$"], "same"),
+        edge("I", "T"), edge("T", "TR"), edge("T", "ALL"), edge("TR", "W", "current"), edge("ALL", "W", "tested"),
+        DROPPED_LEGEND, STYLE])
+
+
 def research_path() -> str:
     return "\n".join([
         "flowchart LR",
@@ -292,6 +402,10 @@ DIAGRAMS = {
     "01_fedavg_round": fedavg, "02_fedhep_model": fedhep_model, "03_fedhep_round": fedhep_round,
     "04_defended_round": defended_round, "05_fedhep_plus_round": plus_round, "06_drill_down": drill_down,
     "07_phase5_rules": phase5_rules, "08_fedhep_guard_round": guard_round, "10_research_path": research_path,
+    "11_dropped_momentum": dropped_momentum, "12_dropped_output_signals": dropped_output_signals,
+    "13_dropped_sign_align": dropped_sign_align, "14_dropped_critical": dropped_critical,
+    "15_dropped_head_agreement": dropped_head_agreement, "16_dropped_f_fixed": dropped_f_fixed,
+    "17_dropped_rewind_all": dropped_rewind_all,
 }
 
 

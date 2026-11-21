@@ -1,0 +1,24 @@
+flowchart LR
+  UP["$$\begin{array}{c}\text{round-}t\text{ updates }\Delta_i^{(t)} \cr \text{(L0 alone, no screen)}\end{array}$$"]:::same
+  M["$$\begin{array}{c}\text{worker momentum, kept by the server} \cr \displaystyle m_i^{(t)} = \beta\, m_i^{(t-1)} + (1-\beta)\,\Delta_i^{(t)}, \quad \beta = 0.5\end{array}$$"]:::new
+  L0["$$\begin{array}{c}\text{L0 on the momenta instead of the updates} \cr \displaystyle \Delta = \mathrm{TM}_f\Big(\mathrm{NNM}_f\big(\mathrm{ARC}_f(m_1, \dots, m_n)\big)\Big)\end{array}$$"]:::changed
+  G["$$\begin{array}{c}\text{Global model }w \leftarrow w + \Delta\end{array}$$"]:::same
+  UP --> M
+  M --> L0
+  L0 --> G
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

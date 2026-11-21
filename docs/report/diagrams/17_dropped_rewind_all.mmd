@@ -1,0 +1,27 @@
+flowchart LR
+  I["$$\begin{array}{c}\text{client }i\text{ isolated in round }t\end{array}$$"]:::same
+  T["$$\begin{array}{c}\text{target round }t^\star \cr \text{first round of its evidence trail (at most 10 back)}\end{array}$$"]:::same
+  TR["$$\begin{array}{c}\text{FedHEP-Guard: restore trunk and root head} \cr \displaystyle M_j = 1 \text{ for trunk and } W_r, \ 0 \text{ for } W_p, W_l\end{array}$$"]:::changed
+  ALL["$$\begin{array}{c}\text{tested: restore every shared coordinate} \cr \displaystyle M_j = 1 \text{ for all } j \text{ (parent and local heads too)}\end{array}$$"]:::new
+  W["$$\begin{array}{c}\text{Global model and every parent} \cr \displaystyle w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w\end{array}$$"]:::same
+  I --> T
+  T --> TR
+  T --> ALL
+  TR -->|"$$\begin{array}{c}\text{current}\end{array}$$"| W
+  ALL -->|"$$\begin{array}{c}\text{tested}\end{array}$$"| W
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged part of the model}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{the tested component}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{what it replaces or changes}\end{array}$$"]:::changed
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

@@ -43,6 +43,7 @@
 | How does FedHEP-Guard work? | `report/figures/diagrams/08_fedhep_guard_round.png`, `report/figures/guard_coverage.png` | summary of changes | 6.1 |
 | Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png` | ladder tables | 6.8 |
 | Why two signals? | `figures/phase6_signals.png` | signals table | 5.3, 6.4 |
+| What else was tried in Phase 6, and why was it dropped? | `figures/phase6_dropped_components.png`, diagrams `report/figures/diagrams/11`–`17_dropped_*.png` | one table per component | 5.3 |
 | Does it isolate honest clients, and when? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` (compare `figures/phase3_cascade.png`) | grid summary; gap-gate table | 6.12 |
 | Does it hold at scale and under strong skew? | — | grid summary per setting | 6.12 |
 | Why not just raise the gap gate? | `figures/phase6_gap_gate_tradeoff.png` | — | 6.12 |

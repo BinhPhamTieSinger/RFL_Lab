@@ -342,6 +342,81 @@ def fig_gap_gate_tradeoff(runs: dict) -> None:
     pr.save(fig, "phase6_gap_gate_tradeoff.png")
 
 
+def fig_dropped(runs: dict) -> None:
+    """Report 5.3: results of the Phase 6 components tested and dropped (the screening signals are in
+    phase6_signals.png). Worker momentum (Mac, p6__), head agreement (GPU, g1__), f held fixed (Mac m6__ and
+    CUDA c2__ against p6__r3g8 and g1__r3), rewinding every shared weight (Mac, m6__)."""
+    def mean(name: str, key) -> float:
+        ms = _runs(runs, name)
+        return sum(key(m) for m in ms) / len(ms) if ms else float("nan")
+    acc = lambda m: m["final"]["pooled"]                      # noqa: E731
+    asr = lambda m: m["history"][-1].get("asr") or 0.0        # noqa: E731
+    fig, axes = plt.subplots(1, 4, figsize=(19, 4.2), gridspec_kw={"width_ratios": [1.25, 1.5, 0.9, 1.1]})
+    def dumbbell(ax, labels, before, after, names, colors):
+        """Paired values per category: a line from the kept rule to the tested one (no truncated bars)."""
+        for i, (b, a) in enumerate(zip(before, after, strict=True)):
+            ax.plot([i, i], [b, a], color="#c9c7c1", linewidth=2, zorder=1)
+            ax.text(i + 0.12, b, f"{b:.2f}", va="center", fontsize=7)
+            close = abs(b - a) < 0.2   # labels would overlap: put the tested value on the left
+            ax.text(i - 0.12 if close else i + 0.12, a, f"{a:.2f}", va="center", ha="right" if close else "left",
+                    fontsize=7, color=colors[1])
+        ax.scatter(range(len(before)), before, color=colors[0], s=40, zorder=2, label=names[0])
+        ax.scatter(range(len(after)), after, color=colors[1], s=40, zorder=2, label=names[1])
+        ax.set_xticks(range(len(labels)), labels, fontsize=8.5)
+        ax.set_xlim(-0.5, len(labels) - 0.2)
+    ax = axes[0]
+    conds = [("clean", "no attack"), ("sign_flip", "sign flip"), ("alie3", "ALIE"), ("minmax3", "Min-Max"),
+             ("backdoor", "backdoor")]
+    dumbbell(ax, [c[1] for c in conds], [mean(f"p6__l0__{c}", acc) for c, _ in conds],
+             [mean(f"p6__l0m__{c}", acc) for c, _ in conds], ("L0", "L0 + worker momentum"), ("#52514e", pr.SLOT[1]))
+    ax.set_ylabel("accuracy (%)")
+    ax.set_title("Worker momentum under L0 (Mac, D1)", fontsize=10)
+    ax.legend(fontsize=8, loc="lower right")
+    ax = axes[1]
+    models = [("defended", "Defended"), ("l0", "L0"), ("plus", "FedHEP+"), ("r3", "R3 root"), ("r3w", "R3 whole"),
+              ("r3c", "R3 critical"), ("r3h", "R3 head gap")]
+    ens = [mean(f"g1__{m}__backdoor3", asr) for m, _ in models]
+    agr = [mean(f"g1__{m}__backdoor3", lambda x: x["history"][-1]["head_agreement"]["asr"]) for m, _ in models]
+    pr.bar_labels(ax, ax.bar([i - 0.19 for i in range(len(models))], ens, 0.36, color="#52514e",
+                             label="ensemble prediction"), "{:.0f}", size=7)
+    pr.bar_labels(ax, ax.bar([i + 0.19 for i in range(len(models))], agr, 0.36, color=pr.SLOT[0],
+                             label="head agreement"), "{:.0f}", size=7)
+    ax.set_xticks(range(len(models)), [m[1] for m in models], fontsize=8, rotation=20)
+    ax.set_ylabel("backdoor success (%)")
+    ax.set_title("Head-agreement inference (GPU, D1, 3 backdoor attackers)", fontsize=10)
+    ax.legend(fontsize=8)
+    ax = axes[2]
+    cells = [("Mac", "p6__r3g8", "m6__r3_ffixed", "clean"), ("CUDA", "g1__r3", "c2__r3_ffixed", "clean"),
+             ("Mac", "p6__r3g8", "m6__r3_ffixed", "alie3"), ("CUDA", "g1__r3", "c2__r3_ffixed", "alie3")]
+    dumbbell(ax, [f"{d}\n{'no attack' if c == 'clean' else 'ALIE'}" for d, _, _, c in cells],
+             [mean(f"{b}__{c}", acc) for _, b, _, c in cells], [mean(f"{f}__{c}", acc) for _, _, f, c in cells],
+             ("f falls with exclusions (kept)", "f held fixed"), ("#52514e", pr.SLOT[1]))
+    ax.set_ylabel("accuracy (%)")
+    ax.set_title("f held fixed (R3, D1)", fontsize=10)
+    ax.legend(fontsize=7.5, loc="lower left")
+    ax = axes[3]
+    arms = [("", "no rewind"), ("_trunk", "trunk"), ("_tr", "trunk + root\n(FedHEP-Guard)"), ("_all", "everything")]
+    for j, (sig, label, color) in enumerate([("r3w", "whole-update screen", pr.SLOT[0]),
+                                             ("r3", "root-head screen", pr.SLOT[2])]):
+        xs, ys = [], []
+        for i, (rw, _) in enumerate(arms):
+            v = mean(f"m6__{sig}{rw}__backdoor3", acc)
+            if v == v:
+                xs.append(i)
+                ys.append(v)
+        ax.plot(xs, ys, marker="o", color=color, label=label)
+        for x, y in zip(xs, ys, strict=True):
+            ax.text(x, y + (0.08 if sig == "r3w" else -0.12), f"{y:.2f}", ha="center", fontsize=7, color=color)
+    ax.set_xticks(range(len(arms)), [a[1] for a in arms], fontsize=8)
+    ax.set_ylabel("accuracy under backdoor (%)")
+    ax.set_ylim(45.0, 46.8)
+    ax.set_title("What the rewind restores (Mac, D1, backdoor)", fontsize=10)
+    ax.legend(fontsize=8, loc="lower left")
+    fig.suptitle("Phase 6 components tested and dropped (3 seeds each)", fontsize=11)
+    fig.tight_layout()
+    pr.save(fig, "phase6_dropped_components.png")
+
+
 def fig_isolation_rounds(runs: dict, n: int) -> None:
     """GPU grid: in which rounds each screen isolates honest clients. Cumulative honest clients isolated per round,
     mean over 3 seeds, for the screening models, with no attack and under three attacks at the middle attacker
@@ -451,6 +526,7 @@ def main() -> None:
     fig_stealth(runs)
     fig_fmis(runs)
     fig_gap_gate_tradeoff(runs)
+    fig_dropped(runs)
     fig_isolation_rounds(runs, 15)
     fig_isolation_rounds(runs, 30)
     fig_signals(runs)
