@@ -68,7 +68,14 @@ Each part answers one of Defended FedHEP's failures ([chapter 3.5](03_defended_f
 
 D1, 3 attackers, Mac, 3 seeds. The comparison rows are the Phase 2 runs with the same seeds and attackers.
 
-![FedHEP+ against Defended FedHEP, three seeds](../figures/phase3b_confirm.png)
+![FedHEP+ against Defended FedHEP and the Phase 3b variants, three seeds](../figures/phase3b_confirm.png)
+
+**Reading the Phase 3b charts.** Each bar is one model. The chart labels name FedHEP+'s parts:
+- grey "Defended FedHEP" is the baseline;
+- blue "z + median + regroup" is **FedHEP+**: [2] robust z, [1] median reference, [5] regrouping;
+- the orange, green and yellow bars are two variants tested in the same runs and rejected: readmission and the cap (4.4).
+
+The detection panel shows the F1 of the clients left out each round: 1 means exactly the attackers.
 
 | Model | No attack | Sign flip | Label flip | Random noise | Backdoor (acc.) | Backdoor success |
 |---|---|---|---|---|---|---|
@@ -84,16 +91,84 @@ D1, 3 attackers, Mac, 3 seeds. The comparison rows are the Phase 2 runs with the
 
 ## 4.4 Variants tried and rejected inside Phase 3
 
-| Variant | What it changes | Result | Kept? |
-|---|---|---|---|
-| Readmission (`plus.readmit`) | isolated clients keep being scored and return once $E_i > -0.75$ | attackers came back late in training: backdoor 21% → 39%, sign flip −1.7 | no |
-| Cap (`plus.max_excluded: 0.34`) | at most a third left out per round | let backdoor attackers back in (59–62%) | no |
-| Full-population yardstick (`plus.population: all`) | median and MAD over every non-banned client, isolated ones too | more false isolations (87 against 46) and the backdoor got through (54%) | no |
-| Whole-update signal, one-sided (`plus.signal: weights`) | cosine of the whole update instead of the root head | backdoor 0.3% on seed 42 but many honest isolations | not then; it returns in Phase 6 |
+Three changes were tested against FedHEP+ on the same seeds (D1, 3 attackers, Mac). Each answered a worry about FedHEP+. None was kept. The table gives the results; the subsections explain each change, why we tried it and why it failed.
+
+| Model (chart label) | Config | No attack | Sign flip | Label flip | Noise | Backdoor success | Honest clients ever isolated (15 runs) |
+|---|---|---|---|---|---|---|---|
+| **FedHEP+** (z + median + regroup) | — | 47.92 | **46.34** | **46.34** | 45.41 | **20.8%** | 46 |
+| + readmission | `plus.readmit: true` | 47.91 | 44.67 | 44.69 | 45.14 | 39.4% | 54 |
+| + readmission + cap, no regrouping | `readmit`, `max_excluded: 0.34`, `regroup: false` | 48.19 | 44.71 | 44.78 | 45.05 | 62.1% | 69 |
+| + readmission + cap | `readmit`, `max_excluded: 0.34` | 47.93 | 44.81 | 44.62 | 43.60 | 59.0% | 52 |
+| full population, no regrouping | `population: all`, `regroup: false` | 48.00 | 46.44 | 45.72 | 45.13 | 54.1% | 87 |
+| full population, isolation cut 2.0 | `population: all`, `evidence_cut: 2.0`, `regroup: false` | 48.09 | 46.41 | 46.12 | 45.76 | 74.2% | 36 |
+| full population | `population: all` | 47.54 | 46.17 | 45.30 | 45.43 | 52.1% | 82 |
+
+![Readmission, the cap and the full-population yardstick: what each did](../figures/phase3_variants_explained.png)
+
+### 4.4a Readmission (`plus.readmit: true`)
+
+**What it does.** In FedHEP+, an isolated client is no longer scored, so it can never come back. With readmission it is still scored every round, against the reference and spread of the clients currently kept. Its evidence keeps updating, and it returns once the evidence recovers to half the isolation cut:
+
+$$E_i \leftarrow 0.7\,E_i + 0.3\,z_i \ \text{(every round, isolated or not)}, \qquad i \text{ isolated and } E_i > -\tfrac{1.5}{2} = -0.75 \Rightarrow i \text{ readmitted}$$
+
+The gap between the isolation cut ($-1.5$) and the readmission cut ($-0.75$) stops a client from flickering in and out.
+
+**Why we tried it.** The cascade (below) isolates honest clients for good. If an honest client was isolated by mistake, it should be allowed back once it looks normal again.
+
+**What happened.**
+- Readmission brought back **26 attackers and 5 honest clients** over 15 runs. Every readmission came in rounds 22–30 (left panel of the chart).
+- Honest isolations did not fall: 50 honest clients were still isolated at the end, against 46 without readmission.
+- The readmitted attackers cost 1.7 points under sign flip and label flip. Backdoor success rose from 20.8% to 39.4%.
+
+**Why it failed.** The two kinds of client recover for different reasons:
+- **Honest clients isolated by the cascade stay unusual,** because their data are unusual. Their evidence stays low, so they rarely qualify.
+- **Attackers look normal again late in training,** when every update is small and its direction carries little information. Their z drifts toward the middle and their evidence passes $-0.75$.
+
+Readmission therefore works in reverse: it frees the clients it was meant to keep out.
+
+### 4.4b The cap (`plus.max_excluded: 0.34`)
+
+**What it does.** At most a fixed share of all clients may be left out in one round: $\lfloor 0.34 \times 15 \rfloor = 5$ at D1. When more qualify (isolated, or below the exclusion cut this round), only the 5 with the lowest evidence stay out. The others are aggregated this round, even if they are marked as isolated.
+
+$$\text{excluded} = \text{the } \min\big(\lvert Q\rvert,\ \lfloor c\,n \rfloor\big) \text{ members of } Q \text{ with the lowest } E_i \ \text{(ties: lowest } z_i\text{)}, \qquad Q = \text{isolated} \cup \{i : z_i < -2.5\}$$
+
+**Legend:** $Q$ is the set of clients that qualify for exclusion this round, $c = 0.34$ is the cap (`plus.max_excluded`, 1.0 = no cap), and $n$ is the number of clients.
+
+**Why we tried it.** The cascade can in principle remove clients until too few are left to train on. Robust aggregation usually assumes fewer than a third of the clients attack, so never removing more than a third is a natural safety limit. It was tested together with readmission, so that clients pushed out by the limit could still come back.
+
+**What happened.** Under attack the cap was reached in 15–41 of the 90 rounds of each condition (3 runs × 30 rounds). In those rounds it let attackers back into the aggregate: 10–57 attacker-rounds per condition without regrouping, and 7–50 with it. Backdoor success rose to 59–62%, and accuracy under noise fell to 43.6%.
+
+**Why it failed.** The cap keeps out the clients with the **lowest evidence**. Honest clients isolated by the cascade carry very low evidence, because they stay unusual round after round. When the cap is reached, they keep their places outside, and attackers with less extreme evidence are the ones let back in. A backdoor needs only a few rounds inside the model to take hold (4.5e), so a handful of such rounds is enough.
+
+### 4.4c Full-population yardstick (`plus.population: all`, Phase 3c)
+
+**What it does.** The median reference, and the median and MAD of the z-score, are taken over **every client not banned**, isolated ones included, instead of over the clients still kept. Isolation stays permanent; isolated clients are only part of the yardstick.
+
+$$z_i = \frac{s_i - \operatorname{med}_{j \in A}(s_j)}{\max\big(1.4826\,\mathrm{MAD}_{j \in A}(s_j),\ 0.1\,\lvert\operatorname{med}_{j \in A}(s_j)\rvert\big)}, \qquad A = \text{all clients not banned (FedHEP+: } A = \text{kept clients)}$$
+
+**Why we tried it.** At the time, the cascade was thought to come from a shrinking yardstick: each isolation removes a client from the group the next z-scores are measured against, so the spread shrinks and the next honest client looks more extreme. A yardstick that never shrinks should stop it.
+
+**What happened.**
+
+![Phase 3c: the full-population yardstick, three seeds](../figures/phase3c_confirm.png)
+
+![Phase 3c: backdoor success](../figures/phase3c_backdoor.png)
+
+- **More honest clients were isolated, not fewer:** 87 against 46 (82 with regrouping).
+- **The backdoor got through:** 52–54%. Attackers were left out in only 154–155 of 270 attacker-rounds, against 191 for FedHEP+. A likely reason, not tested on its own: isolated backdoor attackers stay in the yardstick and pull it toward the ones still active.
+- A stricter isolation cut ($-2.0$) brought honest isolations down to 36, but backdoor success rose to 74%.
+
+**Why it failed.** The premise was wrong. The follow-up diagnosis (4.5a) found that the spread does not shrink; it grows six- to eightfold after round 14. What fades is the floor of the z-score's scale, which is what makes honest z-scores extreme mid-training. Keeping the population fixed does not touch that, and it brings isolated attackers back into the yardstick.
+
+### 4.4d Whole-update signal, one-sided (`plus.signal: weights`)
+
+The cosine of the whole update (BatchNorm buffers left out) instead of the root head. It brought backdoor success to 0.3% on seed 42, but isolated many honest clients with a one-sided screen, so it was not adopted then. It returns in Phase 6, with the two-sided screen, the gap gate and patience, as half of FedHEP-Guard's union screen (chapter 6.4).
+
+### The cascade
 
 ![The false-isolation cascade](../figures/phase3_cascade.png)
 
-**The cascade.** Each isolation shrinks the group the next z-scores are measured against. The spread shrinks with it, so the next honest client looks more extreme. Re-grouping and scoring only the clients still kept limited this, but did not remove it.
+**The cascade.** In FedHEP+ honest clients are isolated one after another as training goes on. The first explanation, a yardstick that shrinks with each removal, led to the variants above, and 4.4c refuted it. The actual cause, a scale floor that fades mid-training, is in 4.5a. Regrouping and scoring only the clients still kept limited the cascade but did not remove it.
 
 ## 4.5 Where FedHEP+ fails: the follow-up diagnostics
 

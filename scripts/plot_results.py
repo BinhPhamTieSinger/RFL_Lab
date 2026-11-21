@@ -440,6 +440,75 @@ def fig_variants(runs: dict, rows_spec: list[tuple[str, str]], seeds: set[int], 
     save(fig, name)
 
 
+def _p3_events(m: dict) -> dict[str, object]:
+    """Per run: readmissions (round, attacker?), rounds in which attackers were aggregated, honest clients ever
+    isolated. A readmission is a client leaving the isolated set; 'excluded' is what the round left out after
+    the cap (older runs log it under detection 'flagged')."""
+    bad, prev, ever = set(m["attackers"]), set(), set()
+    readmit, in_model = [], 0
+    for i, d in enumerate(m["diagnostics"]):
+        iso = set(d["isolated"])
+        excluded = set(d.get("excluded", m["detection"][i]["flagged"]))
+        readmit += [(d["round"], c in bad) for c in prev - iso]
+        in_model += len(bad - excluded)
+        ever |= iso
+        prev = iso
+    return {"readmit": readmit, "in_model": in_model, "honest_ever": len(ever - bad)}
+
+
+def fig_phase3_variants(runs: dict) -> None:
+    """Phase 3b/3c variants explained: who readmission brings back and when, how many attacker-rounds each
+    variant lets into the model, and what the full-population yardstick costs in honest isolations."""
+    arms = [("p3__zmr", "FedHEP+"), ("p3b__zmr_ra", "+ readmit"), ("p3b__zm_ra_cap", "+ readmit + cap\n(no regroup)"),
+            ("p3b__zmr_ra_cap", "+ readmit + cap"), ("p3c__zmp", "full population\n(no regroup)"),
+            ("p3c__zmrp", "full population")]
+    attacks = ["clean", "sign_flip", "label_flip", "noise", "backdoor"]
+    ev = {(a, t): [_p3_events(m) for m in runs.get(f"{a}__{t}", []) if m["seed"] in (42, 123, 7)]
+          for a, _ in arms for t in attacks}
+    if not all(len(v) == 3 for v in ev.values()):
+        return print("skip phase3 variants: runs missing")
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.4), gridspec_kw={"width_ratios": [1.1, 1.3, 1]})
+    ax = axes[0]
+    rounds = range(1, 31)
+    back = [r for t in attacks for e in ev[("p3b__zmr_ra", t)] for r in e["readmit"]]
+    att = [sum(1 for rr, a in back if rr == r and a) for r in rounds]
+    hon = [sum(1 for rr, a in back if rr == r and not a) for r in rounds]
+    ax.bar(rounds, att, color=SLOT[1], label=f"attackers ({sum(att)})")
+    ax.bar(rounds, hon, bottom=att, color="#9a9893", label=f"honest clients ({sum(hon)})")
+    ax.set_xlabel("round")
+    ax.set_ylabel("clients readmitted")
+    ax.set_title("Readmission: who comes back, and when\n(+ readmit, all 5 conditions, 3 seeds)", fontsize=10)
+    ax.legend(fontsize=8)
+    ax = axes[1]
+    shown = [t for t in attacks if t != "clean"]
+    w = 0.8 / 4
+    for j, (a, label) in enumerate(arms[:4]):
+        vals = [sum(e["in_model"] for e in ev[(a, t)]) / 3 for t in shown]
+        bars = ax.bar([i + (j - 1.5) * w for i in range(len(shown))], vals, w - 0.02, color=[INK2, *SLOT][j],
+                      label=label.replace("\n", " "))
+        bar_labels(ax, bars, "{:.0f}", size=7)
+    ax.set_xticks(range(len(shown)), ["Sign flip", "Label flip", "Noise", "Backdoor"])
+    ax.set_ylabel("attacker-rounds aggregated per run (of 90)")
+    ax.set_title("Attackers let back into the model", fontsize=10)
+    ax.legend(fontsize=7.5)
+    ax = axes[2]
+    picks = [arms[0], arms[4], arms[5]]
+    hon_iso = [sum(e["honest_ever"] for t in attacks for e in ev[(a, t)]) for a, _ in picks]
+    asr = [mean_sd([m["history"][-1].get("asr") or 0.0 for m in runs[f"{a}__backdoor"] if m["seed"] in (42, 123, 7)])[0]
+           for a, _ in picks]
+    bars = ax.bar(range(3), hon_iso, 0.55, color=[INK2, SLOT[3], SLOT[3]])   # its own colour: not the arms of panel 2
+    bar_labels(ax, bars, "{:.0f}", size=8)
+    for i, v in enumerate(asr):
+        ax.text(i, hon_iso[i] / 2, f"backdoor\n{v:.0f}%", ha="center", va="center", fontsize=8,
+                color="white" if i == 0 else INK)
+    ax.set_xticks(range(3), [label for _, label in picks], fontsize=8.5)
+    ax.set_ylabel("honest clients isolated (15 runs)")
+    ax.set_title("Full-population yardstick", fontsize=10)
+    fig.suptitle("Phase 3b and 3c variants of FedHEP+ (D1, 3 attackers, Mac, seeds 42, 123, 7)", fontsize=11)
+    fig.tight_layout()
+    save(fig, "phase3_variants_explained.png")
+
+
 def fig_cascade(runs: dict) -> None:
     cases = [("p3__z__clean", "robust z, no attack"), ("p3__zm__sign_flip", "z + median, sign flip"),
              ("p3__zmr__noise", "z + median + regroup, noise"),
@@ -726,6 +795,7 @@ def main() -> None:
     fig_p4_paired(runs)
     fig_p4b(runs)
     fig_cascade(runs)
+    fig_phase3_variants(runs)
 
 
 if __name__ == "__main__":

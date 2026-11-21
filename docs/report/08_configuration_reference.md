@@ -108,7 +108,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 |---|---|---|---|
 | `relative_floor` | $\rho$ | 0.1 | the scale is at least $\rho\lvert\operatorname{med}(s)\rvert$ |
 | `mad_floor` | $a$ | 0.0 | absolute floor of the scale (0 = off) |
-| `population` | — | `kept` | z measured against the clients still kept (`kept`) or every non-banned client (`all`, Phase 3c) |
+| `population` | — | `kept` | z measured against the clients still kept (`kept`) or every non-banned client (`all`, Phase 3c, rejected, 4.4c) |
 | `two_sided` | — | false | also flag clients far **above** the others: $z \leftarrow -\lvert z\rvert$ (R2 onward) |
 | `gap_gate` | $\gamma$ | 0.0 | above 0: bad evidence only in rounds whose sorted scores split, gap ratio $g \ge \gamma$ (R3: 8) |
 
@@ -121,8 +121,8 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `evidence_decay` | — | 0.7 | $E_i \leftarrow 0.7E_i + 0.3z_i$ |
 | `evidence_cut` | — | 1.5 | isolated for good when $E_i < -1.5$ |
 | `isolation_patience` | — | 1 | ... and $z_i < -1.5$ in this many consecutive rounds (R2 onward: 3) |
-| `readmit` | — | false | isolated clients are re-scored and return when $E_i > -0.75$ (Phase 3b, rejected) |
-| `max_excluded` | — | 1.0 | at most this fraction left out per round (Phase 3b cap, rejected at 0.34) |
+| `readmit` | — | false | isolated clients are re-scored and return when $E_i > -0.75$ (Phase 3b, rejected: brought back attackers, 4.4a) |
+| `max_excluded` | — | 1.0 | at most this fraction left out per round, the lowest evidence first (Phase 3b cap, rejected at 0.34: let attackers back in, 4.4b) |
 | `regroup` | — | false | re-form groups by weight-update similarity (FedHEP+ onward: true) |
 
 **Global step:**

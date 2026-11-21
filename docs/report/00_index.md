@@ -36,6 +36,7 @@
 | Did we reproduce the paper? | `figures/phase1_parity.png` | Phase 1 table | 2.4 |
 | Why do we need a new defense? | `figures/phase2_accuracy.png`, `figures/phase2_backdoor_asr.png`, `figures/defended_failure_diagnosis.png` | Phase 2 table | 3.4–3.5 |
 | What did FedHEP+ achieve? | `figures/phase3b_confirm.png` | FedHEP+ vs Defended, paired by seed | 4.3 |
+| What were readmission, the cap and the full-population yardstick, and why were they dropped? | `figures/phase3_variants_explained.png`, `figures/phase3b_backdoor.png`, `figures/phase3c_confirm.png`, `figures/phase3c_backdoor.png` | variants table | 4.4 |
 | Why is FedHEP+ not enough? | `figures/followup_alpha02.png`, `figures/followup_adaptive.png`, `figures/followup_backdoor_persists.png` | — | 4.5 |
 | Why not just use FLAME or Bulyan? | `figures/phase5_three_seeds.png` | Phase 5 table | 5.2 |
 | Why is each mechanism in the model? | — | "Why each part" tables; FedHEP-Guard summary of changes | 2.2, 3.1, 4.1, 5, 6.1 |
