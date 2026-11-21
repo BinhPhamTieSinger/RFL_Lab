@@ -25,13 +25,47 @@ $$z_g = \frac{\cos(\bar v_g, \tilde r) - \operatorname{med}(\text{null})}{\max\b
 
 **v1 (`plus.drill_down: true`, `drill_mode: exclude`).** Members of a flagged parent face a stricter cut that round: $z_i < -1$ instead of $-2.5$.
 
-**v2 (`drill_mode: evidence`).** For each member, the residual $u_i = v_i - \tilde r$ is compared with the other members' mean residual:
+**v2 (`drill_mode: evidence`).** v2 asks which members of a flagged parent share its unusual direction. It runs only for parents flagged by the parent check, and works in three steps.
 
-$$a_i = \cos\Bigl(u_i,\ \tfrac{1}{\lvert g\rvert - 1}\sum_{j \in g, j\neq i} u_j\Bigr)$$
+**Step 1: each member's residual.** What is left of member $i$'s signal once the shared part, the median reference, is taken out:
 
-The alignment z of $a_i$ is scored against clients outside the parent. The evidence update then uses $\min(z_i, -z^{\text{align}}_i)$.
+$$u_i = v_i - \tilde r$$
 
-**Legend:** $\bar v_g$ is parent $g$'s mean signal, and "null" is the same cosine for 64 random groups of the same size. $u_i$ is client $i$'s residual from the reference. Groups need at least 3 eligible members (`plus.min_group`).
+The residual is client $i$'s own deviation from what everyone does. Honest clients' residuals are mostly their own data and noise, so they point in unrelated directions. Attackers pushing the same backdoor share one extra direction, so their residuals point the same way.
+
+**Step 2: alignment with the rest of the group.**
+
+$$d_{-i} = \frac{1}{\lvert g\rvert - 1}\sum_{j \in g,\ j\neq i} u_j, \qquad a_i = \cos\bigl(u_i,\ d_{-i}\bigr)$$
+
+- $d_{-i}$ is the mean residual of the **other** members of $g$. Leaving $i$ out ($j \neq i$) matters: if $u_i$ were in the mean, $a_i$ would be high partly because $i$ is compared with itself.
+- $a_i$ is high when $i$ deviates in the same direction as its group-mates. Several attackers in one parent coordinating on one backdoor all get a high $a_i$. An honest member next to them does not, because its residual has nothing in common with theirs.
+- Averaging over the other members builds up what they share and cancels what is individual, so the shared attack direction stands out in $d_{-i}$.
+- The assumption is that honest members share nothing beyond the reference. In FedHEP it is false: members of one parent train from the same parent head, so honest residuals share a group direction too. This is why v2 failed (below).
+
+**Step 3: is $a_i$ unusually high? A null from outside the parent.** Any residual is somewhat aligned with a group mean by chance, so $a_i$ needs a yardstick. It is the same cosine for clients that are **not** in $g$, against the same leave-one-out directions:
+
+$$N_g = \bigl\{\cos(u_k,\ d_{-i}) : k \notin g,\ i \in g\bigr\}, \qquad z^{\text{align}}_i = \frac{a_i - \operatorname{med}(N_g)}{\max\bigl(1.4826\,\mathrm{MAD}(N_g),\ 0.1\,\lvert\operatorname{med}(N_g)\rvert\bigr)}$$
+
+$N_g$ pools every outside client against every member's direction $d_{-i}$, which gives $(n - \lvert g\rvert) \times \lvert g\rvert$ values, enough for a stable median. With fewer than 5 values every $z^{\text{align}}_i$ is 0. A member is suspicious when $z^{\text{align}}_i$ is large and **positive**: more aligned with its group-mates than outsiders are.
+
+**How it feeds the decision.** High alignment is turned into bad evidence. For members of a flagged parent the evidence update uses the worse of the two signals; nobody is left out for a round on alignment alone:
+
+$$E_i \leftarrow 0.7\,E_i + 0.3\,\min\bigl(z_i,\ -z^{\text{align}}_i\bigr)$$
+
+**Legend:**
+
+| Symbol | Meaning |
+|---|---|
+| $\bar v_g$ | parent $g$'s mean signal (parent check) |
+| null | the parent check's cosine for 64 random groups of the same size |
+| $v_i$, $\tilde r$ | member $i$'s signal and the median reference (chapter 4.1) |
+| $u_i$ | member $i$'s residual: its signal minus the reference |
+| $g$, $\lvert g\rvert$ | the flagged parent and its number of eligible (not isolated) members, at least 3 (`plus.min_group`) |
+| $d_{-i}$ | the mean residual of $g$'s other members |
+| $a_i$ | member $i$'s alignment with the rest of its group |
+| $N_g$ | the null: outside clients' cosines to the members' leave-one-out directions |
+| $z^{\text{align}}_i$ | robust z of $a_i$ against $N_g$; same scale floor as the screen (0.1 of the median) |
+| $z_i$, $E_i$ | the screen's z and evidence (chapter 4.1) |
 
 **Results** (D1, Mac, 3 seeds; "concentrated" = all 3 attackers in one parent):
 
