@@ -1,0 +1,60 @@
+# Benchmark, FedAvg and Multi-Krum in every setting (no FedHEP server: no ALIE, Min-Max or stealth backdoor). Written by scripts/make_benchmark.py.
+# 9 settings x 5 conditions x 2 models x 3 seeds = 270 runs. GPU server only.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+axes:
+- gg15_a05:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.count: 3
+  gg20_a02:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.count: 4
+  gg30_a05:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.count: 6
+  gg15_a01:
+    data.num_clients: 15
+    data.alpha: 0.1
+    attack.count: 3
+  gg30_a01:
+    data.num_clients: 30
+    data.alpha: 0.1
+    attack.count: 6
+  gg50_a01:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.count: 10
+  gg50_a05:
+    data.num_clients: 50
+    data.alpha: 0.5
+    attack.count: 10
+  gg20_a05:
+    data.num_clients: 20
+    data.alpha: 0.5
+    attack.count: 4
+  gg15_a005:
+    data.num_clients: 15
+    data.alpha: 0.05
+    attack.count: 3
+- clean: {}
+  sign:
+    attack.kind: sign_flip
+  label:
+    attack.kind: label_flip
+  noise:
+    attack.kind: random_noise
+  backdoor:
+    attack.kind: backdoor
+- fedavg:
+    config: configs/cifar100_fedavg.yaml
+  multikrum:
+    config: configs/cifar100_fedavg.yaml
+    method: multikrum

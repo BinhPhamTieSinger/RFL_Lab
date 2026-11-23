@@ -84,7 +84,7 @@ Attackers are exactly $m$ randomly chosen clients, the same clients for every me
 
 **Min-Max** (Shejwalkar and Houmansadr, 2021) pushes as far as possible, while never looking farther from any honest client than two honest clients look from each other.
 
-**The stealth backdoor** (chapter 6.7) adapts that same bound to a backdoor:
+**The stealth backdoor** (chapter 5.7) adapts that same bound to a backdoor:
 
 $$\tilde u_a = \bar h + \lambda^\star (u_a - \bar h), \qquad \lambda^\star = \max\Bigl\{\lambda\in[0,1] : \max_i \lVert \bar h + \lambda(u_a - \bar h) - h_i\rVert^2 \le \max_{i,j}\lVert h_i - h_j\rVert^2\Bigr\}$$
 
@@ -122,4 +122,4 @@ $$\tilde u_a = \bar h + \lambda^\star (u_a - \bar h), \qquad \lambda^\star = \ma
 | $\cos(a,b)$ | cosine similarity $a\cdot b / (\lVert a\rVert\lVert b\rVert)$ | — |
 | $\operatorname{med}$, MAD | median, and median absolute deviation $\operatorname{med}_j \lvert s_j - \operatorname{med}(s)\rvert$ | — |
 
-Every configuration key is explained in [chapter 10](10_configuration_reference.md).
+Every configuration key is explained in [chapter 9](09_configuration_reference.md).

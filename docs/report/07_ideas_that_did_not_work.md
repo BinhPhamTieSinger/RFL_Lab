@@ -1,9 +1,12 @@
-# 5. Ideas that did not work (Phases 4, 5, parts of 6, and 7)
+# 7. Ideas that did not work (Phases 3–7)
 
-Each idea here was a hypothesis with a pass criterion set before the runs. None met its criterion. They are reported in full because each one explains part of FedHEP-Guard's design ([chapter 6](06_fedhep_guard.md)).
+Each idea here was a hypothesis with a pass criterion set before the runs. None met its criterion. They are reported in full, each with its formula, diagram, hypothesis, experiment and the reason it failed, because each one explains part of FedHEP+'s and FedHEP-Guard's design ([chapter 4](04_fedhep_plus.md), [chapter 5](05_fedhep_guard.md)).
 
 | Phase | Idea | Why we tried it | What it changed | Why it failed |
 |---|---|---|---|---|
+| 3 | Readmission | honest clients isolated by mistake should be allowed back | isolated clients are still scored and return when their evidence recovers | attackers recover late in training, honest outliers do not: 26 attackers and 5 honest clients readmitted, backdoor 21% → 39% |
+| 3 | The cap | never remove more than a third of the clients | at most 34% left out per round | when reached, it let attackers back in: backdoor 59–62% |
+| 3 | Full-population yardstick | the cascade was thought to come from a shrinking yardstick | median and MAD over every client not banned | the premise was wrong (the spread grows); more honest isolations, backdoor 52–54% |
 | 4 | Drill-down v1 | FedHEP+ still let 21% of the backdoor through; attackers pushing one direction should stand out more **together** than alone (in a synthetic test, 3 backdoor attackers each looked normal, z > −0.4, while their group scored −2.5 to −4.3) | flagged groups' members face a stricter cut | one-round exclusion hid the backdoor attackers: backdoor 21.5% → 39.7% |
 | 4b | Drill-down v2 | v1 failed because a one-round exclusion hides the attacker; evidence that builds over rounds does not | flagged groups' members gain evidence if they share the group's direction | members of a FedHEP group are genuinely alike: honest groups isolated together (−1.1 to −1.7 points) |
 | 5 | Classic robust rules at FedHEP's Global step | before inventing a defense, check whether a published one already fixes FedHEP+'s weak spots | Median, Trimmed mean, Bulyan, FLAME, FLTrust | none beats FedHEP+ overall; Bulyan and FLAME stop the backdoor but cost 3.9–5.6 points with no attack |
@@ -14,7 +17,82 @@ Each idea here was a hypothesis with a pass criterion set before the runs. None 
 | 6 | Rewinding every shared weight | the personal heads might also hold part of the backdoor | rewind personal heads too | costs 0.6 points against rewinding the trunk and root head, for no gain |
 | 7 | Peer reference | an honest client with unusual classes looks like an attacker against one global median; BoBa compares clients only with similar ones | each client scored against the median of the third of clients with the most similar class sets | separated attackers worse at α 0.1, and doubled honest isolations at α 0.5; one α 0.5 seed let 44% of the backdoor in |
 
-## 5.1 Phase 4: check groups first, then their members
+## 7.1 Phase 3: variants of FedHEP+
+
+Three changes were tested against FedHEP+ on the same seeds (D1, 3 attackers, Mac). Each answered a worry about FedHEP+. None was kept. The table gives the results; the subsections explain each change, why we tried it and why it failed.
+
+| Model (chart label) | Config | No attack | Sign flip | Label flip | Noise | Backdoor success | Honest clients ever isolated (15 runs) |
+|---|---|---|---|---|---|---|---|
+| **FedHEP+** (z + median + regroup) | — | 47.92 | **46.34** | **46.34** | 45.41 | **20.8%** | 46 |
+| + readmission | `plus.readmit: true` | 47.91 | 44.67 | 44.69 | 45.14 | 39.4% | 54 |
+| + readmission + cap, no regrouping | `readmit`, `max_excluded: 0.34`, `regroup: false` | 48.19 | 44.71 | 44.78 | 45.05 | 62.1% | 69 |
+| + readmission + cap | `readmit`, `max_excluded: 0.34` | 47.93 | 44.81 | 44.62 | 43.60 | 59.0% | 52 |
+| full population, no regrouping | `population: all`, `regroup: false` | 48.00 | 46.44 | 45.72 | 45.13 | 54.1% | 87 |
+| full population, isolation cut 2.0 | `population: all`, `evidence_cut: 2.0`, `regroup: false` | 48.09 | 46.41 | 46.12 | 45.76 | 74.2% | 36 |
+| full population | `population: all` | 47.54 | 46.17 | 45.30 | 45.43 | 52.1% | 82 |
+
+![Readmission, the cap and the full-population yardstick: what each did](../figures/phase3_variants_explained.png)
+
+### 7.1a Readmission (`plus.readmit: true`)
+
+**What it does.** In FedHEP+, an isolated client is no longer scored, so it can never come back. With readmission it is still scored every round, against the reference and spread of the clients currently kept. Its evidence keeps updating, and it returns once the evidence recovers to half the isolation cut:
+
+$$E_i \leftarrow 0.7\,E_i + 0.3\,z_i \ \text{(every round, isolated or not)}, \qquad i \text{ isolated and } E_i > -\tfrac{1.5}{2} = -0.75 \Rightarrow i \text{ readmitted}$$
+
+The gap between the isolation cut ($-1.5$) and the readmission cut ($-0.75$) stops a client from flickering in and out.
+
+**Why we tried it.** The cascade (below) isolates honest clients for good. If an honest client was isolated by mistake, it should be allowed back once it looks normal again.
+
+**What happened.**
+- Readmission brought back **26 attackers and 5 honest clients** over 15 runs. Every readmission came in rounds 22–30 (left panel of the chart).
+- Honest isolations did not fall: 50 honest clients were still isolated at the end, against 46 without readmission.
+- The readmitted attackers cost 1.7 points under sign flip and label flip. Backdoor success rose from 20.8% to 39.4%.
+
+**Why it failed.** The two kinds of client recover for different reasons:
+- **Honest clients isolated by the cascade stay unusual,** because their data are unusual. Their evidence stays low, so they rarely qualify.
+- **Attackers look normal again late in training,** when every update is small and its direction carries little information. Their z drifts toward the middle and their evidence passes $-0.75$.
+
+Readmission therefore works in reverse: it frees the clients it was meant to keep out.
+
+### 7.1b The cap (`plus.max_excluded: 0.34`)
+
+**What it does.** At most a fixed share of all clients may be left out in one round: $\lfloor 0.34 \times 15 \rfloor = 5$ at D1. When more qualify (isolated, or below the exclusion cut this round), only the 5 with the lowest evidence stay out. The others are aggregated this round, even if they are marked as isolated.
+
+$$\text{excluded} = \text{the } \min\big(\lvert Q\rvert,\ \lfloor c\,n \rfloor\big) \text{ members of } Q \text{ with the lowest } E_i \ \text{(ties: lowest } z_i\text{)}, \qquad Q = \text{isolated} \cup \{i : z_i < -2.5\}$$
+
+**Legend:** $Q$ is the set of clients that qualify for exclusion this round, $c = 0.34$ is the cap (`plus.max_excluded`, 1.0 = no cap), and $n$ is the number of clients.
+
+**Why we tried it.** The cascade can in principle remove clients until too few are left to train on. Robust aggregation usually assumes fewer than a third of the clients attack, so never removing more than a third is a natural safety limit. It was tested together with readmission, so that clients pushed out by the limit could still come back.
+
+**What happened.** Under attack the cap was reached in 15–41 of the 90 rounds of each condition (3 runs × 30 rounds). In those rounds it let attackers back into the aggregate: 10–57 attacker-rounds per condition without regrouping, and 7–50 with it. Backdoor success rose to 59–62%, and accuracy under noise fell to 43.6%.
+
+**Why it failed.** The cap keeps out the clients with the **lowest evidence**. Honest clients isolated by the cascade carry very low evidence, because they stay unusual round after round. When the cap is reached, they keep their places outside, and attackers with less extreme evidence are the ones let back in. A backdoor needs only a few rounds inside the model to take hold (6.6e), so a handful of such rounds is enough.
+
+### 7.1c Full-population yardstick (`plus.population: all`, Phase 3c)
+
+**What it does.** The median reference, and the median and MAD of the z-score, are taken over **every client not banned**, isolated ones included, instead of over the clients still kept. Isolation stays permanent; isolated clients are only part of the yardstick.
+
+$$z_i = \frac{s_i - \operatorname{med}_{j \in A}(s_j)}{\max\big(1.4826\,\mathrm{MAD}_{j \in A}(s_j),\ 0.1\,\lvert\operatorname{med}_{j \in A}(s_j)\rvert\big)}, \qquad A = \text{all clients not banned (FedHEP+: } A = \text{kept clients)}$$
+
+**Why we tried it.** At the time, the cascade was thought to come from a shrinking yardstick: each isolation removes a client from the group the next z-scores are measured against, so the spread shrinks and the next honest client looks more extreme. A yardstick that never shrinks should stop it.
+
+**What happened.**
+
+![Phase 3c: the full-population yardstick, three seeds](../figures/phase3c_confirm.png)
+
+![Phase 3c: backdoor success](../figures/phase3c_backdoor.png)
+
+- **More honest clients were isolated, not fewer:** 87 against 46 (82 with regrouping).
+- **The backdoor got through:** 52–54%. Attackers were left out in only 154–155 of 270 attacker-rounds, against 191 for FedHEP+. A likely reason, not tested on its own: isolated backdoor attackers stay in the yardstick and pull it toward the ones still active.
+- A stricter isolation cut ($-2.0$) brought honest isolations down to 36, but backdoor success rose to 74%.
+
+**Why it failed.** The premise was wrong. The follow-up diagnosis (6.6a) found that the spread does not shrink; it grows six- to eightfold after round 14. What fades is the floor of the z-score's scale, which is what makes honest z-scores extreme mid-training. Keeping the population fixed does not touch that, and it brings isolated attackers back into the yardstick.
+
+### 7.1d Whole-update signal, one-sided (`plus.signal: weights`)
+
+The cosine of the whole update (BatchNorm buffers left out) instead of the root head. It brought backdoor success to 0.3% on seed 42, but isolated many honest clients with a one-sided screen, so it was not adopted then. It returns in Phase 6, with the two-sided screen, the gap gate and patience, as half of FedHEP-Guard's union screen (chapter 5.4).
+
+## 7.2 Phase 4: check groups first, then their members
 
 **Hypothesis.** Attackers pushing one direction (one backdoor) stand out more **together** than one by one. So first find the group (parent) that contains them, then look inside it.
 
@@ -88,7 +166,7 @@ $$E_i \leftarrow 0.7\,E_i + 0.3\,\min\bigl(z_i,\ -z^{\text{align}}_i\bigr)$$
 
 **What carried forward:** removing a client for one round can hide it; evidence that builds over rounds does not. Group-level coordination is real, but in FedHEP honest groups are coordinated too.
 
-## 5.2 Phase 5: established robust rules inside FedHEP
+## 7.3 Phase 5: established robust rules inside FedHEP
 
 **Question:** would a published defense, plugged into FedHEP's Global step, beat FedHEP+?
 
@@ -134,7 +212,7 @@ Parents keep SCCF over the clients the rule accepts. $f = 3$ at D1.
 - FedHEP+'s weak spot (the backdoor) is FLAME's strength, and FLAME's weak spot (honest clients left out) is FedHEP+'s strength. This motivated a layered design: an influence bound underneath a screen.
 - The trimmed mean returns in Phase 6 as the last stage of L0.
 
-## 5.3 Phase 6 components that were tested and dropped
+## 7.4 Phase 6 components that were tested and dropped
 
 Seven components were tested while building FedHEP-Guard and left out. Each subsection below gives the formula, where it acts (diagram), why we tried it, the results and why it was dropped.
 
@@ -147,13 +225,12 @@ Seven components were tested while building FedHEP-Guard and left out. Each subs
 | Head-agreement inference | `fedhep.head_agreement` | costs 0.18 points, removes 1–13 points of backdoor success: the parent head carries the backdoor too | `g1__*`, `m6__*` | 5.3e |
 | Holding $f$ fixed after exclusions | `plus.global_f_fixed: true` | −1.1 points under ALIE on the Mac, −1.2 on CUDA | `m6__r3_ffixed`, `c2__r3_ffixed` | 5.3f |
 | Rewinding every shared weight | `plus.rewind: all` | 0.6 points below rewinding only the trunk and root head, no backdoor gain | `m6__r3w_all`, `m6__r3_all` | 5.3g |
-| Readmission, cap, full-population yardstick | see [chapter 4.4](04_fedhep_plus.md) | all worse | `p3b__*`, `p3c__*` | 4.4 |
 
 ![Results of the dropped components](../figures/phase6_dropped_components.png)
 
 All runs: D1 (15 clients, α = 0.5, 3 attackers), 30 rounds, seeds 42, 123 and 7. Machines are named per result and never mixed in one comparison.
 
-### 5.3a Worker momentum under L0 (`robust.momentum: 0.5`)
+### 7.4a Worker momentum under L0 (`robust.momentum: 0.5`)
 
 ![Worker momentum: where it acts](figures/diagrams/11_dropped_momentum.png)
 
@@ -161,7 +238,7 @@ All runs: D1 (15 clients, α = 0.5, 3 attackers), 30 rounds, seeds 42, 123 and 7
 
 $$m_i^{(t)} = \beta\, m_i^{(t-1)} + (1-\beta)\,\Delta_i^{(t)}, \qquad \Delta = \mathrm{TM}_f\Bigl(\mathrm{NNM}_f\bigl(\mathrm{ARC}_f(m_1^{(t)}, \dots, m_n^{(t)})\bigr)\Bigr)$$
 
-**Legend:** $\Delta_i^{(t)}$ is client $i$'s update in round $t$; $m_i^{(t)}$ is its momentum, set to $\Delta_i^{(1)}$ the first time; $\beta = 0.5$ is the share of the past kept; ARC, NNM and TM are L0's three steps (6.2).
+**Legend:** $\Delta_i^{(t)}$ is client $i$'s update in round $t$; $m_i^{(t)}$ is its momentum, set to $\Delta_i^{(1)}$ the first time; $\beta = 0.5$ is the share of the past kept; ARC, NNM and TM are L0's three steps (5.2).
 
 **Why we tried it.** In robust-optimization theory (Karimireddy, He and Jaggi, 2021), attackers hide inside the noise of honest updates. Averaging each client over rounds shrinks that noise, so robust rules separate attackers better.
 
@@ -174,7 +251,7 @@ $$m_i^{(t)} = \beta\, m_i^{(t-1)} + (1-\beta)\,\Delta_i^{(t)}, \qquad \Delta = \
 
 **Why it was dropped.** It is worse in every condition, by 0.9–1.7 points, and does not help against the backdoor. A likely reason, not tested on its own: the theory assumes one SGD step per round, where per-round noise is large. Here every upload already averages 5 local epochs, so there is little noise left to average away, and momentum mostly mixes in directions from earlier rounds, after the model has moved on.
 
-### 5.3b Output-space signals: probe logits and head gap (`plus.signal: probe_logits`, `head_gap`)
+### 7.4b Output-space signals: probe logits and head gap (`plus.signal: probe_logits`, `head_gap`)
 
 ![Output-space signals: where they act](figures/diagrams/12_dropped_output_signals.png)
 
@@ -200,7 +277,7 @@ The score then goes through the unchanged R3 screen (two-sided robust z, gap gat
 
 **Why they were dropped.** Neither catches the sign flippers, which every weight signal catches in round 1. Probe logits never catch the backdoor. Head gap catches it on two seeds, but at the price of 9 honest isolations, the most of any signal. Both also cost a forward pass of every upload on the probe set every round.
 
-### 5.3c Sign-alignment signal (`plus.signal: sign_align`, AlignIns MPSA)
+### 7.4c Sign-alignment signal (`plus.signal: sign_align`, AlignIns MPSA)
 
 ![Sign alignment: where it acts](figures/diagrams/13_dropped_sign_align.png)
 
@@ -216,7 +293,7 @@ $$\pi_j = \mathrm{sgn}\Bigl(\sum_k \mathrm{sgn}(\Delta_{k,j})\Bigr), \qquad s_i 
 
 **Why it was dropped.** It is the cleanest detector of model poisoning, but it misses the backdoor completely. A backdoor attacker trains honestly on half its data, so its largest coordinates mostly carry the majority sign; the trigger sits in a few coordinates the sign count does not weigh. Model poisoning is already caught by the cheaper weight signals.
 
-### 5.3d Critical layers alone (`plus.signal: critical`)
+### 7.4d Critical layers alone (`plus.signal: critical`)
 
 ![Critical layers: where they act](figures/diagrams/14_dropped_critical.png)
 
@@ -230,7 +307,7 @@ $$c_{i\ell} = \cos\bigl(\Delta_i^{(\ell)},\ \operatorname{med}_k \Delta_k^{(\ell
 
 **Results** (GPU): every sign flipper and ALIE attacker isolated, no honest client isolated with no attack. Backdoor success 0.5 / 65 / 83% (seeds 42 / 123 / 7).
 
-**Why it was dropped as a single signal, and kept in the union.** It catches the backdoor on one seed only. But it catches it on a **different** seed from the whole-update signal (0.6 / 71 / 0.6%), so the union of the two catches all three: this is FedHEP-Guard's signal [1] (chapter 6.4).
+**Why it was dropped as a single signal, and kept in the union.** It catches the backdoor on one seed only. But it catches it on a **different** seed from the whole-update signal (0.6 / 71 / 0.6%), so the union of the two catches all three: this is FedHEP-Guard's signal [1] (chapter 5.4).
 
 **The six signals side by side** (GPU, R3 with each signal):
 
@@ -245,7 +322,7 @@ $$c_{i\ell} = \cos\bigl(\Delta_i^{(\ell)},\ \operatorname{med}_k \Delta_k^{(\ell
 | Probe logits | 74 / 71 / 83% | 1 |
 | Head gap | 10 / **0.7** / 83% | 9 |
 
-### 5.3e Head-agreement inference (`fedhep.head_agreement: true`)
+### 7.4e Head-agreement inference (`fedhep.head_agreement: true`)
 
 ![Head agreement: where it acts](figures/diagrams/15_dropped_head_agreement.png)
 
@@ -268,7 +345,7 @@ $$\hat y = \begin{cases} \arg\max\Bigl(\dfrac{z_l}{\sigma(z_l)} + \dfrac{z_p}{\s
 
 ![Backdoor success of each head](../figures/phase6_backdoor_heads.png)
 
-### 5.3f Holding $f$ fixed after exclusions (`plus.global_f_fixed: true`)
+### 7.4f Holding $f$ fixed after exclusions (`plus.global_f_fixed: true`)
 
 ![Holding f fixed: where it acts](figures/diagrams/16_dropped_f_fixed.png)
 
@@ -291,17 +368,17 @@ $$\text{FedHEP-Guard: } f = \max\bigl(0,\ \min(f_0 - \lvert X\rvert,\ \lfloor (n
 
 **Why it was dropped.** The prediction was wrong in direction, on both machines and every seed. Once the attackers are gone, a fixed $f = 3$ makes the trimmed mean discard the 3 highest and 3 lowest **honest** values of every coordinate, every round. That throws information away for nothing. With no attack nobody is excluded, so the two rules coincide and the difference is near zero.
 
-### 5.3g Rewinding every shared weight (`plus.rewind: all`)
+### 7.4g Rewinding every shared weight (`plus.rewind: all`)
 
 ![Rewind scope: where it acts](figures/diagrams/17_dropped_rewind_all.png)
 
-**What it does.** When a client is isolated, the Global model and every parent go back to the stored model from before the client's first suspicious round (chapter 6.6). A mask $M$ chooses which coordinates are restored:
+**What it does.** When a client is isolated, the Global model and every parent go back to the stored model from before the client's first suspicious round (chapter 5.6). A mask $M$ chooses which coordinates are restored:
 
 $$w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w, \qquad M_j = \begin{cases} 1 & j \in \text{trunk or root head (FedHEP-Guard, trunk\_root), else } 0 \\ 1 & \text{every } j \text{ (tested: all)} \end{cases}$$
 
 **Legend:** $w$ is a shared model (Global or a parent); $w_{t^\star}$ the Global model stored at the start of round $t^\star$; $\odot$ is element-wise multiplication; `trunk` restores the trunk only.
 
-**Why we tried it.** If the parent head carries the backdoor too (5.3e), rewinding only the trunk and root head might leave part of it in place.
+**Why we tried it.** If the parent head carries the backdoor too (7.4e), rewinding only the trunk and root head might leave part of it in place.
 
 **Results** (Mac, 3 backdoor attackers):
 
@@ -314,9 +391,9 @@ $$w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w, \qquad M_j = \begin{cases}
 
 **Why it was dropped.** With the whole-update screen it costs 0.6 points against rewinding the trunk and root head, and gains nothing: the attackers are caught by rounds 3–6, so there is little backdoor to remove. With the root-head screen it lowers success by 1–2 points on the seeds where an attacker is caught, at no accuracy cost, but that screen is not the one FedHEP-Guard uses. Rewinding the personal heads also discards the personalization learned since $t^\star$, which the attackers barely touch. With the trunk and root head rewound, the parent head's share of the backdoor plausibly has no trigger features left to respond to.
 
-## 5.4 Phase 7: the peer reference (Acer)
+## 7.5 Phase 7: the peer reference (Acer)
 
-**Idea.** Judge each client against the clients that hold similar data, not against everyone. Under strong skew an honest client with unusual classes is far from the global median, so it looks like an attacker (7.6, chapter 4.5c). Against clients holding similar classes it should look normal, while a backdoor attacker still differs from its peers by the trigger. This follows BoBa (arXiv 2407.09658, 2024), which compares clients only within groups of similar inferred data.
+**Idea.** Judge each client against the clients that hold similar data, not against everyone. Under strong skew an honest client with unusual classes is far from the global median, so it looks like an attacker (6.13, chapter 6.6c). Against clients holding similar classes it should look normal, while a backdoor attacker still differs from its peers by the trigger. This follows BoBa (arXiv 2407.09658, 2024), which compares clients only within groups of similar inferred data.
 
 **What changes.** Only the reference in step [1]: each client $i$ gets its own reference $\tilde r_i$ instead of the shared $\tilde r$. Everything after it (robust z, two-sided cut, gap gate, patience, evidence, isolation, rewind) is unchanged.
 
@@ -367,4 +444,3 @@ The two AUROC values in a cell come from the two arms (acting on the median, act
 - **A noisier yardstick.** With $\kappa = 1/3$ each client's reference is the median of only 5 peers, much noisier than the median of all 15. The extra noise outweighs the heterogeneity the peers remove.
 - **Arbitrary peers at α = 0.5.** Nearly every client holds nearly every class (about 667 images over 100 classes), so the Jaccard similarities are almost tied and the peers are close to arbitrary.
 - **The wrong diagnosis.** The honest isolations it targeted are mostly not "clients with unusual data". At α = 0.5 about half are whole parent groups, split off by the parent head inside the whole-update signal (chapter 8.2).
-

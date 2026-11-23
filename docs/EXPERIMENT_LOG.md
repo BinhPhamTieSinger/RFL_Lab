@@ -1487,3 +1487,18 @@ Controls already on the Acer: `x10_*__r3wc_shp`, `x8_f3__*__r3wc` and `x9__*__r3
 With the 30-client grid complete, the report 8.2 figures were redrawn: the backdoor catches' median gap ratio at 30 clients is 16.1 (was 14.1 on 2026-11-21), and the whole update's share of whole-group honest isolations 74% (was 73%).
 
 Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients) have outcomes in `PREDICTIONS.md`.
+
+## 2026-11-23 · Report reorganized (models, then results); the benchmark widened to every model and setting
+
+**Report.** Chapters 2–5 now describe the models only: FedHEP, Defended FedHEP, FedHEP+ and FedHEP-Guard, each with what it adds, changes and removes, its diagram, formulas, the reason for each part, and its variants. Every result moved to chapter 6, which opens with the benchmark (6.1); the diagnostic results follow model by model (6.2–6.14). Ideas that did not work are chapter 7 and now include FedHEP+'s rejected variants (readmission, the cap, the full-population yardstick, 7.1). Open problems are chapter 8, the configuration reference chapter 9. The old-to-new section map is at the end of the index.
+
+**Benchmark design** (`scripts/make_benchmark.py`, `configs/sweeps/bench_0…9_*.yaml`, GPU server only):
+- 52 models: FedAvg, Multi-Krum, FedHEP, Defended FedHEP, FedHEP+, FedHEP-Guard and every variant ever run (taken from the configurations of every run in `outputs*/`), plus Median, Trimmed mean, Bulyan, FLAME, FLAME on updates and FLTrust. Left out: `sign_election`, a 4-run pilot that never reached the report.
+- 8 conditions: no attack, sign flip, label flip, random noise, ALIE, Min-Max, backdoor, stealth backdoor; 20% attackers, robust rules told the true count. FedAvg and Multi-Krum cannot run ALIE, Min-Max or the stealth backdoor.
+- 9 settings, every one ever tested: D1, D2, 30 clients α 0.5, 15 and 30 clients α 0.1, 50 clients α 0.1 and 0.5, 20 clients α 0.5, 15 clients α 0.05.
+- 11,070 runs; runs are named like the large grid's, so its 20%-attacker runs (about 600) are skipped, not rerun (`tests/test_benchmark_spec.py` checks that those runs are the same experiments). About 9 days on four GPUs, in priority order: FedAvg family, D1, D2, then the rest.
+- The old `bench_fedhep_family.yaml` and `bench_fedavg_family.yaml` (13 models, D1 and D2, never run) are replaced.
+
+**Charts** (`scripts/plot_benchmark.py`): one overview per setting (every model × every condition: accuracy, backdoor success, detection F1, honest clients isolated) and one detail chart per setting and condition (adds attackers isolated, and in which round attackers and honest clients are isolated). A GPU run fills a cell when its configuration is the cell's, whatever its name. Already filled: D1 67 of 410 cells, D2 32, 30 clients α 0.5 40, 15 clients α 0.1 40, 30 clients α 0.1 40, 50 clients α 0.1 8; the rest are empty until the benchmark runs.
+
+![Benchmark overview, D1 (partly filled)](figures/bench/overview_gg15_a05.png)

@@ -96,7 +96,7 @@ tail -n 3 logs/qbatch-*.out             # each job ends with "finished in X min"
 ```
 Then push the pilot (below). Choose `--procs` from it: the most runs per hour while peak GPU memory stays under about 28 GB of the 32 GB.
 
-**The campaign.** The pilot showed that one run already fills a GPU (`--procs 1`; about 4.5 min per 30-round run, about 50 runs per hour on four GPUs). One job, in this order: the large grid first (1,872 runs, about 40 hours, longer if the 50-client runs are slower), then the mechanism studies:
+**The large grid.** The pilot showed that one run already fills a GPU (`--procs 1`; about 4.5 min per 30-round run, about 50 runs per hour on four GPUs). One job, in this order: the large grid first (1,872 runs, about 40 hours, longer if the 50-client runs are slower), then the mechanism studies:
 ```bash
 qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
     configs/sweeps/gpu_grid_n15.yaml configs/sweeps/gpu_grid_n30.yaml configs/sweeps/gpu_grid_n50.yaml \
@@ -105,14 +105,16 @@ qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
 ```
 If the lab refuses the time limit, use the longest it allows and resubmit the same command when the job ends: finished runs are skipped. Progress: `ls outputs | grep -c '^gg'` (of 1,872). The grid files are written by `scripts/make_gpu_grid.py` (client counts, attacker counts, ALIE z per n and m); edit that script, not the YAML.
 
-**The canonical benchmark** (report chapter 9; 594 runs, about 12 hours on two GPUs), after the job above has ended:
+**The benchmark** (report 6.1): 52 models × 8 conditions × 9 settings × 3 seeds = 11,070 runs, of which about 600 already exist in the large grid and are skipped. At about 50 runs per hour on four GPUs that is about 9 days, so it is split into one sweep file per setting, in priority order: `bench_0` FedAvg and Multi-Krum in every setting (270 runs), `bench_1` D1 and `bench_2` D2 (1,200 runs each, about a day each), then the grid's settings, then the follow-up and paper settings. After the job above has ended:
 ```bash
 bash scripts/runner_sync.sh pc --update
-qbatch --gpus 2 --cpus 8 --mem 48G --time 2-00:00:00 scripts/gpu_sweep.py \
-    configs/sweeps/bench_fedhep_family.yaml configs/sweeps/bench_fedavg_family.yaml \
-    configs/sweeps/gpu_c7_stealth.yaml --procs 1 --set data.root=data
+qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
+    configs/sweeps/bench_0_fedavg_family.yaml configs/sweeps/bench_1_gg15_a05.yaml configs/sweeps/bench_2_gg20_a02.yaml \
+    configs/sweeps/bench_3_gg30_a05.yaml configs/sweeps/bench_4_gg15_a01.yaml configs/sweeps/bench_5_gg30_a01.yaml \
+    configs/sweeps/bench_6_gg50_a01.yaml configs/sweeps/bench_7_gg50_a05.yaml configs/sweeps/bench_8_gg20_a05.yaml \
+    configs/sweeps/bench_9_gg15_a005.yaml --procs 1 --set data.root=data
 ```
-Progress: `ls outputs | grep -c '^bm_'` (of 594). On the Mac, `python scripts/plot_benchmark.py outputs` draws its figures and tables.
+Resubmit the same command each time the 3-day limit ends; finished runs are skipped. The sweep files are written by `scripts/make_benchmark.py` (models, settings, conditions); edit that script, not the YAML. On the Mac, `python scripts/plot_benchmark.py outputs` redraws every benchmark chart and the chart index of report 6.1, from whatever GPU runs exist. After the benchmark: `configs/sweeps/gpu_c7_stealth.yaml`.
 
 **A sweep on all four GPUs:**
 ```bash

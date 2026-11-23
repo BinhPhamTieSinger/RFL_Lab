@@ -1,16 +1,16 @@
 # 8. Open problems and current experiments
 
-What FedHEP-Guard does not solve yet, why, and what is being tested. Each problem gives its evidence and its status. The model is described in [chapter 6](06_fedhep_guard.md), its results in [chapter 7](07_fedhep_guard_results.md).
+What FedHEP-Guard does not solve yet, why, and what is being tested. Each problem gives its evidence and its status. The model is described in [chapter 5](05_fedhep_guard.md), its results in [chapter 6](06_results.md).
 
 ## 8.1 What is still open
 
 | # | Problem | Evidence | Status |
 |---|---|---|---|
 | 1 | **Honest clients isolated, more with more clients** | per run with no attack (GPU): 4.3 and 14.7 at 15 and 30 clients (α = 0.5); 1.7, 7.0 and 22.0 at 15, 30 and 50 clients (α = 0.1). FedHEP+: 1.0–7.7. About half are whole parent groups | two causes found (8.2); the shared signal, against cause 2, is being tested (8.3); cause 1 has no fix yet |
-| 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (7.3) | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
-| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (35–48% on both machines; the whole update stops it on one seed of three); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 9) |
+| 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (6.10) | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
+| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (35–48% on both machines; the whole update stops it on one seed of three); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 6.1) |
 | 4 | **A third of the clients attacking with a backdoor** | 5 of 15: 12% (GPU) and one seed at 20% (Mac); 9 of 30: 5.3% (GPU; one seed at 11%); FLAME holds | open |
-| 5 | **Removing ALIE attackers costs accuracy** | catching all 9 ALIE attackers leaves the union screen 2.5 points below FedHEP+, which never catches them (GPU); fixing $f$ made it worse (5.3f) | open |
+| 5 | **Removing ALIE attackers costs accuracy** | catching all 9 ALIE attackers leaves the union screen 2.5 points below FedHEP+, which never catches them (GPU); fixing $f$ made it worse (7.4f) | open |
 | 6 | **Untested attacks** | IPM and delayed-onset attacks from the team's `oreh` code; colluders that report one class mask | not scheduled |
 
 ## 8.2 Why honest clients are isolated
@@ -67,7 +67,7 @@ So the gap ratio cannot tell an honest outlier from a backdoor attacker: both st
 - **Under strong skew it depends on the number of clients.** At α = 0.1 none of the union screen's honest isolations at 15 and 30 clients were whole groups: they were single clients, which points to cause 1. At 50 clients 44% were whole groups (29 of 66, no attack). So at 50 clients both causes act, and fixing cause 2 alone would remove about half.
 
 
-**What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (5.4).
+**What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (7.5).
 
 ## 8.3 Phase 8: the shared signal (running on the Acer)
 
@@ -87,7 +87,7 @@ It is combined with the critical layers exactly as now: each signal z-scored and
 | bound | the norm bound of chapter 3, $k = 3$ | `plus.norm_bound` |
 | — | union with the critical layers | `plus.signal: shared_critical` |
 
-**Why it should keep the backdoor catches.** The backdoor is learned by the shared trunk and root head, and both stay in the signal. The risk: the parent head also carries part of the backdoor (chapter 5.3e), and on some seeds that part may have been what split the attackers off.
+**Why it should keep the backdoor catches.** The backdoor is learned by the shared trunk and root head, and both stay in the signal. The risk: the parent head also carries part of the backdoor (chapter 7.4e), and on some seeds that part may have been what split the attackers off.
 
 **The experiment** (Acer, predictions P26–P29):
 
@@ -104,7 +104,7 @@ Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are
 
 - **GPU server:**
   - now running: the rest of the 50-client grid (P14, P19), about one day;
-  - queued next: the canonical benchmark (chapter 9), with the full FedHEP-Guard under every attack at D1 and D2, then the stealth study at scale (`gpu_c7_stealth`).
+  - queued next: the canonical benchmark (chapter 6.1), with the full FedHEP-Guard under every attack at D1 and D2, then the stealth study at scale (`gpu_c7_stealth`).
 - **Acer:** Phase 8 results (P26–P29). If they hold, the shared union becomes FedHEP-Guard's signal [1], and the benchmark's `guard` model is re-run with it.
 - **Cause 1 needs its own fix.** At 50 clients half the honest isolations are single clients flagged because the gap gate opens by chance. A gate that scales with $n$ costs backdoor catches (above). Candidates to test once Phase 8 has reported: requiring both signals to agree when $n$ is large, or a gate on the gap's size relative to the score scale rather than to the median gap.
 - **After that:** the open problems 3–6 above, in that order.

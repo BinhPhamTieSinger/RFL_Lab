@@ -45,38 +45,38 @@ const DOC_CATALOG: DocMeta[] = [
   },
   {
     path: "docs/report/02_fedhep.md",
-    shortTitle: "2. FedHEP (Phase 1)",
-    subtitle: "Three-head model, formulas, changes vs FedAvg, reproduction",
+    shortTitle: "2. FedHEP",
+    subtitle: "Three-head model, formulas, changes vs FedAvg",
     category: "0. Research Report",
   },
   {
     path: "docs/report/03_defended_fedhep.md",
-    shortTitle: "3. Defended FedHEP (Phases 1c, 2)",
-    subtitle: "SCCF and trust ledger, Phase 2 benchmark, failures",
+    shortTitle: "3. Defended FedHEP",
+    subtitle: "SCCF and trust ledger: what it adds, formulas, why",
     category: "0. Research Report",
   },
   {
     path: "docs/report/04_fedhep_plus.md",
-    shortTitle: "4. FedHEP+ (Phase 3)",
-    subtitle: "Robust z screen, results, follow-up diagnostics",
+    shortTitle: "4. FedHEP+",
+    subtitle: "Robust z screen, isolation, regrouping, variants",
     category: "0. Research Report",
   },
   {
-    path: "docs/report/05_ideas_that_did_not_work.md",
-    shortTitle: "5. Ideas That Did Not Work",
-    subtitle: "Drill-down, classic rules, dropped Phase 6 parts",
+    path: "docs/report/05_fedhep_guard.md",
+    shortTitle: "5. FedHEP-Guard",
+    subtitle: "Seven mechanisms: formula, legend, location, configuration",
     category: "0. Research Report",
   },
   {
-    path: "docs/report/06_fedhep_guard.md",
-    shortTitle: "6. FedHEP-Guard: The Model",
-    subtitle: "Every mechanism: formula, legend, location, configuration",
+    path: "docs/report/06_results.md",
+    shortTitle: "6. Results",
+    subtitle: "The benchmark of every model, then the diagnostic results",
     category: "0. Research Report",
   },
   {
-    path: "docs/report/07_fedhep_guard_results.md",
-    shortTitle: "7. FedHEP-Guard: Results",
-    subtitle: "Scorecard against FedHEP+, every experiment, all models",
+    path: "docs/report/07_ideas_that_did_not_work.md",
+    shortTitle: "7. Ideas That Did Not Work",
+    subtitle: "Phases 3–7: hypothesis, formula, experiment, why it failed",
     category: "0. Research Report",
   },
   {
@@ -86,14 +86,8 @@ const DOC_CATALOG: DocMeta[] = [
     category: "0. Research Report",
   },
   {
-    path: "docs/report/09_benchmark.md",
-    shortTitle: "9. Canonical Benchmark",
-    subtitle: "Every model, same attacks, one machine",
-    category: "0. Research Report",
-  },
-  {
-    path: "docs/report/10_configuration_reference.md",
-    shortTitle: "10. Configuration Reference",
+    path: "docs/report/09_configuration_reference.md",
+    shortTitle: "9. Configuration Reference",
     subtitle: "Every config key, symbol, preset and run prefix",
     category: "0. Research Report",
   },
@@ -694,7 +688,7 @@ export default function Documentation() {
                       </a>
                     );
                   }
-                  if (resolved.endsWith(".html")) {
+                  if (/\.(html|png|svg|jpe?g|webp)$/i.test(resolved)) {
                     return (
                       <a
                         href={`/research/documents/${resolved}`}

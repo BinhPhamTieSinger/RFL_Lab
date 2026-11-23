@@ -1,32 +1,33 @@
 # RFL Lab research report
 
-**Robust federated learning for FedHEP.** We reproduced FedHEP and its published defense, tried several improvements, and propose a defense of our own, **FedHEP-Guard**. This report records each step: what was tried, what worked, what failed and why. Read the chapters in order the first time; to find a chart or table quickly, use the presenting kit at the end.
+**Robust federated learning for FedHEP.** We reproduced FedHEP and its published defense, tried several improvements, and propose a defense of our own, **FedHEP-Guard**. The report first describes the models, then every result, then the ideas that failed, what is still open, and every configuration key.
 
 ## The story in one minute
 
-1. **FedHEP**, our team's personalized FL model, and its **published defense** were rebuilt and reproduced: every number is within 2 standard errors of the authors' code (chapters 2–3).
-2. **The published defense never removes an attacker** and does nothing against a backdoor: 79% backdoor success, the same as no defense (chapter 3).
-3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4).
-4. **Several ideas failed:** checking groups first, classic robust rules (Median, Bulyan, FLAME, FLTrust), seven Phase 6 components, and the peer reference. Each failure shaped the next design (chapter 5).
-5. **FedHEP-Guard fixes failures 2 and 3, not failure 1.** Adaptive attackers are caught (9 of 9 at D1, 12 of 12 at D2), the plain backdoor stays at 0.3% for 100 rounds, and it holds up best when the model is poisoned (chapters 6–7).
-6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. Two causes are known; a fix for one is being tested on the Acer, and the full benchmark is queued on the GPU server (chapters 8–9).
+1. **FedHEP**, our team's personalized FL model, and its **published defense** were rebuilt and reproduced: every number is within 2 standard errors of the authors' code (chapters 2, 3, 6.2).
+2. **The published defense never removes an attacker** and does nothing against a backdoor: 79% backdoor success, the same as no defense (6.4).
+3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4, 6.5–6.7).
+4. **FedHEP-Guard fixes failures 2 and 3, not failure 1.** Adaptive attackers are caught (9 of 9 at D1, 12 of 12 at D2), the plain backdoor stays at 0.3% for 100 rounds, and it holds up best when the model is poisoned (chapter 5, 6.8–6.13).
+5. **Many ideas failed** along the way: FedHEP+'s variants, checking groups first, the classic robust rules, seven Phase 6 components and the peer reference. Each failure shaped the next design (chapter 7).
+6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. A fix for one of the two causes is being tested (chapter 8). The benchmark of every model in every setting is queued on the GPU server (6.1).
 
 ![The research path](figures/diagrams/10_research_path.png)
 
 ## Chapters
 
-| # | Chapter | Question it answers |
+| # | Chapter | What it holds |
 |---|---|---|
-| 1 | [Federated learning, attacks and metrics](01_federated_learning.md) | What is FL? Which attacks and settings do we use? What do the numbers mean? Notation |
-| 2 | [FedHEP (Phase 1)](02_fedhep.md) | What is FedHEP, what does it change in FedAvg, and did we reproduce it? |
-| 3 | [Defended FedHEP (Phases 1c, 2)](03_defended_fedhep.md) | What does the published defense add, and where does it fail? |
-| 4 | [FedHEP+ (Phase 3)](04_fedhep_plus.md) | Our first improvement: what it changes, what it fixed, where it breaks |
-| 5 | [Ideas that did not work (Phases 4–7)](05_ideas_that_did_not_work.md) | What else was tried, and why each idea failed |
-| 6 | [FedHEP-Guard: the model (Phase 6)](06_fedhep_guard.md) | Every mechanism: what it does, its formula, where it acts, why it is there; the exact configuration |
-| 7 | [FedHEP-Guard: results](07_fedhep_guard_results.md) | What did it fix from FedHEP+? Every experiment, and every model side by side |
-| 8 | [Open problems and current experiments](08_open_problems.md) | What is not solved, why, and what is running now (Phase 8) |
-| 9 | [The canonical benchmark](09_benchmark.md) | Every model under the same attacks, settings and machine (results pending) |
-| 10 | [Configuration reference](10_configuration_reference.md) | Every config key, symbol, preset, sweep file and run prefix |
+| 1 | [Federated learning, attacks and metrics](01_federated_learning.md) | what FL is, the data split, the test bed, the attacks, what the numbers mean, notation |
+| 2 | [FedHEP](02_fedhep.md) | the model: parts, one round, formulas, why each part, what it changes against FedAvg |
+| 3 | [Defended FedHEP](03_defended_fedhep.md) | what the published defense adds and changes, formulas, why each part |
+| 4 | [FedHEP+](04_fedhep_plus.md) | our first model: what it adds, changes and removes, formulas, why each part, its variants |
+| 5 | [FedHEP-Guard](05_fedhep_guard.md) | our current model: seven mechanisms with formulas and reasons, its rungs, the exact configuration |
+| 6 | [Results](06_results.md) | **6.1 the benchmark** (every model, every condition, every setting, one machine), then the diagnostic results model by model |
+| 7 | [Ideas that did not work](07_ideas_that_did_not_work.md) | every rejected idea of Phases 3–7: formula, diagram, hypothesis, experiment, why it failed |
+| 8 | [Open problems](08_open_problems.md) | what is not solved, why, and what is running now |
+| 9 | [Configuration reference](09_configuration_reference.md) | every config key, symbol, preset, sweep file and run prefix |
+
+**General and diagnostic charts.** The benchmark (6.1) holds the general charts: every model under the same conditions on one machine, with accuracy, detection F1, attackers caught, honest clients isolated, the round in which each happens, and backdoor success. The rest of chapter 6 holds the diagnostic charts: they explain a behaviour (for example why honest z-scores grow mid-training) and often exist for only some models or machines.
 
 ## The models at a glance
 
@@ -46,7 +47,7 @@
 | 2. Adaptive attackers not seen | **Fixed** | ALIE and Min-Max 9 of 9 caught against 0 of 9; stealth backdoor 0.2–0.5% against 56–75% |
 | 3. Backdoors that persist | **Fixed when caught early** | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); not at α = 0.1, at D2, or after a late catch |
 
-The full scorecard, with machines and costs, is [chapter 7.1](07_fedhep_guard_results.md).
+The full scorecard, with machines and costs, is [chapter 6.8](06_results.md).
 
 ## Presenting kit: which chart answers which question
 
@@ -54,35 +55,39 @@ Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/rep
 
 | Question | Chart | Section |
 |---|---|---|
-| **Starting point** | | |
-| Did we reproduce the paper? | `figures/phase1_parity.png` | 2.4 |
-| Why do we need a new defense? | `figures/phase2_accuracy.png`, `figures/phase2_backdoor_asr.png`, `figures/defended_failure_diagnosis.png` | 3.4–3.5 |
-| What did FedHEP+ achieve? | `figures/phase3b_confirm.png` | 4.3 |
-| Why is FedHEP+ not enough? | `figures/followup_alpha02.png`, `figures/followup_adaptive.png`, `figures/followup_backdoor_persists.png` | 4.5 |
+| **The models** | | |
+| How does each model work? | `report/figures/diagrams/03_fedhep_round.png`, `04_defended_round.png`, `05_fedhep_plus_round.png`, `08_fedhep_guard_round.png` | 2.2, 3.1, 4.1, 5 |
+| Why is each part in the model? | "Why each part" tables | 2.2, 3.1, 4.1, 5.1 |
+| Where does each FedHEP-Guard mechanism act? | `report/figures/guard_coverage.png` | 5 |
+| **The benchmark** | | |
+| Which model is best, per condition and setting? | `figures/bench/overview_<setting>.png` | 6.1 |
+| When does each model catch attackers or blame honest clients? | `figures/bench/<setting>__<condition>.png` | 6.1 |
+| **Diagnostic results** | | |
+| Did we reproduce the paper? | `figures/phase1_parity.png` | 6.2 |
+| Why do we need a new defense? | `figures/phase2_accuracy.png`, `figures/phase2_backdoor_asr.png`, `figures/defended_failure_diagnosis.png` | 6.4 |
+| What did FedHEP+ achieve? | `figures/phase3b_confirm.png` | 6.5 |
+| Why do honest z-scores grow mid-training? | `figures/why_z_grows.png` | 6.6a |
+| Why is FedHEP+ not enough? | `figures/followup_alpha02.png`, `figures/followup_adaptive.png`, `figures/followup_backdoor_persists.png` | 6.6 |
+| What did FedHEP-Guard fix from FedHEP+? | `figures/phase6_honest_isolation_summary.png`, `figures/phase6_guard_durability.png` | 6.8 |
+| Which part of FedHEP-Guard fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png`, `figures/phase6_gpu_d2.png` | 6.9 |
+| Does it remove a backdoor, over 100 rounds? | `figures/phase6_rewind.png`, `figures/phase6_guard_durability.png`, `figures/phase6_gpu_durability.png`, `figures/phase6_gpu_rewind.png` | 6.10 |
+| Does it survive an adaptive backdoor? | `figures/phase6_stealth.png` | 6.11 |
+| What if the attacker count is unknown? | `figures/phase6_fmis.png` | 6.12 |
+| Does it hold at 30 and 50 clients and under strong skew? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` | 6.13 |
+| Every model run at D1, per machine | `figures/all_models_mac_<attack>.png`, `figures/all_models_gpu_<attack>.png` | 6.14 |
 | **What failed** | | |
-| Readmission, the cap, the full-population yardstick | `figures/phase3_variants_explained.png` | 4.4 |
-| Why not just use FLAME or Bulyan? | `figures/phase5_three_seeds.png` | 5.2 |
-| Components dropped in Phase 6 | `figures/phase6_dropped_components.png`, `figures/phase6_signals.png`, diagrams `11`–`17` | 5.3 |
-| The peer reference | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` | 5.4 |
-| **FedHEP-Guard** | | |
-| How does it work? | `report/figures/diagrams/08_fedhep_guard_round.png`, `report/figures/guard_coverage.png` | 6.1 |
-| Why is each mechanism in the model? | "Why each part" tables | 2.2, 3.1, 4.1, 6.1 |
-| What did it fix from FedHEP+? | `figures/phase6_honest_isolation_summary.png`, `figures/phase6_guard_durability.png` | 7.1 |
-| Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png`, `figures/phase6_gpu_d2.png` | 7.2 |
-| Does it remove a backdoor, over 100 rounds? | `figures/phase6_rewind.png`, `figures/phase6_guard_durability.png`, `figures/phase6_gpu_durability.png`, `figures/phase6_gpu_rewind.png` | 7.3 |
-| Does it survive an adaptive backdoor? | `figures/phase6_stealth.png` | 7.4 |
-| What if the attacker count is unknown? | `figures/phase6_fmis.png` | 7.5 |
-| Does it hold at 30 clients and under strong skew? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` | 7.6 |
-| Every model side by side, per attack | `figures/all_models_mac_<attack>.png`, `figures/all_models_gpu_<attack>.png` | 7.7 |
+| FedHEP+'s variants: readmission, the cap, the full-population yardstick | `figures/phase3_variants_explained.png` | 7.1 |
+| Why not just use FLAME or Bulyan? | `figures/phase5_three_seeds.png` | 7.3 |
+| Components dropped in Phase 6 | `figures/phase6_dropped_components.png`, `figures/phase6_signals.png`, diagrams `11`–`17` | 7.4 |
+| The peer reference | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` | 7.5 |
 | **Open problems** | | |
 | Why are honest clients isolated? | `figures/phase6_gap_gate_tradeoff.png`, `figures/phase6_group_isolations.png` | 8.2 |
 | What is being tested now? | `report/figures/diagrams/18_shared_signal.png` | 8.3 |
-| Which model is best overall? | `report/figures/bench_d1_*.png`, `bench_d2_*.png` (when the GPU results are in) | 9 |
 
 ## Conventions
 
 - **Every number** is a mean over seeds 42, 123 and 7 unless marked, from runs stored in `outputs*/`.
-- **Every table names its machine.** Methods are only compared within one machine ([chapter 1.3](01_federated_learning.md)).
+- **Every table names its machine.** Methods are only compared within one machine ([chapter 1.3](01_federated_learning.md)); the benchmark uses the GPU server only.
 - **D1** = 15 clients, α = 0.5, 3 attackers. **D2** = 20 clients, α = 0.2, 4 attackers.
 - **Diagrams** colour what each model changes against the previous one: green new, yellow changed, red dashed removed, grey unchanged. Their labels are typeset in LaTeX (`scripts/draw_report_diagrams.py`).
 - **Click any figure or diagram** in the visualizer to enlarge it; inside the enlarged view use Fit page, Fit width or the zoom buttons, and press Escape to close.
@@ -96,14 +101,28 @@ This report is the organized account. The raw, dated record stays in `docs/` and
 - `IDEAS.md`, `RESEARCH_PLAN.md`, `LITERATURE_REVIEW.md`, `PAPER_PLAN.md`.
 - `OPERATIONS.md`: machines, commands and the branch workflow.
 
-**Section numbers changed on 2026-11-23**, when chapter 6 was split into three. Older log entries use the old numbers:
+**Section numbers changed on 2026-11-23** (twice). Older log entries use one of the earlier numberings. The layout before today's second change, and where each section is now:
 
-| Old | New | Old | New |
+| Before | Now | Before | Now |
 |---|---|---|---|
-| 6.1–6.7 | 6.1–6.7 | 6.13 | 8.1 |
-| 6.8 | 7.2 | 6.14 | 6.8 |
-| 6.9 | 7.3 | 6.15 | 5.4 |
-| 6.10 | 7.4 | 6.16 | 8.3 |
-| 6.11 | 7.5 | 7.1–7.4 | 9.1–9.4 |
-| 6.12 | 7.6 and 8.2 | 7.5 | 7.7 |
-| | | 8.x | 10.x |
+| 2.1–2.3, 3.1–3.2, 4.1–4.2 | unchanged | 5.1 drill-down | 7.2 |
+| 2.4 FedHEP reproduction | 6.2 | 5.2 classic rules | 7.3 |
+| 2.5 grouping counter | 6.3 | 5.3 dropped Phase 6 parts (a–g) | 7.4 (a–g) |
+| 3.3 Defended reproduction | 6.2 | 5.4 peer reference | 7.5 |
+| 3.4–3.5 Phase 2 benchmark, failures | 6.4 | 6.1–6.8 FedHEP-Guard model | 5.1–5.8 |
+| 4.3 FedHEP+ results | 6.5 | 7.1–7.7 FedHEP-Guard results | 6.8–6.14 |
+| 4.4 (a–d) FedHEP+ variants | 7.1 (a–d) | 8.x open problems | 8.x |
+| 4.5 (a–e) follow-up diagnostics | 6.6 (a–e) | 9 canonical benchmark | 6.1 |
+| 4.6 what FedHEP+ fixed | 6.7 | 10.x configuration | 9.x |
+
+Entries written before 2026-11-23, when chapter 6 held the model, its results and the open problems, use this numbering:
+
+| Before 2026-11-23 | Now | Before 2026-11-23 | Now |
+|---|---|---|---|
+| 6.1–6.7 FedHEP-Guard mechanisms | 5.1–5.7 | 6.13 what is open | 8.1 |
+| 6.8 the ladder | 6.9 | 6.14 exact configuration | 5.8 |
+| 6.9 backdoor recovery | 6.10 | 6.15 peer reference | 7.5 |
+| 6.10 adaptive backdoor | 6.11 | 6.16 shared signal (Phase 8) | 8.3 |
+| 6.11 wrong $f$ | 6.12 | 7.1–7.4 canonical benchmark | 6.1 |
+| 6.12 at scale | 6.13 and 8.2 | 7.5 every model, per machine | 6.14 |
+| | | 8.x configuration | 9.x |

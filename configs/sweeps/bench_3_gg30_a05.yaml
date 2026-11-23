@@ -1,0 +1,439 @@
+# Benchmark, setting 3 of 9: 30 clients, α 0.5 (30 clients, alpha 0.5, 6 attackers). Written by scripts/make_benchmark.py; edit that, not this file.
+# 50 models x 8 conditions x 3 seeds = 1200 runs. GPU server only. Runs the large grid already made (same names) are skipped.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  data.num_clients: 30
+axes:
+- gg30_a05:
+    data.alpha: 0.5
+- clean:
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  sign6:
+    attack.kind: sign_flip
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  label6:
+    attack.kind: label_flip
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  noise6:
+    attack.kind: random_noise
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  alie6:
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.431
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  minmax6:
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  backdoor6:
+    attack.kind: backdoor
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  stealth6:
+    attack.kind: stealth_backdoor
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+- fedhep:
+    config: configs/cifar100_fedhep.yaml
+  fedhep_w:
+    config: configs/cifar100_fedhep.yaml
+    fedhep.similarity_on: weights
+  defended:
+    config: configs/cifar100_fedhep_defended.yaml
+  plus:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+  plus_mean:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+  plus_nr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+  plus_w:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.signal: weights
+  plus_ra:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.readmit: true
+  plus_ra_cap:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.readmit: true
+    plus.max_excluded: 0.34
+  plus_ra_cap_nr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.readmit: true
+    plus.max_excluded: 0.34
+  plus_full:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.population: all
+  plus_full_nr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.population: all
+  plus_full_nr_cut2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.population: all
+    plus.evidence_cut: 2.0
+  plus_p3:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+  plus_two:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+  plus_floor001:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.mad_floor: 0.01
+  plus_floor003:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.mad_floor: 0.03
+  drill1:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.drill_down: true
+  drill2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.drill_down: true
+    plus.drill_mode: evidence
+    plus.min_group: 3
+  drill2_all:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.drill_down: true
+    plus.drill_mode: evidence
+    plus.min_group: 3
+    plus.group_cut: -1000000000.0
+  median:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: median
+  tmean:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: trimmed_mean
+  bulyan:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: bulyan
+  flame:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame
+  flame_upd:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame
+    robust.flame_on: updates
+  fltrust:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: fltrust
+  l0:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: arc_nnm_tm
+  l0m:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: arc_nnm_tm
+    robust.momentum: 0.5
+  r2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+  r3:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+  r3g12:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 12
+  r3_nr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: false
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+  r3_ffixed:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.global_f_fixed: true
+  r3_nr_ffixed:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: false
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.global_f_fixed: true
+  r3w:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights
+  r3c:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: critical
+  r3s:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: sign_align
+  r3p:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: probe_logits
+  r3h:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: head_gap
+  r3_trunk:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.rewind: trunk
+  r3_tr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.rewind: trunk_root
+  r3_all:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.rewind: all
+  r3w_trunk:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights
+    plus.rewind: trunk
+  r3w_tr:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights
+    plus.rewind: trunk_root
+  r3w_all:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights
+    plus.rewind: all
+  peer:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: peer
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  shared:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: shared_critical
+  guard_shared:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: shared_critical
+    plus.rewind: trunk_root
+  r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  guard:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root

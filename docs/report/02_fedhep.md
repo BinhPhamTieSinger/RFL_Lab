@@ -1,6 +1,6 @@
-# 2. FedHEP: the model we start from (Phase 1)
+# 2. FedHEP: the model we start from
 
-**Phase 1 goal:** rebuild FedHEP and Defended FedHEP, our team's published methods, in clean and tested code, and reproduce the paper's numbers. This chapter covers FedHEP. [Chapter 3](03_defended_fedhep.md) covers Defended FedHEP.
+FedHEP is our team's published method for personalized federated learning. This chapter describes the model: its parts, one training round, its formulas and why each part is there. Its reproduction and results are in chapter 6.2 and 6.3; FedHEP has no defense, which [chapter 3](03_defended_fedhep.md) adds.
 
 ## 2.1 What FedHEP is
 
@@ -66,14 +66,14 @@ The mixing weights come from each head's confidence (entropy $H_h$), its recent 
 
 ### Why each part is in FedHEP
 
-FedHEP is the authors' design. The reasons below are its design rationale; our own runs test the model as a whole, not each part separately (except the parents, 2.5).
+FedHEP is the authors' design. The reasons below are its design rationale; our own runs test the model as a whole, not each part separately (except the parents, 6.3).
 
 | Part | What it is for | Why it is in the model | Evidence |
 |---|---|---|---|
 | Three heads on one trunk | general features learned from everyone; decision rules at three levels | under label skew one classifier cannot fit every client. The trunk can still learn from all data while each client keeps its own decision rule | at α = 0.05: FedHEP 65.5% against FedAvg 29.4% |
 | Loss weights from label skew ($m_r, m_p, m_l$) | how much each head learns on each client | a client with a few classes is served best by its local head, a balanced client by the root head | design choice; not tested separately |
 | Class mask (ACLM) | the parent and local heads predict only the client's own classes | heads trained on a few classes would otherwise give probability to classes the client never sees | design choice; not tested separately |
-| Parents (groups) | a middle tier shared by similar clients | clients with similar label mixes should help each other more than the whole population does | on CIFAR-100 the parents always copied Global (2.5), so this tier changed nothing measurable |
+| Parents (groups) | a middle tier shared by similar clients | clients with similar label mixes should help each other more than the whole population does | on CIFAR-100 the parents always copied Global (6.3), so this tier changed nothing measurable |
 | Local head kept on the client | the most personal part is never shared | it needs no aggregation, and other clients cannot poison it | — |
 | Ensemble mixing weights ($\pi_h$) | choose, per input, which head to trust | a head's reliability varies by client and input; confidence and recent loss pick the better one | design choice; not tested separately |
 
@@ -88,41 +88,3 @@ FedHEP is the authors' design. The reasons below are its design rationale; our o
 | Local loss | cross-entropy | three weighted cross-entropies, weights from label skew |
 | Prediction | the global model | per-client ensemble of the three heads |
 | Robustness | none | none (FedHEP has no defense) |
-
-## 2.4 Reproduction results
-
-We ported the authors' code function by function and checked it with 100 parity tests that call their functions directly. The tests cover model and initial weights, skew score, head weights, grouping, parent momentum, one full local round to $10^{-5}$, and the test-time ensemble. Planted one-line errors break the tests.
-
-![Phase 1: our numbers against the authors' code and the paper](../figures/phase1_parity.png)
-
-| Run (Mac, 3 seeds) | Ours | Authors' code (same machine) | Paper |
-|---|---|---|---|
-| FedAvg, IID | 39.04 ± 1.25 | 38.04 ± 0.94 | 41.46 ± 0.36 |
-| FedAvg, α = 0.05 | 29.44 ± 1.33 | 29.07 ± 2.05 | 36.29 |
-| **FedHEP, α = 0.05** | **65.51 ± 0.80** | 65.68 ± 0.57 | 65.49 ± 0.61 |
-| FedHEP, α = 0.05, bottom-10% | 49.57 ± 1.91 | 50.23 ± 1.50 | 53.92 ± 0.63 |
-
-**Verdict: reproduced.** Every number is within 2 standard errors of the authors' code. FedHEP also matches the paper. The paper's FedAvg numbers are higher than both implementations, a gap between the authors' released code and their paper.
-
-The five baselines the paper compares against (FedProx, SCAFFOLD, Ditto, FedRep, Multi-Krum) were ported with 43 further parity tests. FedAvg and Multi-Krum are used in the benchmark ([chapter 9](09_benchmark.md)).
-
-## 2.5 A finding along the way: the grouping signal is mostly a counter
-
-FedHEP decides groups, and whether a parent copies Global, from the cosine between **full** flattened updates. That vector includes BatchNorm's batch counter, which grows by the number of local steps (about 105 per layer per round) and has the same sign for every client. The counter dominates:
-
-| Part of the update | Norm |
-|---|---|
-| weights | 5.2–6.3 |
-| BatchNorm running statistics | 24–25 |
-| batch counters | 99–113 |
-
-On CIFAR-100, members' agreement was 0.995–0.999 in every round, so **parents always copied Global and never averaged their members**. The middle tier therefore adds no group-specific information, as run in the authors' code. We kept the faithful port for the reproduction. FedHEP+ later groups on weights only (chapter 4).
-
-![BatchNorm counters dominate the grouping cosine](../figures/batchnorm_counter_dominance.png)
-
-![Parent agreement per round](../figures/fedhep_parent_agreement.png)
-
-## 2.6 What this chapter hands on
-
-- FedHEP is the most accurate method in our settings with no attack: 47.8% at D1, against 38.1% for FedAvg.
-- It has **no defense**. Under sign flip it falls to 33.7%, and under random noise to 5.4%: its personal heads do not protect the shared trunk. [Chapter 3](03_defended_fedhep.md) adds the authors' defense.
