@@ -107,6 +107,9 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P27 | (Phase 8.) The shared union screen keeps backdoor success under 1% on every seed at α 0.5 (30 rounds), as the union screen does | 0.55 | any α 0.5 seed at 1% or more |
 | P28 | (Phase 8.) The shared union screen still isolates every sign-flip, ALIE and Min-Max attacker at α 0.5 | 0.8 | any of the 27 attackers left in |
 | P29 | (Phase 8, 100 rounds.) FedHEP-Guard with the shared signal holds the plain and the stealth backdoor under 1% at round 100 on every seed (with the whole-update signal: stealth seed 7 reached 33.8%) | 0.4 | any seed at 1% or more at round 100 |
+| P30 | (Phase 8 at scale, Acer, `acer_c13_shared_scale`.) At 30 clients, α 0.5, no attack, the shared union screen isolates at most half as many honest clients per run as the union screen in the same sweep, with no whole-group event (3 or more honest members of one parent in one round) | 0.5 | more than half as many, or any whole-group event |
+| P31 | (Phase 8 at scale.) At 50 clients, α 0.1, no attack, the shared signal removes less than 60% of the union screen's honest isolations, because there about half are single clients flagged when the gap gate opens by chance (cause 1, report 8.2) | 0.6 | the shared union screen isolates fewer than 40% as many honest clients as the union screen |
+| P32 | (Phase 8 at scale.) At 30 clients, α 0.5, with 6 backdoor attackers, the shared union screen keeps backdoor success under 5% on every seed (the union screen on the GPU: 1.2 / 11 / 3.5% with 9 attackers, 0.9% with 6) | 0.5 | any seed at 5% or more |
 
 ## 3. The model we expect to publish
 

@@ -36,7 +36,7 @@ FedAvg and Multi-Krum have no FedHEP server, so they cannot run ALIE, Min-Max or
 - **Overview (one per setting):** every model (rows) under every condition (columns), in four panels: accuracy; backdoor success; detection F1, the mean over rounds of the F1 of the clients left out each round (1 = exactly the attackers, every round); and honest clients isolated per run. Grey cells are not run yet; "n/a" means the model cannot run that attack. Row colours are model families; FedHEP-Guard is in bold.
 - **Detail (one per setting and condition, once a model has run it):** accuracy (± one standard deviation); backdoor success with seeds as dots; attackers isolated by round 30, with detection F1 as a diamond; honest clients isolated per run; and two round-by-round maps, honest clients isolated so far and the share of attackers isolated so far, so it shows **when** each model acts.
 
-<!-- BENCH:index START -->
+[//]: # (BENCH:index START)
 #### D1: 15 clients, α = 0.5, 3 attackers (`gg15_a05`)
 
 67 of 410 cells run.
@@ -123,7 +123,7 @@ Detail charts: none yet.
 
 Detail charts: none yet.
 
-<!-- BENCH:index END -->
+[//]: # (BENCH:index END)
 
 **What the benchmark will decide.** Set before the results, so the results can refute them (in the style of `PREDICTIONS.md`):
 1. **FedHEP-Guard against FedHEP+.** FedHEP-Guard wins under ALIE, Min-Max and both backdoors at D1. At D2 it loses less than 1 point with no attack, where FedHEP+ loses 2.

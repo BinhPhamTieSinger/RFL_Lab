@@ -1,0 +1,20 @@
+# Acer (XPU), Phase 8 at scale: does the shared signal (whole update without the personal heads) cut the honest
+# isolations where they are worst? On the GPU the union screen isolates 14.7 honest clients per run at 30 clients,
+# alpha 0.5, and 22.0 at 50 clients, alpha 0.1 (report 6.13, 8.2). Both arms run here, so the comparison stays on
+# one machine: the union screen (r3wc) against the shared union screen (r3sc), both without rewind.
+# 30 clients alpha 0.5: no attack and 6 backdoor attackers; 50 clients alpha 0.1: no attack. Predictions P30-P32.
+# 3 settings-conditions x 2 arms x 3 seeds = 18 runs of 30 rounds, about 7 hours; resumable.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - x13_n30a05__clean: {data.num_clients: 30, data.alpha: 0.5, plus.global_f: 6}
+    x13_n30a05__backdoor6: {data.num_clients: 30, data.alpha: 0.5, plus.global_f: 6, attack.kind: backdoor,
+                            attack.count: 6}
+    x13_n50a01__clean: {data.num_clients: 50, data.alpha: 0.1, plus.global_f: 10}
+  - r3wc: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+               plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical}
+    r3sc: {<<: *r3, plus.signal: shared_critical}

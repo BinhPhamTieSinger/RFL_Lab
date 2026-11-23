@@ -14,7 +14,8 @@ Writes, under docs/figures/bench/:
                              caught, detection F1, honest clients isolated, backdoor success, and in which round
                              attackers and honest clients are isolated
 docs/results/benchmark.json with every number drawn, and the chart index of report 6.1 (between the markers
-<!-- BENCH:index START --> and <!-- BENCH:index END --> in docs/report/06_results.md)."""
+"[//]: # (BENCH:index START)" and "[//]: # (BENCH:index END)" in docs/report/06_results.md; link-reference
+lines like these render as nothing in any Markdown viewer)."""
 from __future__ import annotations
 
 import dataclasses
@@ -186,13 +187,19 @@ def _family_ticks(ax, models: list[str]) -> None:
         tick.set_color(FAMILIES[FAMILY[k]][1] if FAMILY[k] else pr.INK)
         if FAMILY[k] == 5:
             tick.set_fontweight("bold")
-    for i in range(1, len(models)):
-        if FAMILY[models[i]] != FAMILY[models[i - 1]]:
-            ax.axhline(i - 0.5, color=pr.INK2, linewidth=0.6)
+
+
+def _separators(axes, models: list[str]) -> None:
+    """A line between model families, across every panel."""
+    for ax in axes:
+        for i in range(1, len(models)):
+            if FAMILY[models[i]] != FAMILY[models[i - 1]]:
+                ax.axhline(i - 0.5, color=pr.INK2, linewidth=0.6)
 
 
 def _heat(ax, grid, cmap, vmin, vmax, fmt, models, cols, empty):
     import numpy as np
+    ax.grid(False)   # grid lines would cross the numbers in the cells
     arr = np.array([[np.nan if v is None else v for v in row] for row in grid], dtype=float)
     cm = plt.get_cmap(cmap).copy()
     cm.set_bad("#efeeeb")
@@ -233,6 +240,7 @@ def fig_overview(tab: dict, setting: str, label: str) -> None:
         _heat(ax, grid, cmap, lo, max(hi, lo + 1e-6), fmt, models, ts, empty(cs))
         ax.set_title(title, fontsize=9.5)
     _family_ticks(axes[0], models)
+    _separators(axes, models)
     seeds = sorted({v["seeds"] for c in data.values() for v in c.values()})
     filled = sum(1 for c in data.values() for _ in c)
     fig.suptitle(f"Benchmark, {label}: every model under every condition (GPU server, mean of 3 seeds; "
@@ -320,6 +328,7 @@ def fig_detail(tab: dict, setting: str, label: str, cond: str, title: str) -> No
     if attacked:
         heat(ax_of["cr"], "caught_by_round", "round  ·  share of attackers isolated so far", 1, "Blues")
     _family_ticks(axes[0], models)
+    _separators(axes, models)
     filled = sum(1 for k in models if get(k, "acc") is not None)
     fig.suptitle(f"{title}, {label} (GPU server, mean of 3 seeds; {filled} of {len(models)} models run)",
                  fontsize=10.5, x=0.01, ha="left")
@@ -356,7 +365,7 @@ def report_block(tab: dict) -> str:
 
 
 def write_report(tab: dict) -> None:
-    start, end = "<!-- BENCH:index START -->", "<!-- BENCH:index END -->"
+    start, end = "[//]: # (BENCH:index START)", "[//]: # (BENCH:index END)"
     text = CHAPTER.read_text() if CHAPTER.exists() else ""
     if start not in text or end not in text:
         return

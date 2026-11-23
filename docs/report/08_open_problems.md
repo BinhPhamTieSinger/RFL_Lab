@@ -89,13 +89,14 @@ It is combined with the critical layers exactly as now: each signal z-scored and
 
 **Why it should keep the backdoor catches.** The backdoor is learned by the shared trunk and root head, and both stay in the signal. The risk: the parent head also carries part of the backdoor (chapter 7.4e), and on some seeds that part may have been what split the attackers off.
 
-**The experiment** (Acer, predictions P26–P29):
+**The experiment** (Acer, predictions P26–P32):
 
 | Sweep | Runs | What it tests | Controls (Acer) |
 |---|---|---|---|
 | `acer_c11_shared.yaml` (`x11_`) | 21 | shared union screen without rewind: no attack, sign flip, ALIE, Min-Max, backdoor at α 0.5; no attack and backdoor at α 0.1 | `x10_*__r3wc_shp`, `x8_f3__*__r3wc` |
 | `acer_c11_control.yaml` | 3 | union screen under Min-Max at α 0.5 | — |
 | `acer_c12_shared_durability.yaml` (`x12_`) | 6 | FedHEP-Guard with the shared signal, 100 rounds, both backdoors | `x9__*__r3wc_tr` |
+| `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack), where honest isolations are worst (P30–P32) | both arms in the same sweep |
 
 Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are left out, and that a drifting parent group is split off by the whole-update signal but not by the shared one. It also runs the shared union end to end.
 
@@ -105,6 +106,6 @@ Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are
 - **GPU server:**
   - now running: the rest of the 50-client grid (P14, P19), about one day;
   - queued next: the canonical benchmark (chapter 6.1), with the full FedHEP-Guard under every attack at D1 and D2, then the stealth study at scale (`gpu_c7_stealth`).
-- **Acer:** Phase 8 results (P26–P29). If they hold, the shared union becomes FedHEP-Guard's signal [1], and the benchmark's `guard` model is re-run with it.
+- **Acer:** Phase 8 results (P26–P29), then Phase 8 at scale (`acer_c13_shared_scale`, P30–P32): the shared signal at 30 and 50 clients, where honest isolations are worst. If they hold, the shared union becomes FedHEP-Guard's signal [1], and the benchmark's `guard` model is re-run with it.
 - **Cause 1 needs its own fix.** At 50 clients half the honest isolations are single clients flagged because the gap gate opens by chance. A gate that scales with $n$ costs backdoor catches (above). Candidates to test once Phase 8 has reported: requiring both signals to agree when $n$ is large, or a gate on the gap's size relative to the score scale rather than to the median gap.
 - **After that:** the open problems 3–6 above, in that order.

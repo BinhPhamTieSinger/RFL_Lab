@@ -173,6 +173,14 @@ python scripts/sweep.py configs/sweeps/acer_c11_shared.yaml && \
 python scripts/sweep.py configs/sweeps/acer_c11_control.yaml && \
 python scripts/sweep.py configs/sweeps/acer_c12_shared_durability.yaml
 ```
+When those have finished, the next Acer file is Phase 8 at scale, `acer_c13_shared_scale.yaml` (18 runs, about 7 hours; predictions P30–P32). It needs no new code:
+```bash
+tmux new -s rfl13        # or: tmux attach -t rfl13
+cd ~/Documents/RFL_Lab && source ~/venvs/rfl/bin/activate
+bash scripts/runner_sync.sh acer --update
+python scripts/sweep.py configs/sweeps/acer_c13_shared_scale.yaml
+```
+
 Detach with Ctrl-b then d; `tmux attach -t rfl11` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same sweep command again. Push results any time with `bash scripts/runner_sync.sh acer`.
 
 GPU server: see "Lab GPU server" above; the next file after the large grid is `configs/sweeps/gpu_c7_stealth.yaml`.
