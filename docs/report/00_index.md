@@ -7,7 +7,7 @@
 1. **FedHEP**, our team's personalized FL model, and its **published defense** were rebuilt and reproduced: every number is within 2 standard errors of the authors' code (chapters 2, 3, 6.2).
 2. **The published defense never removes an attacker** and does nothing against a backdoor: 79% backdoor success, the same as no defense (6.4).
 3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4, 6.5–6.7).
-4. **FedHEP-Guard fixes failures 2 and 3, not failure 1.** Adaptive attackers are caught (9 of 9 at D1, 12 of 12 at D2), the plain backdoor stays at 0.3% for 100 rounds, and it holds up best when the model is poisoned (chapter 5, 6.8–6.13).
+4. **FedHEP-Guard fixes failures 2 and 3, not failure 1, as far as tested.** Its screen catches adaptive attackers (9 of 9 at D1, 12 of 12 at D2) and holds up best when the model is poisoned; the full model keeps the plain backdoor at 0.3% for 100 rounds. The full model has so far been run only against backdoors, on the Acer; most numbers come from its screen without the rewind (chapter 5, 6.8–6.13).
 5. **Many ideas failed** along the way: FedHEP+'s variants, checking groups first, the classic robust rules, seven Phase 6 components and the peer reference. Each failure shaped the next design (chapter 7).
 6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. A fix for one of the two causes is being tested (chapter 8). The benchmark of every model in every setting is queued on the GPU server (6.1).
 
@@ -43,11 +43,11 @@
 
 | FedHEP+ failure | Verdict | Evidence |
 |---|---|---|
-| 1. Honest but unusual clients isolated | **Not fixed** | fewer than FedHEP+ only at 15 clients, α = 0.1 (1.7 per run against 7.7). Elsewhere more, growing with the number of clients: 14.7 against 4.3 at 30 clients (α = 0.5), 22.0 against 1.0 at 50 clients (α = 0.1) |
-| 2. Adaptive attackers not seen | **Fixed** | ALIE and Min-Max 9 of 9 caught against 0 of 9; stealth backdoor 0.2–0.5% against 56–75% |
-| 3. Backdoors that persist | **Fixed when caught early** | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); not at α = 0.1, at D2, or after a late catch |
+| 1. Honest but unusual clients isolated | **Not fixed** (screen) | fewer than FedHEP+ only at 15 clients, α = 0.1 (1.7 per run against 7.7). Elsewhere more, growing with the number of clients: 14.7 against 4.3 at 30 clients (α = 0.5), 22.0 against 1.0 at 50 clients (α = 0.1) |
+| 2. Adaptive attackers not seen | **Fixed** (screen) | ALIE and Min-Max 9 of 9 caught against 0 of 9; stealth backdoor 0.2–0.5% against 56–75% |
+| 3. Backdoors that persist | **Fixed when caught early** (full model) | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); not at α = 0.1, at D2, or after a late catch |
 
-The full scorecard, with machines and costs, is [chapter 6.8](06_results.md).
+"Screen" means FedHEP-Guard without the rewind (`r3wc`), which most runs so far used; "full model" means with it. The full model under every condition comes with the benchmark. The scorecard, with the model behind every number, is [chapter 6.8](06_results.md).
 
 ## Presenting kit: which chart answers which question
 

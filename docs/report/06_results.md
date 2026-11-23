@@ -289,22 +289,31 @@ The professor's questions led to five tests that changed the picture (Mac and Ac
 The lesson: "far from the typical update" catches crude attacks well, even many of them. But honest clients with unusual data are also far from typical, and clever attackers stay close to it. FedHEP-Guard ([chapter 5](05_fedhep_guard.md)) follows this lesson; the ideas that did not fix it are in [chapter 7](07_ideas_that_did_not_work.md).
 ## 6.8 FedHEP-Guard: what it fixed from FedHEP+
 
-**Which runs are "FedHEP-Guard" here.** The full model (union screen + rewind) has been run only over 100 rounds against the two backdoors, on the Acer (6.10). Elsewhere the closest run is the union screen without the rewind (`r3wc`). The full model under every attack comes with the GPU benchmark (chapter 6.1).
+**FedHEP-Guard itself has been run only 6 times so far:** on the Acer, over 100 rounds, against the plain and the stealth backdoor (`x9__*__r3wc_tr`, 6.10). Every other number in the FedHEP-Guard column below comes from runs of **parts** of the model, marked in each cell:
+
+| Mark | Model actually run | What it lacks | Runs |
+|---|---|---|---|
+| **[full]** | FedHEP-Guard: union screen + rewind (`r3wc_tr`) | nothing | Acer, 100 rounds, both backdoors |
+| **[screen]** | FedHEP-Guard without the rewind (`r3wc`) | the rewind [6] | GPU grid, Mac stealth study, Acer |
+| **[signal]** | R3 with one of the union's two signals (`r3w` or `r3c`) | the other signal, the rewind | GPU D2 ladder |
+| **[w+rewind]** | R3, whole-update signal + rewind (`r3w_tr`) | the critical-layer signal | GPU 100 rounds |
+
+**How far the parts stand in for the model.** The rewind changes nothing until the first isolation, because it only acts when someone is isolated. After that it resets the trunk and root head, so the run takes a different path. On the Acer, with the plain backdoor, the full model isolated 18 honest clients in 3 runs against 8 for the screen alone, and was 1.8 points less accurate. With the stealth backdoor it was 10 against 16 and 1.7 points more accurate. So **[screen]** numbers are a close guide for which attackers are caught, and a rough one for honest isolations and accuracy. The full model under every condition and setting comes with the benchmark (6.1).
 
 FedHEP+ left three failures ([chapter 6.7](06_results.md)).
 
-| | FedHEP+ | FedHEP-Guard | Verdict |
+| | FedHEP+ | FedHEP-Guard or its parts (see marks) | Verdict |
 |---|---|---|---|
-| **1. Honest but unusual clients isolated** (per run, no attack, GPU) | 15 clients: 2.7 (α 0.5), 7.7 (α 0.1). 30 clients: 4.3, 2.3. 50 clients, α 0.1: 1.0. D2: 8.7 | 15 clients: 4.3, **1.7**. 30 clients: 14.7, 7.0. 50 clients, α 0.1: **22.0**. D2: not run (root-head R3: 1.7) | **Not fixed.** Fewer than FedHEP+ only at 15 clients with α = 0.1. In the other four grid settings it isolates more, and the count grows with the number of clients: at 50 clients it isolates 22 of 50 honest clients per run. About half come as whole parent groups (8.2). The root-head R3 does fix it (0.7–6.0), but lets the backdoor in |
-| **2. Adaptive attackers not seen** | ALIE and Min-Max: 0 of 9 attackers isolated each (GPU, D1); 0 of 12 each at D2 (GPU); stealth backdoor 56–75% (Mac) | 9 of 9 each (GPU, D1); at D2 both of its signals catch 12 of 12 each (GPU); stealth backdoor 0.2–0.5% (Mac, 30 rounds), 0.4% on 2 of 3 seeds over 100 rounds (Acer) | **Fixed.** Cost under ALIE: 45.3 against FedHEP+'s 47.8 (GPU). Weak ALIE barely hurts, so removing its attackers costs more than leaving them in |
-| **3. Backdoors that persist** | all attackers isolated, yet 18 / 5 / 42% stays (GPU, 30 rounds); 21% (Mac); 13.9% after 100 rounds (GPU) | 0.5–0.6% (GPU), 0.8% (Mac); 0.3% on every seed over 100 rounds (Acer); 2.5% over 100 rounds with the whole-update half alone (GPU) | **Fixed at α = 0.5 when the attackers are caught early** (rounds 3–6). **Not fixed** at α = 0.1 (15–31%), with a third of the clients attacking (12% at 15 clients, 5% at 30), or after a late catch (one stealth seed at 34%). At D2 it is untested; there every rung except the whole update leaves 38–46% |
-| Accuracy with no attack | 48.48 (GPU) | 47.36 (GPU) | about 1 point lower |
-| Worst accuracy under sign flip, ALIE and Min-Max (GPU grid: 15 / 30 clients × α 0.5 / 0.1) | 34.7 / 54.0 / 26.6 / 50.7 | 43.3 / 57.8 / 40.2 / 54.4 | **better in all four** |
+| **1. Honest but unusual clients isolated** (per run, no attack, GPU) | 15 clients: 2.7 (α 0.5), 7.7 (α 0.1). 30 clients: 4.3, 2.3. 50 clients, α 0.1: 1.0. D2: 8.7 | **[screen]** 15 clients: 4.3, 1.7. 30 clients: 14.7, 7.0. 50 clients, α 0.1: 22.0. **[signal]** D2: 1.7 (whole update), 2.3 (critical layers). **[full]** no run without an attack yet; with a backdoor, 3–6 per run over 100 rounds (Acer) | **Not fixed** by the screen: fewer than FedHEP+ only at 15 clients with α = 0.1; in the other four grid settings it isolates more, and more with more clients (22 of 50 at 50 clients). About half come as whole parent groups (8.2). The root-head R3 does fix it (0.7–6.0), but lets the backdoor in. Not yet measured for the full model |
+| **2. Adaptive attackers not seen** | ALIE and Min-Max: 0 of 9 attackers isolated each (GPU, D1); 0 of 12 each at D2 (GPU); stealth backdoor 56–75% (Mac) | **[screen]** ALIE and Min-Max 9 of 9 each (GPU, D1); stealth backdoor 0.2–0.5% (Mac, 30 rounds). **[signal]** D2: each signal 12 of 12 under ALIE and Min-Max (GPU). **[full]** stealth backdoor 0.4 / 0.4 / 33.8% over 100 rounds (Acer) | **Fixed by the screen.** The full model has faced only the stealth backdoor, and one seed got through after a late catch. Cost under ALIE: 45.3 against FedHEP+'s 47.8 (GPU, [screen]) |
+| **3. Backdoors that persist** | all attackers isolated, yet 18 / 5 / 42% stays (GPU, 30 rounds); 21% (Mac); 13.9% after 100 rounds (GPU) | **[full]** 0.3% on every seed over 100 rounds (Acer). **[screen]** 0.5–0.6% (GPU), 0.8% (Mac), 30 rounds. **[w+rewind]** 2.5% over 100 rounds (GPU) | **Fixed at α = 0.5 when the attackers are caught early** (rounds 3–6), for the full model on the Acer and the screen on every machine. **Not fixed** by the screen at α = 0.1 (15–31%) or with a third of the clients attacking (12% at 15 clients, 5% at 30), or by the full model after a late catch (one stealth seed at 34%). At D2 untested; there every rung except the whole update leaves 38–46% |
+| Accuracy with no attack | 48.48 (GPU) | **[screen]** 47.36 (GPU) | about 1 point lower |
+| Worst accuracy under sign flip, ALIE and Min-Max (GPU grid: 15 / 30 clients × α 0.5 / 0.1) | 34.7 / 54.0 / 26.6 / 50.7 | **[screen]** 43.3 / 57.8 / 40.2 / 54.4 | **better in all four** |
 
-**In short:** FedHEP-Guard is an improvement on FedHEP+ against attackers, not yet for honest clients.
-- It fixes failure 2 in every setting tested (at D2 through each of its two signals), and failure 3 at α = 0.5. It holds up best when the model is poisoned.
-- It does not fix failure 1. The 50-client runs make this clear: with no attack it isolates 22 of 50 honest clients per run, where FedHEP+ isolates 1. An earlier version of this scorecard called failure 1 "fixed under strong skew", from the 15-client setting alone. The 30- and 50-client settings do not support that.
-- Honest isolations are the main open problem. The Phase 8 experiment targets the whole-group part of it (chapter 8).
+**In short:** FedHEP-Guard's screen is an improvement on FedHEP+ against attackers, not yet for honest clients; the full model has been tested only against backdoors, on one machine.
+- The screen fixes failure 2 in every setting tested (at D2 through each of its two signals), and with the rewind failure 3 at α = 0.5. It holds up best when the model is poisoned.
+- The screen does not fix failure 1. With no attack it isolates 22 of 50 honest clients per run at 50 clients, where FedHEP+ isolates 1. An earlier version of this scorecard called failure 1 "fixed under strong skew", from the 15-client setting alone.
+- What the full model does without an attack, under ALIE, Min-Max, sign flip, at D2 and at scale is not yet known; the benchmark (6.1) runs it everywhere.
 
 ![Honest isolations by setting and signal](../figures/phase6_honest_isolation_summary.png)
 
