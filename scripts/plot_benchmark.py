@@ -4,7 +4,7 @@
   python scripts/plot_benchmark.py outputs           # figures in docs/report/figures/, tables in chapter 7
 
 Run names are bm_<setting>__<attack>__<model>_s<seed>. A cell with fewer than three seeds is drawn with the seeds
-it has and marked in the tables with its seed count. The tables in docs/report/07_benchmark.md are rewritten
+it has and marked in the tables with its seed count. The tables in docs/report/09_benchmark.md are rewritten
 between the markers <!-- BENCH:<setting> START --> and <!-- BENCH:<setting> END -->."""
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ plt = pr.plt
 
 ROOT = Path(__file__).resolve().parents[1]
 FIG = ROOT / "docs" / "report" / "figures"
-CHAPTER = ROOT / "docs" / "report" / "07_benchmark.md"
+CHAPTER = ROOT / "docs" / "report" / "09_benchmark.md"
 SETTINGS = {"d1": "D1: 15 clients, α = 0.5, 3 attackers", "d2": "D2: 20 clients, α = 0.2, 4 attackers"}
 ATTACKS = [("clean", "No attack"), ("sign", "Sign flip"), ("label", "Label flip"), ("alie", "ALIE"),
            ("minmax", "Min-Max"), ("backdoor", "Backdoor"), ("stealth", "Stealth backdoor")]

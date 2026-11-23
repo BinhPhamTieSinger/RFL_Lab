@@ -96,7 +96,7 @@ def _signal(updates: Sequence[torch.Tensor], layout: FlatLayout, class_masks: to
     weights = stack[:, ~layout.buffer_mask.to(stack.device)]
     if opts.signal == "shared":
         # Phase 8: the whole update without the personal heads. Members of one parent share its parent head, so
-        # that head's coordinates split honest clients by group (report 6.16).
+        # that head's coordinates split honest clients by group (report 8.2).
         keep = torch.ones(weights.shape[1], dtype=torch.bool, device=weights.device)
         for name, s, e in layout.params:
             if name.startswith(PERSONAL_HEADS):

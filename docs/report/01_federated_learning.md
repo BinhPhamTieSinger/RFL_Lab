@@ -122,4 +122,4 @@ $$\tilde u_a = \bar h + \lambda^\star (u_a - \bar h), \qquad \lambda^\star = \ma
 | $\cos(a,b)$ | cosine similarity $a\cdot b / (\lVert a\rVert\lVert b\rVert)$ | — |
 | $\operatorname{med}$, MAD | median, and median absolute deviation $\operatorname{med}_j \lvert s_j - \operatorname{med}(s)\rvert$ | — |
 
-Every configuration key is explained in [chapter 8](08_configuration_reference.md).
+Every configuration key is explained in [chapter 10](10_configuration_reference.md).

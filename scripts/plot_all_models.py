@@ -1,4 +1,4 @@
-"""Every model ever run in one setting on one machine, one chart per attack (report 7.1).
+"""Every model ever run in one setting on one machine, one chart per attack (report 7.7).
 
 A run belongs to the setting when it has 15 clients, alpha 0.5, 10,000 training images and 30 rounds, and, under
 attack, exactly 3 attackers placed at random with no boost and no stop. Models are told apart by their training

@@ -104,7 +104,7 @@ We ported the authors' code function by function and checked it with 100 parity 
 
 **Verdict: reproduced.** Every number is within 2 standard errors of the authors' code. FedHEP also matches the paper. The paper's FedAvg numbers are higher than both implementations, a gap between the authors' released code and their paper.
 
-The five baselines the paper compares against (FedProx, SCAFFOLD, Ditto, FedRep, Multi-Krum) were ported with 43 further parity tests. FedAvg and Multi-Krum are used in the benchmark ([chapter 7](07_benchmark.md)).
+The five baselines the paper compares against (FedProx, SCAFFOLD, Ditto, FedRep, Multi-Krum) were ported with 43 further parity tests. FedAvg and Multi-Krum are used in the benchmark ([chapter 9](09_benchmark.md)).
 
 ## 2.5 A finding along the way: the grouping signal is mostly a counter
 

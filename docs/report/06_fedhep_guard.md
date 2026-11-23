@@ -1,4 +1,4 @@
-# 6. FedHEP-Guard: the current best model (Phase 6)
+# 6. FedHEP-Guard: the model (Phase 6)
 
 **Goal:** keep FedHEP+'s strength against crude attacks, and fix its three failures ([chapter 4.6](04_fedhep_plus.md)):
 1. honest but unusual clients isolated;
@@ -6,6 +6,8 @@
 3. backdoors that persist.
 
 The design follows the literature review: bound every client's influence whether or not it is caught, use more than one signal, and blame no one in a round that shows no separate group.
+
+This chapter describes the model: what each mechanism does, its formula, where it acts and why it is there. Its results are in [chapter 9](09_benchmark.md), and what is still open in [chapter 10](10_configuration_reference.md).
 
 FedHEP-Guard is FedHEP+ with seven changes, numbered [1]–[7] below. It was built one change at a time as a **ladder**: L0, then R2, then R3, then the union screen and the rewind. Each step was kept only if it helped.
 
@@ -37,7 +39,7 @@ Each row says what the mechanism does, **why it is in the model** (the failure i
 >
 > **What it buys.** Alone, L0 is the most accurate defense at D2 with no attack, and it has the lowest D2 backdoor success (37.7%). Under the screen, it gives the best D2 accuracy under sign flip (54.26, R3).
 >
-> **What it costs.** It needs an assumed attacker count $f$, which hardly matters under the screen (6.11). Alone at D1 it lets sign flip through (41.65), because mixing pulls reversed updates in. That is why it sits under a screen, not instead of one.
+> **What it costs.** It needs an assumed attacker count $f$, which hardly matters under the screen (7.5). Alone at D1 it lets sign flip through (41.65), because mixing pulls reversed updates in. That is why it sits under a screen, not instead of one.
 
 The Global step replaces SCCF with three robust operations in sequence (Allouah et al., 2023 and 2024):
 
@@ -62,7 +64,7 @@ Under the screen, $f$ shrinks by the number of clients the screen already exclud
 | $N_{n-f}(i)$ | the $n-f$ updates nearest to $\Delta_i$ | — |
 | $\mathrm{TM}_f$ | trimmed mean dropping $f$ values per side | — |
 
-**L0 alone** (`method: fedhep_robust`, `robust.rule: arc_nnm_tm`) is the ladder's first rung. It never removes anyone. It is the best defense at α = 0.2 with no attack, but fails against sign flip at α = 0.5: mixing pulls reversed updates in, as the table in 6.8 shows.
+**L0 alone** (`method: fedhep_robust`, `robust.rule: arc_nnm_tm`) is the ladder's first rung. It never removes anyone. It is the best defense at α = 0.2 with no attack, but fails against sign flip at α = 0.5: mixing pulls reversed updates in, as the table in 7.2 shows.
 
 ## 6.3 [2] Two-sided screen and [3] gap gate
 
@@ -90,12 +92,12 @@ With $\gamma = 8$, a round of honest but spread-out clients has no outstanding g
 | $g$ | gap ratio, logged every round as `score_stats.gap_ratio` | — |
 | $\gamma$ | gate threshold (0 = off; 8 and 12 tested) | `plus.gap_gate` |
 
-**Why 8 and not 12.** Both were tested on the ladder (6.8), with the root-head signal:
+**Why 8 and not 12.** Both were tested on the ladder (7.2), with the root-head signal:
 - **Accuracy** is the same within 0.2 points at D1, under every attack.
 - **Gate 12 isolates fewer honest clients:** 0–0.3 per run at D1 against 0.7–1.0, and 2 / 1 / 0 / 6 over 3 runs at D2 against 3 / 6 / 8 / 7.
 - **Gate 12 lets more backdoor in:** 62% against 51% at D1, because the gate also stops the attackers' evidence when their split is weaker than 12.
 
-The decision came with the union screen. FedHEP-Guard needs the backdoor attackers caught, and in the GPU grid their split is weak. In the rounds where the largest gap separated exactly the backdoor attackers (union screen, 15 clients, α = 0.5), the gap ratio reached 8 in 76% of rounds but 12 in only 45%. In honest rounds the gate opened 25% of the time at 8 and 11% at 12. Gate 12 would roughly halve the chance openings, and also lose about four in ten backdoor catches. Gate 12 with the union screen has not been run; this comes from the logs, not from a run. Why no fixed threshold solves this, and the experiment that replaces it, are in 6.12 and 6.15.
+The decision came with the union screen. FedHEP-Guard needs the backdoor attackers caught, and in the GPU grid their split is weak. In the rounds where the largest gap separated exactly the backdoor attackers (union screen, 15 clients, α = 0.5), the gap ratio reached 8 in 76% of rounds but 12 in only 45%. In honest rounds the gate opened 25% of the time at 8 and 11% at 12. Gate 12 would roughly halve the chance openings, and also lose about four in ten backdoor catches. Gate 12 with the union screen has not been run; this comes from the logs, not from a run. Why no fixed threshold solves this is in chapter 8.2.
 
 ## 6.4 [1] Two signals and their union
 
@@ -105,9 +107,9 @@ The decision came with the union screen. FedHEP-Guard needs the backdoor attacke
 > - **[1b] The critical-layer signal** looks only where clients disagree most, so a backdoor in a few layers stays visible.
 > - **[1c] The union.** The two signals fail on different seeds, and the union keeps the stronger alarm of the two.
 >
-> **What it buys.** Backdoor success under 1.5% on every seed at D1 (Mac), including the stealth backdoor that beat the whole-update signal alone (6.10).
+> **What it buys.** Backdoor success under 1.5% on every seed at D1 (Mac), including the stealth backdoor that beat the whole-update signal alone (7.4).
 >
-> **What it costs.** More honest isolations: 14 over 3 runs against 9 (stealth runs), and 4–6 per run with no attack (Acer). This is the main open problem (6.13).
+> **What it costs.** More honest isolations: 14 over 3 runs against 9 (stealth runs), and 4–6 per run with no attack (Acer). This is the main open problem (8.1).
 
 **[1a] Whole update.** The cosine of every weight in the update (trunk and all three heads, BatchNorm buffers excluded) to the median update:
 
@@ -121,7 +123,7 @@ $$L^\star = \operatorname{top}_k\ \operatorname{std}_i(c_{i\ell}), \qquad s^{\ma
 
 $$z_i = \min\bigl(\tilde z^{\,\mathrm{w}}_i,\ \tilde z^{\,\mathrm{c}}_i\bigr)$$
 
-**Why two signals.** On the GPU (D1, 3 seeds), the whole-update signal missed the backdoor on seed 42 and the critical-layer signal on seeds 123 and 7. Their union covers every seed (table in [chapter 5.3](05_ideas_that_did_not_work.md)). Against the stealth backdoor (6.10), the union caught every attacker where the whole update alone missed one seed.
+**Why two signals.** On the GPU (D1, 3 seeds), the whole-update signal missed the backdoor on seed 42 and the critical-layer signal on seeds 123 and 7. Their union covers every seed (table in [chapter 5.3](05_ideas_that_did_not_work.md)). Against the stealth backdoor (7.4), the union caught every attacker where the whole update alone missed one seed.
 
 | Symbol | Meaning | Config |
 |---|---|---|
@@ -142,7 +144,7 @@ A client is left out only after $z_i < -2.5$ in **3 consecutive rounds**. It is 
 
 ## 6.6 [6] Rewind on isolation
 
-> **Why it is in the model.** Isolating an attacker stops new poison, but not what is already in the model. With 20 clients and 5 backdoor attackers, FedHEP+ isolated every attacker by rounds 11–15, and backdoor success still rose 17–47 points by round 30 ([chapter 4.5e](04_fedhep_plus.md)). Over 100 rounds on the Acer, a late catch let the backdoor grow from 13% to 17% with no attacker left (6.9). The only way to remove what is already learned is to go back to a model from before it was learned.
+> **Why it is in the model.** Isolating an attacker stops new poison, but not what is already in the model. With 20 clients and 5 backdoor attackers, FedHEP+ isolated every attacker by rounds 11–15, and backdoor success still rose 17–47 points by round 30 ([chapter 4.5e](04_fedhep_plus.md)). Over 100 rounds on the Acer, a late catch let the backdoor grow from 13% to 17% with no attacker left (7.3). The only way to remove what is already learned is to go back to a model from before it was learned.
 >
 > **What it buys.** With the whole-update signal over 100 rounds, backdoor success goes from 1 / 17 / 1% to 0 / 1 / 0%.
 >
@@ -162,7 +164,7 @@ That round's Global aggregation is skipped. Parents are restored too.
 
 ## 6.7 [7] Depth-exit guard (prediction time, optional)
 
-> **Why it is in the model.** Every training-time defense misses some backdoors (6.10: up to 20% with 5 plain attackers). The guard is a last line of defense at prediction time that does not depend on catching anyone. A trigger mostly changes what the last layers conclude, while early layers still see an ordinary image. When the early-layer classifiers disagree with the final answer, the input is suspect and the exits decide.
+> **Why it is in the model.** Every training-time defense misses some backdoors (7.4: up to 20% with 5 plain attackers). The guard is a last line of defense at prediction time that does not depend on catching anyone. A trigger mostly changes what the last layers conclude, while early layers still see an ordinary image. When the early-layer classifiers disagree with the final answer, the input is suspect and the exits decide.
 >
 > **What it buys.** An undetected backdoor is roughly halved (79% → 42%, GPU; 72% → 39% over 100 rounds, Acer).
 >
@@ -182,233 +184,7 @@ An input with $s(x) > \tau_i$, where $\tau_i$ is the 95th percentile of $s$ on t
 | $\hat y$ | the ensemble's prediction |
 | $\tau_i$ | client $i$'s flag threshold |
 
-## 6.8 Results: the ladder (Mac, D1 and D2)
-
-D1: 15 clients, α = 0.5, 3 attackers. D2: 20 clients, α = 0.2, 4 attackers. Mac, 3 seeds, 30 rounds. R2 = L0 + two-sided screen + patience; R3 = R2 + gap gate. All rungs here use the root-head signal.
-
-**D1:**
-
-| Model | No attack | Sign flip | ALIE | Min-Max | Backdoor success | Honest isolated per run (clean / sign / ALIE / Min-Max) |
-|---|---|---|---|---|---|---|
-| Defended FedHEP | **48.39** | 38.08 | 47.49 | 45.19 | 78.7% | 0 / 0 / 0 / 0 |
-| FedHEP+ | 47.92 | **46.34** | 47.55 | 44.87 | **20.8%** | 3.0 / 1.7 / 2.0 / 1.0 |
-| L0 | 47.56 | 41.65 | **47.56** | 45.47 | 62.5% | 0 / 0 / 0 / 0 |
-| R2 | 46.99 | 46.00 | 45.65 | 45.96 | 22.6% | 4.3 / 1.7 / 3.0 / 3.7 |
-| R3, gate 8 | 47.36 | 46.14 | 45.74 | 46.02 | 51.4% | 1.0 / 0.7 / 0.7 / 0.7 |
-| R3, gate 12 | 47.31 | 46.20 | 45.87 | **46.07** | 61.6% | **0.0 / 0.7 / 0.0 / 0.3** |
-
-![Ladder at D1](../figures/phase6_d1.png)
-
-**D2 (held out):**
-
-| Model | No attack | Sign flip | Min-Max | Backdoor success | Honest isolated, 3 seeds (clean / sign / Min-Max / backdoor) |
-|---|---|---|---|---|---|
-| FedHEP | **55.59** | 42.51 | 52.10 | 46.9% | 0 / 0 / 0 / 0 |
-| Defended FedHEP | 54.70 | 50.62 | **54.16** | 44.3% | 0 / 0 / 0 / 0 |
-| FedHEP+ | 52.68 | 52.15 | 53.55 | 43.3% | 27 / 21 / 6 / 18 |
-| L0 | 54.23 | 50.52 | 52.96 | **37.7%** | 0 / 0 / 0 / 0 |
-| R2 | 52.13 | 51.86 | 52.62 | 44.1% | 38 / 29 / 29 / 33 |
-| R3, gate 8 | 54.72 | **54.26** | 53.34 | 45.3% | 3 / 6 / 8 / 7 |
-| R3, gate 12 | **54.73** | 54.19 | 52.51 | 45.3% | **2 / 1 / 0 / 6** |
-
-![Ladder at D2](../figures/phase6_d2.png)
-
-**What the ladder shows:**
-- **The gap gate solves FedHEP+'s held-out failure.** At D2, honest isolations with no attack fall from 27 (FedHEP+) and 38 (R2) to 2–3. R3 is the best model under sign flip (+3.6 over Defended FedHEP) and within 1 point of undefended FedHEP with no attack.
-- **The two-sided screen catches every ALIE and Min-Max attacker**, where the one-sided screen caught none.
-- **But the root-head signal with the gate lets the backdoor in** (51–62% at D1). That led to the signal search ([chapter 5.3](05_ideas_that_did_not_work.md)), the union screen [1] and the rewind [6].
-
-## 6.9 Results: recovering from a backdoor (Mac and Acer)
-
-**30 rounds, attackers plant the backdoor in rounds 1–10, then train honestly (Mac, D1).** Backdoor success at round 30, seeds 123 / 42 / 7:
-
-| Variant | Backdoor success | Attackers caught (of 9) | Accuracy |
-|---|---|---|---|
-| R3, root head (with or without rewind) | 19 / 3 / 47% | 1 | 46.7–48.1 |
-| R3, whole update | 0.5 / 0.5 / 0.9% | 9 (rounds 3–6) | 46.10 |
-| R3, whole update + trunk-and-root rewind | 0.2 / 0.4 / 0.3% | 9 | 45.83 |
-
-**100 rounds, attackers plant the backdoor until round 50, then train honestly (Acer, D1).** Backdoor success at round 100:
-
-| Model | Seeds 123 / 42 / 7 | Mean | With exit guard | Accuracy | Honest isolated (3 seeds) |
-|---|---|---|---|---|---|
-| FedHEP | 69 / 74 / 75 | 72.4 | 38.6 | 43.55 | 0 |
-| L0 | 64 / 70 / 71 | 68.3 | 37.6 | 44.38 | 0 |
-| FedHEP+ | 2 / 5 / 2 | 3.1 | 2.8 | 43.68 | 24 |
-| R3, root head | 23 / 71 / 21 | 38.4 | 22.9 | 43.63 | 1 |
-| R3, root head + rewind | 8 / 28 / 15 | 17.1 | 11.2 | 42.54 | 2 |
-| R3, whole update | 1 / 17 / 1 | 6.2 | 4.5 | 42.19 | 18 |
-| **R3, whole update + rewind** | **0 / 1 / 0** | **0.6** | 0.6 | 41.81 | 12 |
-
-![Rewind, per seed](../figures/phase6_rewind.png)
-
-![Backdoor over 100 rounds](../figures/phase6_durability.png)
-
-- **A backdoor nobody catches stays at 64–75%** for 50 rounds after the attack ends.
-- **The rewind matters when the catch is late.** On seed 42 the whole-update screen isolated the attackers after part of the backdoor had reached the trunk, and it grew to 17% after they stopped. With the rewind, the same seed stayed at 1%. It costs 0.4 points on average.
-- **Why seed 42 is different.** Seed 42 draws attackers 0, 9 and 11. It is the hard seed for every signal and machine: 70–71% for the root head and the whole update on the GPU too (chapter 5.3).
-  - **The attackers stay hidden for 15 rounds.** With the root head, their z stays between −2.2 and +1.1 for the first 15 rounds, and no round's gap ratio reaches 8 before round 16. On seeds 123 and 7 their z falls below −2 by rounds 6–10, and they are isolated in rounds 13–14. Their data sizes (540–705 images) are ordinary (honest clients: 470–873).
-  - **When they are caught:** without the rewind, attackers 9 and 11 are isolated only in round 40 and attacker 0 never. By then the backdoor is at 70%, and nothing removes it after the attack stops: the flat 71% line.
-  - **With the rewind:** this is a separate run, and XPU runs are not bit-for-bit repeatable, so the two runs part ways early. Here the attackers are caught in rounds 21–24 and the model is rewound to rounds 19–22. Success drops from 13% to 8%, but the rewind reaches back only as far as the attackers' evidence trail (at most 10 rounds). The poisoning from rounds 1–18 stays in, and it grows back to 28% by round 100, as a backdoor does once it is in (chapter 4.5e).
-  - **The whole-update screen catches them earlier,** in rounds 12–17. With the rewind, seed 42 then stays at 1%.
-- **Honest isolations are the price of the whole-update signal.** Over 100 rounds the root-head screens isolate 1–2 honest clients in 3 runs, the whole-update screens 12–18, or 4–6 per run. FedHEP-Guard's union screen contains the whole-update signal, so it pays the same price (6.12, 6.13). The gap gate removed FedHEP+'s honest isolations for the root-head signal (6.8). It has not done so for the signals that catch the backdoor.
-
-
-**FedHEP-Guard itself over 100 rounds (Acer, `acer_c9_final_durability`).** These are the first runs of the full model (union screen + trunk-and-root rewind), in the same setting: 3 attackers until round 50. Backdoor success at round 100, seeds 123 / 42 / 7:
-
-| Model | Plain backdoor | Stealth backdoor | With exit guard (plain / stealth, mean) | Accuracy (plain / stealth) | Honest isolated (3 runs, plain / stealth) |
-|---|---|---|---|---|---|
-| FedHEP (no defense) | 67 / 75 / 77% | 67 / 73 / 77% | 41.7 / 37.6% | 43.06 / 43.51 | 0 / 0 |
-| Union screen, no rewind | 0.3 / 0.4 / 0.6% | 0.5 / 1.6 / 0.4% | 0.4 / 0.8% | 43.47 / 42.30 | 8 / 16 |
-| **FedHEP-Guard** | **0.3 / 0.3 / 0.3%** | 0.4 / 0.4 / **33.8%** | 0.3 / 6.3% | 41.66 / 43.96 | 18 / 10 |
-
-![FedHEP-Guard over 100 rounds, per seed](../figures/phase6_guard_durability.png)
-
-- **The plain backdoor is held on every seed for 100 rounds,** including seed 42, which beat the root-head and whole-update screens (above). The union screen isolates seed 42's attackers in rounds 3–4, against round 40 for the root head and rounds 12–17 for the whole update.
-- **One stealth seed got through FedHEP-Guard.**
-  - On seed 7 the attackers were isolated late, in rounds 15–18. The rewinds reached back only to rounds 15–16, so the poisoning from rounds 1–14 stayed in. It grew from 22% at round 50 to 33.8% at round 100 (17.9% with the exit guard).
-  - In the run without rewind, the same seed's attackers were caught in round 6 and success stayed at 0.4%. XPU runs are not repeatable bit for bit, so the two runs part ways early.
-  - In the FedHEP-Guard run, an honest pair was isolated in round 7 and the model rewound to round 5. Whether that delayed the catch cannot be told from one run.
-  - **What it shows:** the rewind cannot undo poisoning older than its 10-round reach when the catch is late.
-- **Accuracy.** With the plain backdoor, FedHEP-Guard is 1.8 points below the union screen without rewind and 18 honest isolations against 8. With the stealth backdoor it is 1.7 points above, with 10 against 16. These differences track the honest isolations more than the rewind: rewinds triggered by honest isolations discarded only 1–7 rounds per run.
-- **Most of these honest isolations are whole parent groups.** Mass isolations of 4–5 honest clients happened in rounds 13–16; the cause is in 6.16.
-## 6.10 Results: an adaptive backdoor (Mac, D1)
-
-The stealth backdoor ([chapter 1.4](01_federated_learning.md)) hides inside the honest spread. Backdoor success at round 30, seeds 123 / 42 / 7:
-
-| Model | Plain, 3 attackers | Stealth, 3 attackers | Plain, 5 attackers | Stealth, 5 attackers |
-|---|---|---|---|---|
-| FedHEP | 74 / 80 / 84 | 71 / 77 / 83 | 75 / 82 / 84 | 73 / 81 / 84 |
-| Defended FedHEP | 74 / 80 / 82 | 73 / 80 / 81 | 74 / 81 / 82 | 73 / 81 / 82 |
-| L0 | 54 / 66 / 68 | 61 / 70 / 75 | 69 / 77 / 79 | 69 / 79 / 80 |
-| FedHEP+ | 5 / 29 / 29 | 56 / 75 / 65 | 40 / 64 / 65 | 71 / 79 / 80 |
-| R3, whole update | 0.5 / 0.5 / 0.9 | 0.2 / **61** / 0.9 | 20 / 4.4 / 3.8 | 2.9 / 9.5 / 3.0 |
-| **R3, union screen** | 0.5 / 0.5 / 1.4 | **0.2 / 0.5 / 0.4** | 20 / 4.0 / 0.7 | 2.9 / 9.5 / 1.7 |
-| FLAME | 0.6 / 0.4 / 0.5 | 1.5 / 0.4 / 0.4 | 0.4 / 0.6 / 0.4 | 1.7 / 3.0 / 1.8 |
-
-![Stealth backdoor](../figures/phase6_stealth.png)
-
-- Hiding costs the attacker almost nothing: undefended, it still reaches 71–83%.
-- It defeats single-view screens: FedHEP+, and the whole-update screen on one seed.
-- **The union screen catches every stealth attacker on every seed.** The price is more honest isolations (14 over 3 runs, against 9) and 1.2 points against undefended FedHEP.
-- **With 5 attackers (a third of the clients)** both R3 screens catch all 15 attackers, plain or stealth, but on one seed the plain backdoor gets in first (20%). FLAME holds under 1% at about 3 points of accuracy.
-
-## 6.11 Results: a wrong guess of the attacker count (Acer, D1)
-
-The defender assumes $f_0$ = 1, 3 (true) or 6 while 3 attack. Accuracy, or backdoor success where stated:
-
-| Attack | L0, $f_0$ = 1 / 3 / 6 | R3 union, $f_0$ = 1 / 3 / 6 |
-|---|---|---|
-| None | 48.10 / 47.43 / 47.56 | 46.07 / 46.82 / 45.64 |
-| Sign flip | **35.73** / 40.73 / 41.89 | 44.35 / 45.28 / 43.77 |
-| ALIE | 47.75 / 47.53 / 46.19 | 44.50 / 44.09 / 44.93 |
-| Backdoor success | 70–78% / 60–69% / 58–62% | 0.5–0.6% / 0.4–0.5% / 0.4–1.5% |
-
-![Mis-specified f](../figures/phase6_fmis.png)
-
-The screen makes R3 almost indifferent to $f_0$: every attacker is caught under every attack and every guess. L0 depends on the guess under sign flip.
-
-## 6.12 Results at scale (GPU server)
-
-The large grid (`gpu_grid_n{15,30}`, 1,239 runs so far; the 50-client part is still to run) repeats 8 models at 15 and 30 clients, α = 0.5 and 0.1, with 10, 20 and 30% attackers, 3 seeds, 30 rounds. Its FedHEP-Guard column is the **screen without the rewind** (R3 + union screen); the rewind arrives with the canonical benchmark.
-
-**The 15-client, α = 0.5, 3-attacker cell repeats GPU batch 1** under new names, and its whole-update runs give the same backdoor numbers (0.6 / 71.4 / 0.6%): the GPU server reproduces itself across jobs.
-
-**Summary per setting.** Columns:
-- *Worst under poisoning*: the lowest accuracy over sign flip, ALIE and Min-Max at all three attacker shares.
-- *Backdoor*: success at 10 / 20 / 30% attackers.
-- *Honest isolated*: per run, with no attack.
-
-| Setting | Model | No attack | Worst under poisoning | Backdoor | Honest isolated |
-|---|---|---|---|---|---|
-| 15 clients, α = 0.5 | FedHEP | 49.19 | 24.1 | 70 / 79 / 80% | 0 |
-| | Defended FedHEP | 48.68 | 32.1 | 72 / 79 / 80% | 0 |
-| | FedHEP+ | 48.48 | 34.7 | 2.0 / 22 / 58% | 2.7 |
-| | L0 | 48.21 | 37.0 | 40 / 64 / 76% | 0 |
-| | R3 (root head) | 47.89 | **44.6** | 14 / 57 / 71% | 1.3 |
-| | **FedHEP-Guard screen** | 47.36 | 43.3 | **0.4 / 0.6 / 12%** | 4.3 |
-| | FLAME | 43.12 | 38.8 | 0.4 / 0.5 / 0.4% | 0 |
-| 15 clients, α = 0.1 | FedHEP | 61.09 | 29.6 | 20 / 30 / 32% | 0 |
-| | Defended FedHEP | 60.76 | 46.4 | 21 / 25 / 26% | 0 |
-| | FedHEP+ | 59.93 | 54.0 | 22 / 29 / 29% | 7.7 |
-| | L0 | 60.32 | 52.5 | 19 / 23 / 23% | 0 |
-| | R3 (root head) | 60.43 | 29.9 | 18 / 28 / 32% | 1.3 |
-| | **FedHEP-Guard screen** | 60.21 | **57.8** | 15 / 20 / 31% | 1.7 |
-| | FLAME | 49.76 | 46.5 | **0.8 / 1.0 / 3.4%** | 0 |
-| 30 clients, α = 0.5 | FedHEP | 45.22 | 22.8 | 63 / 73 / 74% | 0 |
-| | Defended FedHEP | 44.28 | 25.7 | 62 / 72 / 74% | 0 |
-| | FedHEP+ | 44.41 | 26.6 | 22 / 58 / 63% | 4.3 |
-| | L0 | 44.69 | 36.6 | 17 / 61 / 68% | 0 |
-| | R3 (root head) | 44.34 | 39.5 | 34 / 61 / 65% | 0.7 |
-| | **FedHEP-Guard screen** | 43.30 | **40.2** | **0.5 / 0.9 / 1.2%** | **14.7** |
-| | FLAME | 38.29 | 30.1 | 0.5 / 0.5 / 0.7% | 0 |
-| 30 clients, α = 0.1 | FedHEP | 56.13 | 41.0 | 16 / 23 / 27% | 0 |
-| | Defended FedHEP | 55.62 | 47.5 | 13 / 21 / 24% | 0 |
-| | FedHEP+ | 55.64 | 50.7 | 16 / 21 / 25% | 2.3 |
-| | L0 | 55.11 | 49.0 | 6.0 / 19 / 23% | 0 |
-| | R3 (root head) | 55.29 | 40.3 | 15 / 23 / 25% | 5.0 |
-| | **FedHEP-Guard screen** | 55.36 | **54.4** | 1.0 / 17 / 25% | 7.0 |
-| | FLAME | 45.01 | 39.3 | **0.6 / 1.9 / 3.5%** | 0 |
-
-**What the grid shows:**
-- **The most robust model against model poisoning.** FedHEP-Guard's screen has the best worst-case accuracy in three of four settings. In the fourth it is 1.3 points behind R3. It never collapses: its worst case stays within 1–4 points of its no-attack accuracy. R3 with the root-head signal falls to 29.9 and 40.3 at α = 0.1.
-- **The best backdoor defense short of FLAME at α = 0.5:** at most 1.2% at 30 clients, even with 9 attackers. FLAME stops every backdoor in every setting, but costs 6–11 points with no attack and has a lower worst case.
-- **At α = 0.1 the backdoor is not solved.** The screen lets through up to 31%; only FLAME holds. Strong skew makes honest clients as different from each other as attackers are.
-- **Honest isolations grow with the number of clients:** 4.3 per run at 15 clients, **14.7 at 30**, which is half the clients with no attack. Accuracy hardly suffers, because isolated clients keep training on their own and keep their personal heads, but it is wrong to blame them. The charts below show when it happens.
-
-**In which rounds honest clients are isolated.** Cumulative honest clients isolated per round, mean of 3 runs, at the middle attacker share. Where the green line hides the orange one, the whole-update screen and the union screen isolated the same clients.
-
-![Honest isolations per round, 15 clients](../figures/phase6_isolation_rounds_n15.png)
-
-![Honest isolations per round, 30 clients](../figures/phase6_isolation_rounds_n30.png)
-
-**Why it grows with the number of clients: the gap gate does not scale.** The gate opens when the largest gap between neighbouring sorted scores is at least 8 times the median gap. With more clients there are more gaps, and the largest of them grows by chance alone. For scores drawn from one normal distribution (no attacker at all):
-
-| Clients | Chance the gate opens with no attacker | Median gap ratio | 95th percentile |
-|---|---|---|---|
-| 12 | 13% | 4.3 | 11.2 |
-| 15 | 18% | 4.9 | 12.1 |
-| 20 | 29% | 6.0 | 14.6 |
-| 30 | **51%** | 8.1 | 19.2 |
-| 50 | **81%** | 12.1 | 27.6 |
-
-The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, the whole-update gate opened in 44% of rounds and the critical-layer gate in 43%, against 32% and 14% at 15 clients. The union acts when either gate is open, so it blames someone in most rounds.
-
-**A larger gate is not the fix.** The obvious repair is a threshold that grows with the number of clients, $\gamma(n)$, for example the 95th percentile of the gap ratio in honest rounds (14 at 15 clients, 21 at 30). The logs show what it would cost. In the rounds where the largest gap split off exactly the backdoor attackers, the gap ratio was only 8.6 (median, 15 clients) and 14.1 (30 clients), inside the honest range. A gate at the honest 95th percentile would have kept about a quarter of those catches. Sign flip, ALIE and Min-Max split off at ratios of 60–130 (median) and are not at risk.
-
-![Gap ratios: honest rounds, backdoor catches and model-poisoning catches](../figures/phase6_gap_gate_tradeoff.png)
-
-So the gap ratio cannot tell an honest client with unusual data from a backdoor attacker: both stand a little apart from the rest. The problem is the yardstick, one median for every client, not the threshold. The next experiment changes the yardstick (6.15).
-
-## 6.13 What it costs, and what is still open
-
-**Strengths, with evidence:**
-- At D1, every sign-flip, ALIE and Min-Max attacker caught. At D2, the best accuracy under sign flip, with 2–3 honest clients isolated over 3 runs with no attack (R3).
-- Plain and stealth backdoors held under 1.5% at D1 (Mac).
-- A backdoor that slipped in early removed by the rewind (0–1% over 100 rounds, Acer).
-- FedHEP-Guard itself holds the plain backdoor at 0.3% for 100 rounds on every seed, the stealth backdoor on two of three (Acer, 6.9).
-- Indifferent to a wrong guess of $f$.
-- The best worst-case accuracy under model poisoning in 3 of 4 grid settings, and backdoor success of at most 1.2% at 30 clients, α = 0.5, even with 9 attackers (GPU).
-
-**Costs and open problems:**
-1. **Honest isolations: fixed for the root head, not for the union screen.**
-
-![Honest isolations by setting and signal](../figures/phase6_honest_isolation_summary.png)
-
-   - **The gap gate fixed them for the root-head signal:** 1.0 per run at D1 and at D2 on the Mac (FedHEP+: 3.0 and 9.0), and 0.7–1.3 at three of four GPU settings.
-   - **The union screen contains the whole-update signal and isolates more:** at α = 0.5, 4.3 per run at 15 clients and 14.7 at 30, above FedHEP+ (2.7 and 4.3).
-   - **Under strong skew it is the other way round:** at 15 clients and α = 0.1, 1.7 against FedHEP+'s 7.7.
-   - **The difference follows the gap gate.** With mild skew, honest whole-update scores are tight with the occasional outlier, so the largest gap stands out and the gate opens by chance: in 32% of honest rounds at 15 clients, α = 0.5, against 6% at α = 0.1 (6.12).
-   - **The D1 mean of 4.3 comes mostly from one seed** (10, 3 and 0 honest clients isolated).
-   - **The union screen has not been run at D2.** The D2 figure in 6.8 is the root-head R3, not FedHEP-Guard; the benchmark will give it.
-   - **About half are whole parent groups.** At α = 0.5 about half of the union screen's honest isolations come as a whole group isolated in one round. The whole-update signal includes the parent head that group members share (6.16).
-   - **Costs:** the honest isolations leave FedHEP-Guard 0.6–2.0 points below L0 when nobody attacks, and 1.3–3.4 points below it under ALIE with 3 attackers. Reducing them is the main open problem. The peer reference (6.15) failed; the shared signal (6.16) is being tested.
-2. **A late catch of the stealth backdoor.** On one of three seeds over 100 rounds the attackers were caught in rounds 15–18, beyond the rewind's reach back to the start of the poisoning, and the backdoor grew to 33.8% (6.9).
-3. **Strong skew and backdoors.** At D2, no model tested so far stops the plain backdoor (37.7% for L0 to 46.9% for FedHEP; R3 45.3%). FedHEP-Guard's union screen and rewind have not yet been run at D2. The canonical benchmark covers it.
-4. **A third of the clients attacking with a plain backdoor** can get it in before the screen catches them (one seed at 20%, Mac). FLAME holds there.
-5. **The root-head-only gate** (R3 as in 6.8) has the best no-attack accuracy but lets backdoors in. FedHEP-Guard trades about 1 point for backdoor protection.
-
-## 6.14 FedHEP-Guard's exact configuration
+## 6.8 FedHEP-Guard's exact configuration
 
 FedHEP-Guard is **R3 with gate 8** (the L0 Global step, two-sided screen, gap gate 8, patience 3) plus **the union screen** [1] and **the trunk-and-root rewind** [6]. "R3" alone in a table or chart means the ladder rung with the root-head signal, not FedHEP-Guard.
 
@@ -418,7 +194,7 @@ FedHEP-Guard is **R3 with gate 8** (the L0 Global step, two-sided screen, gap ga
 |---|---|---|---|
 | FedHEP-Guard without rewind (`r3wc`) | everything but the rewind | [6] | GPU grid (all attacks), Mac stealth study, Acer |
 | R3 whole update with rewind (`r3w_tr`) | rewind; whole-update half of the union | critical-layer half of [1] | Mac (30 rounds), Acer (100 rounds) |
-| FedHEP-Guard (`r3wc_tr`, `guard`) | all parts | — | Acer, 100 rounds, both backdoors (`x9__*__r3wc_tr`, 6.9); queued: GPU benchmark `bm_*__guard` (every attack, D1 and D2) |
+| FedHEP-Guard (`r3wc_tr`, `guard`) | all parts | — | Acer, 100 rounds, both backdoors (`x9__*__r3wc_tr`, 7.3); queued: GPU benchmark `bm_*__guard` (every attack, D1 and D2) |
 
 
 ```yaml
@@ -438,99 +214,4 @@ fedhep.exit_guard: true         # [7] optional, prediction only
 ```
 
 It is the `guard` model in `configs/sweeps/bench_fedhep_family.yaml`.
-
-## 6.15 The peer reference (Phase 7, Acer): refuted
-
-**Idea.** Judge each client against the clients that hold similar data, not against everyone. Under strong skew an honest client with unusual classes is far from the global median, so it looks like an attacker (6.12, chapter 4.5c). Against clients holding similar classes it should look normal, while a backdoor attacker still differs from its peers by the trigger. This follows BoBa (arXiv 2407.09658, 2024), which compares clients only within groups of similar inferred data.
-
-**What changes.** Only the reference in step [1]: each client $i$ gets its own reference $\tilde r_i$ instead of the shared $\tilde r$. Everything after it (robust z, two-sided cut, gap gate, patience, evidence, isolation, rewind) is unchanged.
-
-$$J_{ij} = \frac{\lvert Y_i \cap Y_j\rvert}{\lvert Y_i \cup Y_j\rvert}, \qquad P_i = \text{the } \lceil \kappa\,(m-1) \rceil \text{ clients } j \neq i \text{ with the largest } J_{ij}$$
-
-$$\tilde r_{i} = \operatorname{med}_{j \in P_i}\, v_j \ \text{(coordinate-wise)}, \qquad s_i = \cos(v_i, \tilde r_i)$$
-
-**Legend:**
-
-| Symbol | Meaning | Config key, value |
-|---|---|---|
-| $Y_i$ | the classes client $i$ holds (the class mask FedHEP already sends for ACLM) | — |
-| $J_{ij}$ | Jaccard similarity of two clients' class sets | — |
-| $\kappa$ | share of the other clients used as peers | `plus.peer_share: 0.333` |
-| $m$ | number of clients currently scored | — |
-| $P_i$ | client $i$'s peers (ties go to the lower index) | — |
-| $\tilde r_i$ | client $i$'s reference: the coordinate median of its peers' signals | `plus.reference: peer` |
-| $s_i$ | client $i$'s score, then the robust z of chapter 4 | — |
-
-For the critical-layer signal, layer $l$ of $\tilde r_i$ is the reference for layer $l$.
-
-**The trade-off in $\kappa$.** A small peer set fits a client's data better, but colluders who all pick each other (for example by reporting one class mask) take over a colluder's peer median once they fill half of its peers. With $\kappa = 1/3$ that happens at 4 colluders of 15 and 6 of 30. A tight cluster pulls a coordinate median before half, so the real margin is smaller. The unit tests check both sides: an honest group of 4 out of 15 is judged by its own kind with $\kappa = 1/3$ but not with $\kappa = 2/3$, and 3 colluders with one shared mask stay caught while 5 do not (`tests/test_peer_reference.py`).
-
-**Shadow scoring.** `plus.shadow_reference` scores the same updates against a second reference and logs it without acting. Every run of the experiment logs both references, so they are compared on identical updates, free of the differences between training runs.
-
-**The experiment** (`configs/sweeps/acer_c10_peer.yaml`, prefix `x10_`, 24 runs on the Acer): the union screen without the rewind, at 15 clients, α = 0.1 and 0.5, with no attack and with 3 backdoor attackers, 3 seeds. One arm acts on the median and logs the peer scores; the other acts on the peer reference and logs the median scores. Predictions P22–P25 were written before the runs (`docs/PREDICTIONS.md`). Charts: `scripts/plot_phase7.py` writes `docs/figures/phase7_peer_paired.png` and `phase7_peer_outcomes.png`.
-
-**Results** (Acer, 3 seeds; per-seed values in `docs/results/phase7_peer.json`):
-
-| | Median reference (FedHEP-Guard's) | Peer reference |
-|---|---|---|
-| Attacker separation, α 0.1, same updates (AUROC, whole update) | 0.69 / 0.66 | 0.65 / 0.60 |
-| Attacker separation, α 0.5, same updates | 0.98 | 0.97–1.00 |
-| Honest isolated per run, no attack (α 0.1 / 0.5) | 0.3 / 4.0 | 0.7 / 7.0 |
-| Backdoor success, α 0.1 (seeds 123 / 42 / 7) | 0.3 / 12 / 22% | 35 / 21 / 24% |
-| Backdoor success, α 0.5 | 0.4 / 0.2 / 0.5% | 0.4 / 0.3 / **44%** |
-| Accuracy with no attack (α 0.1 / 0.5) | 60.40 / 47.58 | 60.22 / 46.37 |
-
-The two AUROC values in a cell come from the two arms (acting on the median, acting on the peer reference); both log both references.
-
-![Peer reference: both references on the same updates](../figures/phase7_peer_paired.png)
-
-![Peer reference: outcomes when acting on it](../figures/phase7_peer_outcomes.png)
-
-**Verdict.** P22 held only at α = 0.5. P23 was mixed. P24 and P25 were refuted: acting on the peer reference isolated more honest clients and let more backdoor in. It is dropped.
-
-**Why it failed (likely, not tested on its own):**
-- **A noisier yardstick.** With $\kappa = 1/3$ each client's reference is the median of only 5 peers, much noisier than the median of all 15. The extra noise outweighs the heterogeneity the peers remove.
-- **Arbitrary peers at α = 0.5.** Nearly every client holds nearly every class (about 667 images over 100 classes), so the Jaccard similarities are almost tied and the peers are close to arbitrary.
-- **The wrong diagnosis.** The honest isolations it targeted are mostly not "clients with unusual data". At α = 0.5 about half are whole parent groups, split off by the parent head inside the whole-update signal (6.16).
-
-## 6.16 Next: the shared signal (Phase 8, running on the Acer)
-
-**The finding.** At α = 0.5, about half of the union screen's honest isolations come as a whole parent group: at least 3 honest members of one group isolated in the same round.
-
-![Honest clients isolated a whole parent group at a time](../figures/phase6_group_isolations.png)
-
-- **Which screens do it:** union screen 51% (15 clients) and 56% (30 clients); whole update alone 53% and 73%; FedHEP+ 2–3%; root head 0% (GPU grid, every attack pooled).
-- **On the Acer:** FedHEP-Guard's three mass isolations in the 100-round runs (rounds 13, 14 and 16) were exactly parent group 2, mostly group 2, and exactly group 1.
-- **The cause.** The whole-update signal is every weight of the update, the personal heads included. The parent head $W_p$ is shared by the members of one group and differs between groups by design.
-  - As training goes on, a group's updates drift away from the others together: in the example, the whole-update gap ratio grows from about 3 to about 20 over rounds 9–13, and the group's z-scores fall together until all pass the cut.
-  - The critical-layer signal already leaves the personal heads out, and its gap ratio stays low in the same rounds.
-- **Why mild skew is worse.** At α = 0.5 the clients' own data differ little, so the group direction dominates the differences between updates.
-
-**What changes.** Only the whole-update half of signal [1]. The new signal scores the update restricted to the coordinates every client shares, the trunk and the root head:
-
-$$v_i^{\mathrm{shared}} = \mathrm{bound}\bigl(\Delta_i\big\vert_{\text{trunk} \,\cup\, W_r}\bigr), \qquad s_i = \cos\bigl(v_i^{\mathrm{shared}},\ \operatorname{med}_k v_k^{\mathrm{shared}}\bigr)$$
-
-It is combined with the critical layers exactly as now: each signal z-scored and gap-gated on its own, and a client's z is the lower of the two.
-
-![The shared signal: what is scored](figures/diagrams/18_shared_signal.png)
-
-**Legend:**
-
-| Symbol | Meaning | Config key, value |
-|---|---|---|
-| $\Delta_i\big\vert_{\text{trunk} \cup W_r}$ | client $i$'s weight update restricted to the trunk and the root head (BatchNorm buffers, $W_p$ and $W_l$ left out) | `plus.signal: shared` |
-| bound | the norm bound of chapter 3, $k = 3$ | `plus.norm_bound` |
-| — | union with the critical layers | `plus.signal: shared_critical` |
-
-**Why it should keep the backdoor catches.** The backdoor is learned by the shared trunk and root head, and both stay in the signal. The risk: the parent head also carries part of the backdoor (chapter 5.3e), and on some seeds that part may have been what split the attackers off.
-
-**The experiment** (Acer, predictions P26–P29):
-
-| Sweep | Runs | What it tests | Controls (Acer) |
-|---|---|---|---|
-| `acer_c11_shared.yaml` (`x11_`) | 21 | shared union screen without rewind: no attack, sign flip, ALIE, Min-Max, backdoor at α 0.5; no attack and backdoor at α 0.1 | `x10_*__r3wc_shp`, `x8_f3__*__r3wc` |
-| `acer_c11_control.yaml` | 3 | union screen under Min-Max at α 0.5 | — |
-| `acer_c12_shared_durability.yaml` (`x12_`) | 6 | FedHEP-Guard with the shared signal, 100 rounds, both backdoors | `x9__*__r3wc_tr` |
-
-Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are left out, and that a drifting parent group is split off by the whole-update signal but not by the shared one. It also runs the shared union end to end.
 

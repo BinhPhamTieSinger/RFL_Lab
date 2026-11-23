@@ -1,4 +1,4 @@
-# 8. Configuration reference
+# 10. Configuration reference
 
 Every setting of every experiment is one key in `src/rfl/experiment/config.py`, written as `section.key` (for example `plus.reference`). An experiment is built in three layers:
 1. a **preset** in `configs/*.yaml`;
@@ -7,15 +7,15 @@ Every setting of every experiment is one key in `src/rfl/experiment/config.py`, 
 
 An unknown key is an error, so a typo cannot silently fall back to a default.
 
-## 8.1 Top level
+## 10.1 Top level
 
 | Key | Default | Values | Meaning |
 |---|---|---|---|
 | `name` | `experiment` | text | run name; the output folder is `<output_dir>/<name>_s<seed>` |
-| `method` | `fedavg` | see 8.2 | the federated algorithm (server and client) |
+| `method` | `fedavg` | see 10.2 | the federated algorithm (server and client) |
 | `model` | `resnet9` | `resnet9`, `resnet9_multihead` | one head (FedAvg family) or three heads (FedHEP family) |
 
-## 8.2 Methods (`method`)
+## 10.2 Methods (`method`)
 
 | Value | Model in this report | Reads sections | Chapter |
 |---|---|---|---|
@@ -30,7 +30,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `fedhep_plus` | FedHEP+, drill-down, R2, R3, FedHEP-Guard (the `plus` keys choose which) | + `fedhep`, `plus` | 4, 5.1, 6 |
 | `fedhep_robust` | a classic rule, or L0, at FedHEP's Global step | + `fedhep`, `robust` | 5.2, 6.2 |
 
-## 8.3 `data`
+## 10.3 `data`
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -41,7 +41,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `num_clients` | $n$ | 15 | number of clients |
 | `alpha` | $\alpha$ | `null` | Dirichlet concentration of the label split; `null` = IID ([chapter 1.2](01_federated_learning.md)) |
 
-## 8.4 `train` (local SGD)
+## 10.4 `train` (local SGD)
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -53,7 +53,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `nesterov` | — | true | Nesterov momentum |
 | `weight_decay` | — | $10^{-4}$ | L2 weight decay |
 
-## 8.5 `run`
+## 10.5 `run`
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -64,7 +64,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `output_dir` | `outputs` | where run folders are written |
 | `deterministic` | false | deterministic GPU kernels: a rerun on the same device type gives identical numbers (used on the GPU server) |
 
-## 8.6 `attack`
+## 10.6 `attack`
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -79,7 +79,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `backdoor_fraction` | — | 0.5 | share of an attacker's images that are stamped and relabelled |
 | `scale` | $\lambda$ | 1.0 | backdoor upload boost; above 1 is model replacement |
 
-## 8.7 `fedhep` (all FedHEP-family methods)
+## 10.7 `fedhep` (all FedHEP-family methods)
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -88,15 +88,15 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `exit_guard` | — | false | prediction only: also report accuracy and backdoor success with the depth-exit guard ([chapter 6.7](06_fedhep_guard.md)) |
 | `head_agreement` | — | false | prediction only: also report head-agreement inference ([chapter 5.3](05_ideas_that_did_not_work.md)) |
 
-## 8.8 `plus` (method `fedhep_plus`: FedHEP+, drill-down, R2, R3, FedHEP-Guard)
+## 10.8 `plus` (method `fedhep_plus`: FedHEP+, drill-down, R2, R3, FedHEP-Guard)
 
 **Signal and reference:**
 
 | Key | Symbol | Default | Values and meaning |
 |---|---|---|---|
-| `signal` | $s_i$ | `root_head` | what each client is scored on: `root_head` (root-head rows of its classes, as SCCF), `weights` (whole update without BatchNorm, personal heads included), `critical` (the most disputed layers), `weights_critical` (union of the two, FedHEP-Guard), `shared` (whole update without BatchNorm and without the personal heads, Phase 8, 6.16), `shared_critical` (union of `shared` and `critical`), `sign_align` (AlignIns sign agreement), `probe_logits`, `head_gap` (predictions on server probe images) |
-| `reference` | $\tilde r$ | `mean_direction` | `mean_direction` (SCCF's mean of unit vectors), `median` (coordinate-wise median) or `peer` (a per-client median over its peers, Phase 7, 6.15, refuted) |
-| `peer_share` | $\kappa$ (6.15) | 0.333 | with `reference: peer` (Phase 7): each client's reference is the coordinate median of this share of the other clients, those holding the most similar classes (Jaccard of class masks) |
+| `signal` | $s_i$ | `root_head` | what each client is scored on: `root_head` (root-head rows of its classes, as SCCF), `weights` (whole update without BatchNorm, personal heads included), `critical` (the most disputed layers), `weights_critical` (union of the two, FedHEP-Guard), `shared` (whole update without BatchNorm and without the personal heads, Phase 8, 8.3), `shared_critical` (union of `shared` and `critical`), `sign_align` (AlignIns sign agreement), `probe_logits`, `head_gap` (predictions on server probe images) |
+| `reference` | $\tilde r$ | `mean_direction` | `mean_direction` (SCCF's mean of unit vectors), `median` (coordinate-wise median) or `peer` (a per-client median over its peers, Phase 7, 5.4, refuted) |
+| `peer_share` | $\kappa$ (5.4) | 0.333 | with `reference: peer` (Phase 7): each client's reference is the coordinate median of this share of the other clients, those holding the most similar classes (Jaccard of class masks) |
 | `shadow_reference` | — | `""` | also score every update against this reference (`median`, `peer`, `mean_direction`) and log it as `shadow_scores`, without acting on it |
 | `critical_k` | $k$ | 5 | layers scored by the critical-layer signal |
 | `sign_topk` | — | 0.3 | share of largest coordinates compared by `sign_align` |
@@ -150,7 +150,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `drill_cut` | 1.0 | v1's stricter member cut |
 | `min_group` | 2 | parents with fewer eligible members are not checked (v2 runs: 3) |
 
-## 8.9 `robust` (method `fedhep_robust`: Phase 5 rules and L0)
+## 10.9 `robust` (method `fedhep_robust`: Phase 5 rules and L0)
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -161,7 +161,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `root_size` | — | 100 | FLTrust's clean server images |
 | `momentum` | $\beta$ | 0.0 | worker momentum before the rule (Phase 6, rejected at 0.5) |
 
-## 8.10 `baseline` (single-model baselines, authors' values)
+## 10.10 `baseline` (single-model baselines, authors' values)
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
@@ -170,7 +170,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `krum_selected` | $m_K$ | 3 | updates Multi-Krum averages ($f$ is the true attacker count, the authors' oracle) |
 | `fedrep_head_epochs` | — | 1 | FedRep head epochs per round |
 
-## 8.11 Presets
+## 10.11 Presets
 
 | File | Sets |
 |---|---|
@@ -180,7 +180,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 
 Every other model is a preset plus overrides. The exact overrides of each model in this report are in `configs/sweeps/bench_fedhep_family.yaml`.
 
-## 8.12 Sweep files and run names
+## 10.12 Sweep files and run names
 
 A sweep (`configs/sweeps/*.yaml`) is every combination of a few labelled axes, for every seed:
 
@@ -208,22 +208,22 @@ axes:
 | `p4__`, `p4b__` | drill-down | Mac | 5.1 |
 | `p5__` | classic rules | Mac | 5.2 |
 | `ts__`, `n20__`, `n30__`, `a02__` (FedHEP+ rows) | follow-up diagnostics | Mac, Acer | 4.5 |
-| `p6__`, `a02__` (rungs) | the ladder at D1 and D2 | Mac | 6.8 |
+| `p6__`, `a02__` (rungs) | the ladder at D1 and D2 | Mac | 7.2 |
 | `g1__`, `c2__` | screening signals; ALIE puzzle | GPU | 5.3 |
-| `m6__` | backdoor recovery | Mac | 6.9 |
-| `x6__` | 100-round durability | Acer | 6.9 |
-| `m7__` | stealth backdoor | Mac | 6.10 |
-| `x8_` | mis-specified $f$ | Acer | 6.11 |
-| `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 6.9 |
-| `x10_` | peer reference against the global median (Phase 7, refuted) | Acer | 6.15 |
-| `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 6.16 (running) |
-| `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 6.16 (queued) |
-| `gg15_`, `gg30_`, `gg50_` | large grid | GPU | 6.12 |
+| `m6__` | backdoor recovery | Mac | 7.3 |
+| `x6__` | 100-round durability | Acer | 7.3 |
+| `m7__` | stealth backdoor | Mac | 7.4 |
+| `x8_` | mis-specified $f$ | Acer | 7.5 |
+| `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 7.3 |
+| `x10_` | peer reference against the global median (Phase 7, refuted) | Acer | 5.4 |
+| `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 8.3 (running) |
+| `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 8.3 (queued) |
+| `gg15_`, `gg30_`, `gg50_` | large grid | GPU | 7.6 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |
 | `bm_` | canonical benchmark | GPU | 7 |
 | `par__` | device parity | all three | 1.3 |
 
-## 8.13 What a run records
+## 10.13 What a run records
 
 Each run folder holds `config.yaml` (the full resolved configuration) and `metrics.json`:
 

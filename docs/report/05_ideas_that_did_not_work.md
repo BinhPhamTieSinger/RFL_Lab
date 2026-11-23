@@ -314,13 +314,57 @@ $$w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w, \qquad M_j = \begin{cases}
 
 **Why it was dropped.** With the whole-update screen it costs 0.6 points against rewinding the trunk and root head, and gains nothing: the attackers are caught by rounds 3–6, so there is little backdoor to remove. With the root-head screen it lowers success by 1–2 points on the seeds where an attacker is caught, at no accuracy cost, but that screen is not the one FedHEP-Guard uses. Rewinding the personal heads also discards the personalization learned since $t^\star$, which the attackers barely touch. With the trunk and root head rewound, the parent head's share of the backdoor plausibly has no trigger features left to respond to.
 
-## 5.4 Phase 7: the peer reference
+## 5.4 Phase 7: the peer reference (Acer)
 
-Each client was scored against the coordinate median of the third of clients whose class sets are most like its own, instead of the global median. Both references were logged on the same updates. The method, results and reasons it failed are in [chapter 6.15](06_fedhep_guard.md).
+**Idea.** Judge each client against the clients that hold similar data, not against everyone. Under strong skew an honest client with unusual classes is far from the global median, so it looks like an attacker (7.6, chapter 4.5c). Against clients holding similar classes it should look normal, while a backdoor attacker still differs from its peers by the trigger. This follows BoBa (arXiv 2407.09658, 2024), which compares clients only within groups of similar inferred data.
 
-- **On identical updates** it separated backdoor attackers worse at α 0.1 (AUROC 0.60–0.65 against 0.66–0.69).
-- **Acting on it** raised honest isolations (4.0 → 7.0 per run at α 0.5) and backdoor success (11 → 27% at α 0.1).
-- **What carried forward:** most honest isolations at α 0.5 are not unusual clients but whole parent groups (6.16).
+**What changes.** Only the reference in step [1]: each client $i$ gets its own reference $\tilde r_i$ instead of the shared $\tilde r$. Everything after it (robust z, two-sided cut, gap gate, patience, evidence, isolation, rewind) is unchanged.
 
-![Peer reference outcomes](../figures/phase7_peer_outcomes.png)
+$$J_{ij} = \frac{\lvert Y_i \cap Y_j\rvert}{\lvert Y_i \cup Y_j\rvert}, \qquad P_i = \text{the } \lceil \kappa\,(m-1) \rceil \text{ clients } j \neq i \text{ with the largest } J_{ij}$$
+
+$$\tilde r_{i} = \operatorname{med}_{j \in P_i}\, v_j \ \text{(coordinate-wise)}, \qquad s_i = \cos(v_i, \tilde r_i)$$
+
+**Legend:**
+
+| Symbol | Meaning | Config key, value |
+|---|---|---|
+| $Y_i$ | the classes client $i$ holds (the class mask FedHEP already sends for ACLM) | — |
+| $J_{ij}$ | Jaccard similarity of two clients' class sets | — |
+| $\kappa$ | share of the other clients used as peers | `plus.peer_share: 0.333` |
+| $m$ | number of clients currently scored | — |
+| $P_i$ | client $i$'s peers (ties go to the lower index) | — |
+| $\tilde r_i$ | client $i$'s reference: the coordinate median of its peers' signals | `plus.reference: peer` |
+| $s_i$ | client $i$'s score, then the robust z of chapter 4 | — |
+
+For the critical-layer signal, layer $l$ of $\tilde r_i$ is the reference for layer $l$.
+
+**The trade-off in $\kappa$.** A small peer set fits a client's data better, but colluders who all pick each other (for example by reporting one class mask) take over a colluder's peer median once they fill half of its peers. With $\kappa = 1/3$ that happens at 4 colluders of 15 and 6 of 30. A tight cluster pulls a coordinate median before half, so the real margin is smaller. The unit tests check both sides: an honest group of 4 out of 15 is judged by its own kind with $\kappa = 1/3$ but not with $\kappa = 2/3$, and 3 colluders with one shared mask stay caught while 5 do not (`tests/test_peer_reference.py`).
+
+**Shadow scoring.** `plus.shadow_reference` scores the same updates against a second reference and logs it without acting. Every run of the experiment logs both references, so they are compared on identical updates, free of the differences between training runs.
+
+**The experiment** (`configs/sweeps/acer_c10_peer.yaml`, prefix `x10_`, 24 runs on the Acer): the union screen without the rewind, at 15 clients, α = 0.1 and 0.5, with no attack and with 3 backdoor attackers, 3 seeds. One arm acts on the median and logs the peer scores; the other acts on the peer reference and logs the median scores. Predictions P22–P25 were written before the runs (`docs/PREDICTIONS.md`). Charts: `scripts/plot_phase7.py` writes `docs/figures/phase7_peer_paired.png` and `phase7_peer_outcomes.png`.
+
+**Results** (Acer, 3 seeds; per-seed values in `docs/results/phase7_peer.json`):
+
+| | Median reference (FedHEP-Guard's) | Peer reference |
+|---|---|---|
+| Attacker separation, α 0.1, same updates (AUROC, whole update) | 0.69 / 0.66 | 0.65 / 0.60 |
+| Attacker separation, α 0.5, same updates | 0.98 | 0.97–1.00 |
+| Honest isolated per run, no attack (α 0.1 / 0.5) | 0.3 / 4.0 | 0.7 / 7.0 |
+| Backdoor success, α 0.1 (seeds 123 / 42 / 7) | 0.3 / 12 / 22% | 35 / 21 / 24% |
+| Backdoor success, α 0.5 | 0.4 / 0.2 / 0.5% | 0.4 / 0.3 / **44%** |
+| Accuracy with no attack (α 0.1 / 0.5) | 60.40 / 47.58 | 60.22 / 46.37 |
+
+The two AUROC values in a cell come from the two arms (acting on the median, acting on the peer reference); both log both references.
+
+![Peer reference: both references on the same updates](../figures/phase7_peer_paired.png)
+
+![Peer reference: outcomes when acting on it](../figures/phase7_peer_outcomes.png)
+
+**Verdict.** P22 held only at α = 0.5. P23 was mixed. P24 and P25 were refuted: acting on the peer reference isolated more honest clients and let more backdoor in. It is dropped.
+
+**Why it failed (likely, not tested on its own):**
+- **A noisier yardstick.** With $\kappa = 1/3$ each client's reference is the median of only 5 peers, much noisier than the median of all 15. The extra noise outweighs the heterogeneity the peers remove.
+- **Arbitrary peers at α = 0.5.** Nearly every client holds nearly every class (about 667 images over 100 classes), so the Jaccard similarities are almost tied and the peers are close to arbitrary.
+- **The wrong diagnosis.** The honest isolations it targeted are mostly not "clients with unusual data". At α = 0.5 about half are whole parent groups, split off by the parent head inside the whole-update signal (chapter 8.2).
 

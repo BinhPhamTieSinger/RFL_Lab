@@ -114,7 +114,7 @@ The repository documentation is organized into the **research report** and **fou
 | Document | Purpose |
 |---|---|
 | [`docs/report/00_index.md`](docs/report/00_index.md) | Reading guide, research path, models at a glance, and the presenting kit (question to chart and table). |
-| [`docs/report/01_federated_learning.md`](docs/report/01_federated_learning.md) … [`08_configuration_reference.md`](docs/report/08_configuration_reference.md) | Chapters 1–8: FL and attacks, FedHEP, Defended FedHEP, FedHEP+, ideas that did not work, FedHEP-Guard, the canonical benchmark, every configuration key. |
+| [`docs/report/01_federated_learning.md`](docs/report/01_federated_learning.md) … [`10_configuration_reference.md`](docs/report/10_configuration_reference.md) | Chapters 1–10: FL and attacks, FedHEP, Defended FedHEP, FedHEP+, ideas that did not work, FedHEP-Guard (the model, its results, open problems), the canonical benchmark, every configuration key. |
 
 ### 1. Research Overview
 | Document | Purpose |
