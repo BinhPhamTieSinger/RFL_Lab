@@ -212,6 +212,8 @@ axes:
 | `g1__`, `c2__` | screening signals; ALIE puzzle | GPU | 5.3 |
 | `m6__` | backdoor recovery | Mac | 7.3 |
 | `x6__` | 100-round durability | Acer | 7.3 |
+| `g2__` | the ladder at D2 with the whole-model signals | GPU | 7.2 |
+| `c5__`, `c6__` | backdoor recovery (30 rounds) and 100-round durability | GPU | 7.3 |
 | `m7__` | stealth backdoor | Mac | 7.4 |
 | `x8_` | mis-specified $f$ | Acer | 7.5 |
 | `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 7.3 |
@@ -220,7 +222,7 @@ axes:
 | `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 8.3 (queued) |
 | `gg15_`, `gg30_`, `gg50_` | large grid | GPU | 7.6 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |
-| `bm_` | canonical benchmark | GPU | 7 |
+| `bm_` | canonical benchmark | GPU | 9 |
 | `par__` | device parity | all three | 1.3 |
 
 ## 10.13 What a run records

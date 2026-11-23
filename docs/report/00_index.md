@@ -8,8 +8,8 @@
 2. **The published defense never removes an attacker** and does nothing against a backdoor: 79% backdoor success, the same as no defense (chapter 3).
 3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4).
 4. **Several ideas failed:** checking groups first, classic robust rules (Median, Bulyan, FLAME, FLTrust), seven Phase 6 components, and the peer reference. Each failure shaped the next design (chapter 5).
-5. **FedHEP-Guard fixes failures 2 and 3 at D1 and failure 1 under strong skew.** Adaptive attackers are caught (9 of 9), the plain backdoor stays at 0.3% for 100 rounds, and it holds up best when the model is poisoned (chapters 6–7).
-6. **Still open:** under mild skew FedHEP-Guard isolates more honest clients than FedHEP+, mostly whole parent groups. A fix is being tested on the Acer, and the full benchmark runs on the GPU server (chapters 8–9).
+5. **FedHEP-Guard fixes failures 2 and 3, not failure 1.** Adaptive attackers are caught (9 of 9 at D1, 12 of 12 at D2), the plain backdoor stays at 0.3% for 100 rounds, and it holds up best when the model is poisoned (chapters 6–7).
+6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. Two causes are known; a fix for one is being tested on the Acer, and the full benchmark is queued on the GPU server (chapters 8–9).
 
 ![The research path](figures/diagrams/10_research_path.png)
 
@@ -36,15 +36,15 @@
 | FedHEP | FedAvg | three heads (root, parent, local), hierarchy | 47.8% at D1, 65.5% at α = 0.05 | no defense: sign flip −14 points |
 | Defended FedHEP | FedHEP | SCCF trust weights, trust ledger | most accurate under attack in Phase 2 | never removes anyone; backdoor 79% |
 | FedHEP+ | Defended FedHEP | robust z screen, permanent isolation, regrouping | sign flip +8.3, backdoor 79% → 21% | isolates unusual honest clients; blind to ALIE and Min-Max; backdoor stays |
-| **FedHEP-Guard** | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | adaptive attackers 9 of 9 caught; plain backdoor 0.3% over 100 rounds on every seed; best worst case under model poisoning in every GPU setting | under mild skew isolates honest clients, half of them whole parent groups; one late-caught stealth seed at 34%; D2 not yet run |
+| **FedHEP-Guard** | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | adaptive attackers 9 of 9 caught; plain backdoor 0.3% over 100 rounds on every seed; best worst case under model poisoning in every GPU setting | isolates honest clients, more with more clients (22 of 50 per run at 50 clients), half of them whole parent groups; one late-caught stealth seed at 34%; D2 not yet run |
 
 ## Did FedHEP-Guard fix FedHEP+'s failures?
 
 | FedHEP+ failure | Verdict | Evidence |
 |---|---|---|
-| 1. Honest but unusual clients isolated | **Fixed under strong skew; a new problem under mild skew** | α = 0.1: 1.7 per run against 7.7. α = 0.5: 4.3 and 14.7 against 2.7 and 4.3, mostly whole parent groups |
+| 1. Honest but unusual clients isolated | **Not fixed** | fewer than FedHEP+ only at 15 clients, α = 0.1 (1.7 per run against 7.7). Elsewhere more, growing with the number of clients: 14.7 against 4.3 at 30 clients (α = 0.5), 22.0 against 1.0 at 50 clients (α = 0.1) |
 | 2. Adaptive attackers not seen | **Fixed** | ALIE and Min-Max 9 of 9 caught against 0 of 9; stealth backdoor 0.2–0.5% against 56–75% |
-| 3. Backdoors that persist | **Fixed when caught early** | 0.3% over 100 rounds against 5–42% at 30 rounds; not at α = 0.1 or after a late catch |
+| 3. Backdoors that persist | **Fixed when caught early** | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); not at α = 0.1, at D2, or after a late catch |
 
 The full scorecard, with machines and costs, is [chapter 7.1](07_fedhep_guard_results.md).
 
@@ -68,8 +68,8 @@ Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/rep
 | How does it work? | `report/figures/diagrams/08_fedhep_guard_round.png`, `report/figures/guard_coverage.png` | 6.1 |
 | Why is each mechanism in the model? | "Why each part" tables | 2.2, 3.1, 4.1, 6.1 |
 | What did it fix from FedHEP+? | `figures/phase6_honest_isolation_summary.png`, `figures/phase6_guard_durability.png` | 7.1 |
-| Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png` | 7.2 |
-| Does it remove a backdoor, over 100 rounds? | `figures/phase6_rewind.png`, `figures/phase6_guard_durability.png` | 7.3 |
+| Which part fixes what? | `figures/phase6_d1.png`, `figures/phase6_d2.png`, `figures/phase6_gpu_d2.png` | 7.2 |
+| Does it remove a backdoor, over 100 rounds? | `figures/phase6_rewind.png`, `figures/phase6_guard_durability.png`, `figures/phase6_gpu_durability.png`, `figures/phase6_gpu_rewind.png` | 7.3 |
 | Does it survive an adaptive backdoor? | `figures/phase6_stealth.png` | 7.4 |
 | What if the attacker count is unknown? | `figures/phase6_fmis.png` | 7.5 |
 | Does it hold at 30 clients and under strong skew? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` | 7.6 |

@@ -90,6 +90,39 @@ def fig_d2(runs: dict) -> None:
     pr.save(fig, "phase6_d2.png")
 
 
+def fig_gpu_d2(runs: dict) -> None:
+    """The ladder at D2 on the GPU server (gpu_c4_d2, prefix g2): accuracy per attack, backdoor success per seed,
+    and honest clients isolated per run with no attack."""
+    attacks = [("clean", "No attack"), ("sign4", "Sign flip"), ("alie4", "ALIE"), ("minmax4", "Min-Max"),
+               ("backdoor4", "Backdoor")]
+    methods = [("g2__fedhep", "FedHEP (no defense)", "#b0b0b0"), ("g2__defended", "Defended FedHEP", "#6e6e6e"),
+               ("g2__plus", "FedHEP+", pr.SLOT[0]), ("g2__l0", "L0", pr.SLOT[1]),
+               ("g2__r3g8", "R3 gate 8, root head", pr.SLOT[2]), ("g2__r3w", "R3, whole update", pr.SLOT[3]),
+               ("g2__r3c", "R3, critical layers", "#7a3fb8")]
+    if not all(len(_runs(runs, f"{p}__{a}")) == 3 for p, _, _ in methods for a, _ in attacks):
+        return
+    fig, (ax, bx, cx) = plt.subplots(1, 3, figsize=(17, 4.4), gridspec_kw={"width_ratios": [2.6, 1, 1]})
+    _grouped(ax, runs, methods, attacks, 0.11)
+    ax.set_ylim(38, 60)
+    ax.set_title("D2 on the GPU server: α = 0.2, 20 clients, 4 attackers (mean ± sd, 3 seeds)", fontsize=10)
+    for j, (prefix, _label, color) in enumerate(methods):
+        vals = [m["history"][-1]["asr"] for m in _runs(runs, f"{prefix}__backdoor4")]
+        bx.bar(j, sum(vals) / 3, 0.7, color=color)
+        bx.scatter([j] * 3, vals, color=pr.INK, s=9, zorder=3)
+        hon = [_false(m) for m in _runs(runs, f"{prefix}__clean")]
+        cx.bar(j, sum(hon) / 3, 0.7, color=color)
+        cx.scatter([j] * 3, hon, color=pr.INK, s=9, zorder=3)
+        cx.text(j, sum(hon) / 3 + 0.3, f"{sum(hon) / 3:.1f}", ha="center", fontsize=7.5)
+    for a, t, y in ((bx, "backdoor success (%), dots = seeds", None), (cx, "honest isolated per run, no attack",
+                                                                       None)):
+        a.set_xticks(range(len(methods)), [m[1] for m in methods], rotation=60, ha="right", fontsize=7.5)
+        a.set_title(t, fontsize=10)
+    bx.set_ylim(0, 60)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.legend(*ax.get_legend_handles_labels(), ncols=7, fontsize=8.5, loc="lower center", frameon=False)
+    pr.save(fig, "phase6_gpu_d2.png")
+
+
 def fig_backdoor_stop(runs: dict) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(15, 3.9), sharey=True)
     series = [("n20__fedhep__backdoor5", "attackers poison all 30 rounds", "#4a4a4a"),
@@ -155,22 +188,24 @@ def fig_backdoor_heads(runs: dict) -> None:
     pr.save(fig, "phase6_backdoor_heads")
 
 
-def fig_durability(runs: dict) -> None:
-    """100 rounds, backdoor stopped after round 50 (acer_c6_durability): backdoor success over time per method,
-    and with the depth-exit guard at prediction time (dashed). Whatever x6 runs exist are drawn."""
-    methods = [("x6__fedhep", "FedHEP (no defense)", "#6b6b6b"), ("x6__l0", "L0 alone", pr.SLOT[1]),
-               ("x6__plus", "FedHEP+ (isolates early)", pr.SLOT[0]), ("x6__r3g8", "R3, gate 8", pr.SLOT[2]),
-               ("x6__r3_tr", "R3 + rewind", pr.SLOT[3]), ("x6__r3w", "R3 whole-update", "#b48ad8"),
-               ("x6__r3w_tr", "R3 whole-update + rewind", "#7a3fb8")]
+def fig_durability(runs: dict, prefix: str = "x6", machine: str = "Acer",
+                   out: str = "phase6_durability.png") -> None:
+    """100 rounds, backdoor stopped after round 50 (acer_c6_durability as x6, gpu_c6_durability as c6): backdoor
+    success over time per method, and with the depth-exit guard at prediction time (dashed). Whatever runs exist
+    are drawn."""
+    methods = [(f"{prefix}__fedhep", "FedHEP (no defense)", "#6b6b6b"), (f"{prefix}__l0", "L0 alone", pr.SLOT[1]),
+               (f"{prefix}__plus", "FedHEP+ (isolates early)", pr.SLOT[0]), (f"{prefix}__r3g8", "R3, gate 8", pr.SLOT[2]),
+               (f"{prefix}__r3_tr", "R3 + rewind", pr.SLOT[3]), (f"{prefix}__r3w", "R3 whole-update", "#b48ad8"),
+               (f"{prefix}__r3w_tr", "R3 whole-update + rewind", "#7a3fb8")]
     fig, ax = plt.subplots(figsize=(9, 4.2))
-    for prefix, label, color in methods:
-        done = [m for m in runs.get(prefix, []) if m.get("final")]
+    for name, label, color in methods:
+        done = [m for m in runs.get(name, []) if m.get("final")]
         if not done:
             continue
         rounds = [r["round"] for r in done[0]["history"]]
         mean = [sum(m["history"][i]["asr"] for m in done) / len(done) for i in range(len(rounds))]
         ax.plot(rounds, mean, color=color, label=f"{label} (n={len(done)})")
-        if all(m["history"][-1].get("guarded") for m in done) and prefix != "x6__plus":
+        if all(m["history"][-1].get("guarded") for m in done) and not name.endswith("__plus"):
             guard = [sum(m["history"][i]["guarded"]["asr"] for m in done) / len(done) for i in range(len(rounds))]
             ax.plot(rounds, guard, color=color, linestyle="--", linewidth=1.4, label=f"{label} + exit guard")
     ax.axvline(50, color=pr.INK2, linewidth=1, linestyle=":")
@@ -178,16 +213,17 @@ def fig_durability(runs: dict) -> None:
     ax.set_xlabel("round")
     ax.set_ylabel("backdoor success (%)")
     ax.set_ylim(0, 100)
-    ax.set_title("A backdoor outlives its attackers unless they are caught early (D1, 3 attackers, Acer)")
+    ax.set_title(f"A backdoor outlives its attackers unless they are caught early (D1, 3 attackers, {machine})")
     ax.legend(fontsize=8, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16))
-    pr.save(fig, "phase6_durability.png")
+    pr.save(fig, out)
 
 
-def fig_rewind(runs: dict) -> None:
-    """Per seed, 100 rounds (acer_c6_durability): does rewinding the trunk and root head when an attacker is
-    isolated remove a backdoor that got in before the catch? Solid: no rewind; dashed: rewind."""
-    panels = [("root-head signal (R3, gate 8)", "x6__r3g8", "x6__r3_tr"),
-              ("whole-update signal (R3)", "x6__r3w", "x6__r3w_tr")]
+def fig_rewind(runs: dict, prefix: str = "x6", machine: str = "Acer", out: str = "phase6_rewind.png") -> None:
+    """Per seed, 100 rounds (acer_c6_durability as x6, gpu_c6_durability as c6): does rewinding the trunk and root
+    head when an attacker is isolated remove a backdoor that got in before the catch? Solid: no rewind; dashed:
+    rewind."""
+    panels = [("root-head signal (R3, gate 8)", f"{prefix}__r3g8", f"{prefix}__r3_tr"),
+              ("whole-update signal (R3)", f"{prefix}__r3w", f"{prefix}__r3w_tr")]
     if not all(len(_runs(runs, n)) == 3 for _, a, b in panels for n in (a, b)):
         return
     colors = dict(zip(SEEDS, (pr.SLOT[0], pr.SLOT[1], pr.SLOT[2]), strict=True))
@@ -205,10 +241,11 @@ def fig_rewind(runs: dict) -> None:
         ax.set_xlabel("round")
         ax.set_ylim(0, 100)
     axes[0].set_ylabel("backdoor success on honest clients (%)")
-    fig.suptitle("Rewind on isolation, 100 rounds (D1, 3 backdoor attackers until round 50, Acer)", fontsize=10.5)
+    fig.suptitle(f"Rewind on isolation, 100 rounds (D1, 3 backdoor attackers until round 50, {machine})",
+                 fontsize=10.5)
     fig.tight_layout(rect=(0, 0.1, 1, 1))
     fig.legend(*axes[1].get_legend_handles_labels(), ncols=3, fontsize=8.5, loc="lower center", frameon=False)
-    pr.save(fig, "phase6_rewind.png")
+    pr.save(fig, out)
 
 
 def fig_stealth(runs: dict) -> None:
@@ -427,10 +464,12 @@ def fig_honest_isolation_summary(runs: dict) -> None:
               ("GPU\n15 clients, α 0.5", "gg15_a05__clean__plus", "gg15_a05__clean__r3", "gg15_a05__clean__r3wc"),
               ("GPU\n15 clients, α 0.1", "gg15_a01__clean__plus", "gg15_a01__clean__r3", "gg15_a01__clean__r3wc"),
               ("GPU\n30 clients, α 0.5", "gg30_a05__clean__plus", "gg30_a05__clean__r3", "gg30_a05__clean__r3wc"),
-              ("GPU\n30 clients, α 0.1", "gg30_a01__clean__plus", "gg30_a01__clean__r3", "gg30_a01__clean__r3wc")]
+              ("GPU\n30 clients, α 0.1", "gg30_a01__clean__plus", "gg30_a01__clean__r3", "gg30_a01__clean__r3wc"),
+              ("GPU\n50 clients, α 0.1", "gg50_a01__clean__plus", "gg50_a01__clean__r3", "gg50_a01__clean__r3wc"),
+              ("GPU\n20 clients, α 0.2\n(D2)", "g2__plus__clean", "g2__r3g8__clean", None)]
     models = [("FedHEP+", pr.SLOT[1]), ("R3 gate 8, root head", pr.SLOT[2]),
               ("FedHEP-Guard without rewind (union screen)", pr.SLOT[3])]
-    fig, ax = plt.subplots(figsize=(13, 4.4))
+    fig, ax = plt.subplots(figsize=(15, 4.6))
     w = 0.26
     for i, (label, *names) in enumerate(groups):
         for j, name in enumerate(names):
@@ -446,8 +485,8 @@ def fig_honest_isolation_summary(runs: dict) -> None:
             ax.text(x, mu + 0.4, f"{mu:.1f}", ha="center", fontsize=7.5)
     ax.set_xticks(range(len(groups)), [g[0] for g in groups], fontsize=8.5)
     ax.set_ylabel("honest clients isolated per run\n(no attack, 30 rounds; dots = seeds)")
-    ax.set_title("Honest isolations depend on the signal and the setting: the gate fixed them for the root head, "
-                 "not for the union screen", fontsize=10.5)
+    ax.set_title("Honest isolations depend on the signal and the number of clients: the gate fixed them for the "
+                 "root head, not for the union screen", fontsize=10.5)
     ax.legend(fontsize=8, loc="upper left")
     fig.tight_layout()
     pr.save(fig, "phase6_honest_isolation_summary.png")
@@ -666,6 +705,9 @@ def main() -> None:
     fig_backdoor_heads(runs)
     fig_durability(runs)
     fig_rewind(runs)
+    fig_gpu_d2(runs)
+    fig_durability(runs, "c6", "GPU server", "phase6_gpu_durability.png")
+    fig_rewind(runs, "c6", "GPU server", "phase6_gpu_rewind.png")
     fig_stealth(runs)
     fig_fmis(runs)
     fig_gap_gate_tradeoff(runs)

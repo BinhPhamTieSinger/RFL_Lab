@@ -1442,3 +1442,48 @@ All 42 runs synced from the Acer (XPU): `acer_c9_final_durability` (18 runs, 100
 | `acer_c12_shared_durability.yaml` | 6 | `x12_` | 6 h | FedHEP-Guard with the shared signal, 100 rounds, both backdoors |
 
 Controls already on the Acer: `x10_*__r3wc_shp`, `x8_f3__*__r3wc` and `x9__*__r3wc_tr`.
+
+## 2026-11-23 · GPU server: D2 ladder, recovery and 100-round durability on CUDA; the 30-client grid complete; first 50-client runs
+
+**Runs.** Merged from branch `pc`: `gpu_c4_d2` (`g2__`, 120 runs), `gpu_c5_recovery` (`c5__`, 36), `gpu_c6_durability` (`c6__`, 21, 100 rounds), the last 8 cells of `gg30_a05` (complete: 312) and 60 finished runs of `gg50_a01` (no attack and 5 sign flippers complete, ALIE partial). Large grid: 1,308 of 1,872 runs. The job was resubmitted on 2026-11-23 for the rest of the 50-client part. All CUDA, deterministic, 3 seeds.
+
+**D2 on CUDA (report 7.2).**
+- Honest isolations with no attack: FedHEP+ 8.7 per run; R3 gate 8 1.7, gate 12 1.0; whole update 1.7; critical layers 2.3. Matches the Mac's D2 (FedHEP+ 9.0, R3 1.0).
+- ALIE and Min-Max: whole update and critical layers catch 12 of 12 each; R3 root head 9 and 12; FedHEP+ 0 and 0.
+- Backdoor: 35–48% for every model; the whole update stops it on one seed (4.7%). The union screen was not in this batch.
+
+![D2 ladder, GPU](figures/phase6_gpu_d2.png)
+
+**Recovery on CUDA (report 7.3).** 30 rounds, backdoor every round, seeds 123 / 42 / 7:
+- Root head: 32 / 70 / 68% without rewind (`g1__r3`), 18 / 63 / 47% with trunk-and-root rewind. Attackers caught in rounds 12–21. P8 not met again.
+- Whole update: 0.6 / 71 / 0.6% without rewind, the same with any rewind. It catches by rounds 3–4 or not at all, so there is nothing for the rewind to undo.
+
+**100 rounds on CUDA (report 7.3).** Backdoor until round 50, success at round 100, seeds 123 / 42 / 7:
+
+| Model | Success | Mean | Accuracy | Honest isolated (3 runs) |
+|---|---|---|---|---|
+| FedHEP | 68 / 72 / 78 | 72.9 | 43.93 | 0 |
+| L0 | 64 / 64 / 75 | 67.7 | 44.55 | 0 |
+| FedHEP+ | 1.6 / 11 / 29 | 13.9 | 44.63 | 25 |
+| R3 root head | 7 / 71 / 49 | 42.3 | 43.33 | 1 |
+| R3 root head + rewind | 4 / 70 / 34 | 36.1 | 43.54 | 0 |
+| R3 whole update | 0.5 / 52 / 0.7 | 17.8 | 42.87 | 15 |
+| R3 whole update + rewind | 0.6 / 6.5 / 0.5 | 2.5 | 42.19 | 11 |
+
+![100 rounds, GPU](figures/phase6_gpu_durability.png)
+
+![Rewind per seed, GPU](figures/phase6_gpu_rewind.png)
+
+- Same ranking as the Acer. Seed 42's whole-update runs are identical until the first rewind (triggered by an honest isolation) and then part ways; the rewind run caught all attackers in round 20, the other caught one in round 42.
+
+**Grid updates (report 7.6).**
+- 30 clients, α = 0.5, 9 backdoor attackers, union screen: 1.2 / 11.3 / 3.5% (mean 5.3%), not the 1.2% reported from one seed on 2026-11-21. All 9 attackers caught by rounds 3–8.
+- 50 clients, α = 0.1, no attack: honest clients isolated per run, FedHEP+ 1.0, R3 root head 6.0 (all on seed 42), whole update 16.7, **union screen 22.0** (25 / 21 / 20 by seed, first isolations in rounds 3–6). 44% of the union screen's are whole parent groups. Accuracy: union 49.08, FedHEP+ 49.68, FedHEP 50.64, FLAME 39.92.
+
+![Honest isolations by setting](figures/phase6_honest_isolation_summary.png)
+
+**Correction.** The scorecard of 2026-11-23 (report 7.1) said FedHEP-Guard fixes honest isolations "under strong skew". That rested on the 15-client, α = 0.1 setting only. At 30 clients (α = 0.1) the union screen isolates 7.0 per run against FedHEP+'s 2.3, and at 50 clients 22.0 against 1.0. The scorecard, index and chapter 8 now say failure 1 is not fixed. At α = 0.1 the union screen's honest isolations at 15 and 30 clients are single clients, not groups, so cause 1 (the gap gate opening by chance, 81% of rounds at 50 clients) needs a fix of its own; the shared signal (Phase 8) only addresses cause 2.
+
+With the 30-client grid complete, the report 8.2 figures were redrawn: the backdoor catches' median gap ratio at 30 clients is 16.1 (was 14.1 on 2026-11-21), and the whole update's share of whole-group honest isolations 74% (was 73%).
+
+Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients) have outcomes in `PREDICTIONS.md`.

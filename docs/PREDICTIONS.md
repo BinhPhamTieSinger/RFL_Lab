@@ -209,4 +209,9 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P23: paired, no attack, the peer reference halves honest client-rounds with \|z\| > 2.5 at α 0.1, less than a third change at α 0.5 | **Mixed:** at α 0.1 0.035 → 0.005 in the arm acting on the median (held), but 0.080 → 0.067 in the arm acting on the peer reference (refuted); at α 0.5 −24% and −37% | `x10_*__clean__*` |
 | P24: acting on the peer reference halves honest isolations and keeps α 0.5 backdoor under 5% | **Refuted:** honest isolations rose (α 0.5: 4.0 → 7.0 per run; α 0.1: 0.3 → 0.7); α 0.5 backdoor 0.4 / 0.3 / **43.8%** | `x10_*__r3wc_peer` |
 | P25: acting on the peer reference lowers α 0.1 backdoor by 10 points | **Refuted:** it rose, 11.3% → 26.9% | `x10_a01__backdoor3__*` |
-
+| P2 at D2 (CUDA): whole update and critical layers below 25% | **Refuted:** whole update 47 / 40 / 4.7% (30%), critical layers 45%; at D2 no rung tested gets below 35% on average | `g2__r3w`, `g2__r3c` |
+| P3 at D2 (CUDA): those signals bring back 2–5 honest isolations per run | **About held:** 1.7 (whole update) and 2.3 (critical layers), against FedHEP+'s 8.7 | `g2__*__clean` |
+| P8 on CUDA: rewind brings success below 15% | **Not met:** root head 57% → 42–45%; whole update unchanged (catches by round 4 or never) | `c5__*__backdoor3`, `g1__r3*__backdoor3` |
+| P9 on CUDA: trunk-only rewind leaves success above 30% | **Held:** 45% (trunk) against 42% (trunk and root head) | `c5__r3_trunk`, `c5__r3_tr` |
+| P13 on CUDA: root-head gated screen above 80% by round 100 | **Refuted:** 7 / 71 / 49% | `c6__r3g8` |
+| P18 at 30 and 50 clients: R3 isolates at most half of FedHEP+'s honest clients at α 0.1 | **Refuted:** R3 5.0 against 2.3 (30 clients) and 6.0 against 1.0 (50 clients); FedHEP+ isolates fewer at α 0.1 than at α 0.5 once there are 30 clients | `gg30_a01__clean`, `gg50_a01__clean` |

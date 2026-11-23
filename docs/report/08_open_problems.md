@@ -6,10 +6,10 @@ What FedHEP-Guard does not solve yet, why, and what is being tested. Each proble
 
 | # | Problem | Evidence | Status |
 |---|---|---|---|
-| 1 | **Honest clients isolated under mild skew** | 4.3 per run at 15 clients and 14.7 at 30 (α = 0.5, GPU), against FedHEP+'s 2.7 and 4.3; about half are whole parent groups | cause found (8.2); the shared signal is being tested (8.3) |
+| 1 | **Honest clients isolated, more with more clients** | per run with no attack (GPU): 4.3 and 14.7 at 15 and 30 clients (α = 0.5); 1.7, 7.0 and 22.0 at 15, 30 and 50 clients (α = 0.1). FedHEP+: 1.0–7.7. About half are whole parent groups | two causes found (8.2); the shared signal, against cause 2, is being tested (8.3); cause 1 has no fix yet |
 | 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (7.3) | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
-| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (38–47%); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 9) |
-| 4 | **A third of the clients attacking with a backdoor** | 5 of 15: 12% (GPU) and one seed at 20% (Mac); FLAME holds | open |
+| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (35–48% on both machines; the whole update stops it on one seed of three); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 9) |
+| 4 | **A third of the clients attacking with a backdoor** | 5 of 15: 12% (GPU) and one seed at 20% (Mac); 9 of 30: 5.3% (GPU; one seed at 11%); FLAME holds | open |
 | 5 | **Removing ALIE attackers costs accuracy** | catching all 9 ALIE attackers leaves the union screen 2.5 points below FedHEP+, which never catches them (GPU); fixing $f$ made it worse (5.3f) | open |
 | 6 | **Untested attacks** | IPM and delayed-onset attacks from the team's `oreh` code; colluders that report one class mask | not scheduled |
 
@@ -17,10 +17,17 @@ What FedHEP-Guard does not solve yet, why, and what is being tested. Each proble
 
 ![Honest isolations by setting and signal](../figures/phase6_honest_isolation_summary.png)
 
-- **The gap gate fixed them for the root-head signal:** 1.0 per run at D1 and D2 on the Mac (FedHEP+: 3.0 and 9.0), and 0.7–1.3 in three of four GPU settings.
-- **The union screen isolates more under mild skew:** at α = 0.5, 4.3 per run at 15 clients and 14.7 at 30, above FedHEP+.
-- **Under strong skew it isolates fewer:** at α = 0.1 and 15 clients, 1.7 against FedHEP+'s 7.7.
-- **The D1 mean of 4.3 comes mostly from one seed** (10, 3 and 0 honest clients isolated).
+- **The gap gate fixed them for the root-head signal:** 1.0 per run at D1 and D2 on the Mac (FedHEP+: 3.0 and 9.0), 1.7 at D2 on the GPU (FedHEP+: 8.7), and 0.7–1.3 in three of the GPU grid's settings. It is less reliable at α = 0.1 with many clients: 5.0 at 30 clients and 6.0 at 50 (all 18 of the 50-client ones on one seed).
+- **The union screen isolates more honest clients than FedHEP+ in every GPU grid setting but one,** and the count grows with the number of clients:
+
+| Clients | α = 0.5: FedHEP+ / union screen | α = 0.1: FedHEP+ / union screen |
+|---|---|---|
+| 15 | 2.7 / 4.3 | 7.7 / **1.7** |
+| 30 | 4.3 / 14.7 | 2.3 / 7.0 |
+| 50 | running | 1.0 / **22.0** |
+
+- **The one exception, 15 clients at α = 0.1,** is where FedHEP+ is at its worst. It was the basis of an earlier claim that FedHEP-Guard fixes honest isolations under strong skew; the larger settings show it does not.
+- **The D1 mean of 4.3 comes mostly from one seed** (10, 3 and 0 honest clients isolated). At 50 clients it is every seed (25, 21 and 20), starting in rounds 3–6.
 
 There are two causes, and both act through the whole-update half of signal [1].
 
@@ -34,9 +41,9 @@ There are two causes, and both act through the whole-update half of signal [1].
 | 30 | **51%** | 8.1 | 19.2 |
 | 50 | **81%** | 12.1 | 27.6 |
 
-The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, the whole-update gate opened in 44% of rounds and the critical-layer gate in 43%, against 32% and 14% at 15 clients. The union acts when either gate is open, so it blames someone in most rounds.
+The logged gap ratios of the no-attack runs agree. At 30 clients and α = 0.5, the whole-update gate opened in 44% of rounds and the critical-layer gate in 43%, against 32% and 14% at 15 clients. The union acts when either gate is open, so it blames someone in most rounds. The 50-client runs confirm the prediction of this table: at 81% chance of an open gate per signal, the union screen isolates 22 honest clients per run at α = 0.1.
 
-**A larger gate is not the fix.** The obvious repair is a threshold that grows with the number of clients, $\gamma(n)$, for example the 95th percentile of the gap ratio in honest rounds (14 at 15 clients, 21 at 30). The logs show what it would cost. In the rounds where the largest gap split off exactly the backdoor attackers, the gap ratio was only 8.6 (median, 15 clients) and 14.1 (30 clients), inside the honest range. A gate at the honest 95th percentile would have kept about a quarter of those catches. Sign flip, ALIE and Min-Max split off at ratios of 60–130 (median) and are not at risk.
+**A larger gate is not the fix.** The obvious repair is a threshold that grows with the number of clients, $\gamma(n)$, for example the 95th percentile of the gap ratio in honest rounds (14 at 15 clients, 21 at 30). The logs show what it would cost. In the rounds where the largest gap split off exactly the backdoor attackers, the gap ratio was only 8.6 (median, 15 clients) and 16.1 (30 clients), inside the honest range. A gate at the honest 95th percentile would have kept 16% (15 clients) and 27% (30 clients) of those catches. Sign flip, ALIE and Min-Max split off at ratios of 60–130 (median) and are not at risk.
 
 ![Gap ratios: honest rounds, backdoor catches and model-poisoning catches](../figures/phase6_gap_gate_tradeoff.png)
 
@@ -51,12 +58,13 @@ So the gap ratio cannot tell an honest outlier from a backdoor attacker: both st
 
 ![Honest clients isolated a whole parent group at a time](../figures/phase6_group_isolations.png)
 
-- **Which screens do it:** union screen 51% (15 clients) and 56% (30 clients); whole update alone 53% and 73%; FedHEP+ 2–3%; root head 0% (GPU grid, every attack pooled).
+- **Which screens do it:** union screen 51% (15 clients) and 56% (30 clients); whole update alone 53% and 74%; FedHEP+ 2–3%; root head 0% (GPU grid, every attack pooled).
 - **On the Acer:** FedHEP-Guard's three mass isolations in the 100-round runs (rounds 13, 14 and 16) were exactly parent group 2, mostly group 2, and exactly group 1.
 - **The cause.** The whole-update signal is every weight of the update, the personal heads included. The parent head $W_p$ is shared by the members of one group and differs between groups by design.
   - As training goes on, a group's updates drift away from the others together: in the example, the whole-update gap ratio grows from about 3 to about 20 over rounds 9–13, and the group's z-scores fall together until all pass the cut.
   - The critical-layer signal already leaves the personal heads out, and its gap ratio stays low in the same rounds.
 - **Why mild skew is worse.** At α = 0.5 the clients' own data differ little, so the group direction dominates the differences between updates.
+- **Under strong skew it depends on the number of clients.** At α = 0.1 none of the union screen's honest isolations at 15 and 30 clients were whole groups: they were single clients, which points to cause 1. At 50 clients 44% were whole groups (29 of 66, no attack). So at 50 clients both causes act, and fixing cause 2 alone would remove about half.
 
 
 **What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (5.4).
@@ -94,9 +102,9 @@ Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are
 
 ## 8.4 What comes next
 
-- **GPU server, when the lab reopens:**
-  - the canonical benchmark (chapter 9), with the full FedHEP-Guard under every attack at D1 and D2;
-  - the stealth study at scale (`gpu_c7_stealth`);
-  - the 50-client part of the grid (P19).
+- **GPU server:**
+  - now running: the rest of the 50-client grid (P14, P19), about one day;
+  - queued next: the canonical benchmark (chapter 9), with the full FedHEP-Guard under every attack at D1 and D2, then the stealth study at scale (`gpu_c7_stealth`).
 - **Acer:** Phase 8 results (P26–P29). If they hold, the shared union becomes FedHEP-Guard's signal [1], and the benchmark's `guard` model is re-run with it.
+- **Cause 1 needs its own fix.** At 50 clients half the honest isolations are single clients flagged because the gap gate opens by chance. A gate that scales with $n$ costs backdoor catches (above). Candidates to test once Phase 8 has reported: requiring both signals to agree when $n$ is large, or a gate on the gap's size relative to the score scale rather than to the median gap.
 - **After that:** the open problems 3–6 above, in that order.
