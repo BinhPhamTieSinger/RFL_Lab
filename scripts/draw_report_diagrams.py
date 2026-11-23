@@ -378,6 +378,24 @@ def dropped_rewind_all() -> str:
         DROPPED_LEGEND, STYLE])
 
 
+def shared_signal() -> str:
+    return "\n".join([
+        "flowchart LR",
+        node("UP", ["client $i$'s update $\\Delta_i$ (weights; BatchNorm buffers left out)"], "same"),
+        node("TR", ["trunk and root head", "shared by every client"], "same"),
+        node("PH", ["parent head $W_p$", "shared inside a parent group only"], "gone"),
+        node("LH", ["local head $W_l$", "one client only"], "gone"),
+        node("W", ["whole update (FedHEP-Guard now)",
+                   "$$v_i = \\Delta_i$$", "groups split by their parent heads"], "changed"),
+        node("S", ["shared signal (Phase 8)", "$$v_i = \\Delta_i \\text{ restricted to trunk and } W_r$$"], "new"),
+        node("U", ["union with the critical layers", "[1] of FedHEP-Guard, rest unchanged"], "same"),
+        edge("UP", "TR"), edge("UP", "PH"), edge("UP", "LH"),
+        edge("TR", "S"), edge("TR", "W"), edge("PH", "W"), edge("LH", "W"),
+        edge("S", "U", "tested"), edge("W", "U", "now", dotted=True),
+        legend(("unchanged", "same"), ("Phase 8: what is scored", "new"), ("FedHEP-Guard's whole-update signal", "changed"),
+               ("left out of the shared signal", "gone")), STYLE])
+
+
 def research_path() -> str:
     return "\n".join([
         "flowchart LR",
@@ -405,7 +423,7 @@ DIAGRAMS = {
     "11_dropped_momentum": dropped_momentum, "12_dropped_output_signals": dropped_output_signals,
     "13_dropped_sign_align": dropped_sign_align, "14_dropped_critical": dropped_critical,
     "15_dropped_head_agreement": dropped_head_agreement, "16_dropped_f_fixed": dropped_f_fixed,
-    "17_dropped_rewind_all": dropped_rewind_all,
+    "17_dropped_rewind_all": dropped_rewind_all, "18_shared_signal": shared_signal,
 }
 
 

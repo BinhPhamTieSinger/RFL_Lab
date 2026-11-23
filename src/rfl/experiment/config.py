@@ -69,6 +69,8 @@ class PlusConfig:
                                          # | "critical" (most disputed layers) | "sign_align" (AlignIns MPSA)
                                          # | "probe_logits" | "head_gap" (outputs on a server probe set)
                                          # | "weights_critical" (either screen can flag: lower of the two z)
+                                         # | "shared" (whole update without the personal heads, Phase 8)
+                                         # | "shared_critical" (union of "shared" and "critical")
     probe_size: int = 200                # probe images for the output signals (FLTrust-style root set)
     critical_k: int = 5                  # "critical" signal: most disputed shared layers screened per round
     sign_topk: float = 0.3               # "sign_align" signal: share of largest coordinates compared (AlignIns)

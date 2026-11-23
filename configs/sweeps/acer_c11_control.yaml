@@ -1,0 +1,18 @@
+# Acer (XPU), Phase 8 control: FedHEP-Guard's union screen without rewind (whole update + critical layers) under
+# Min-Max at alpha 0.5, the one condition of acer_c11_shared.yaml with no union-screen run on the Acer yet.
+# 3 runs of 30 rounds, about 1 hour.
+seeds: [42, 123, 7]
+common:
+  data.num_clients: 15
+  data.alpha: 0.5
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  plus.global_f: 3
+  attack.kind: min_max
+  attack.count: 3
+axes:
+  - x11_a05__minmax3: {}
+  - r3wc: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+           plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+           plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical}

@@ -1,4 +1,4 @@
-# 5. Ideas that did not work (Phases 4, 5 and parts of 6)
+# 5. Ideas that did not work (Phases 4, 5, parts of 6, and 7)
 
 Each idea here was a hypothesis with a pass criterion set before the runs. None met its criterion. They are reported in full because each one explains part of FedHEP-Guard's design ([chapter 6](06_fedhep_guard.md)).
 
@@ -12,6 +12,7 @@ Each idea here was a hypothesis with a pass criterion set before the runs. None 
 | 6 | Head-agreement inference | personal heads are trained only on the client's own clean data, so they might not carry the backdoor | personal heads overrule the ensemble when they agree against it | removes only 1–13 points of backdoor success on average: the parent head carries it too |
 | 6 | Holding f fixed | R3 lost 1.8 points under ALIE; lowering $f$ after exclusions might let ALIE back into the trimmed mean | L0 keeps assuming $f$ attackers after the screen removed them | −1.1 points under ALIE: it made things worse |
 | 6 | Rewinding every shared weight | the personal heads might also hold part of the backdoor | rewind personal heads too | costs 0.6 points against rewinding the trunk and root head, for no gain |
+| 7 | Peer reference | an honest client with unusual classes looks like an attacker against one global median; BoBa compares clients only with similar ones | each client scored against the median of the third of clients with the most similar class sets | separated attackers worse at α 0.1, and doubled honest isolations at α 0.5; one α 0.5 seed let 44% of the backdoor in |
 
 ## 5.1 Phase 4: check groups first, then their members
 
@@ -312,3 +313,14 @@ $$w \leftarrow M \odot w_{t^\star} + (1 - M) \odot w, \qquad M_j = \begin{cases}
 | everything | 45.25 | 0.5 / 0.3 / 0.3% | 46.46 | 74 / 16 / 27% |
 
 **Why it was dropped.** With the whole-update screen it costs 0.6 points against rewinding the trunk and root head, and gains nothing: the attackers are caught by rounds 3–6, so there is little backdoor to remove. With the root-head screen it lowers success by 1–2 points on the seeds where an attacker is caught, at no accuracy cost, but that screen is not the one FedHEP-Guard uses. Rewinding the personal heads also discards the personalization learned since $t^\star$, which the attackers barely touch. With the trunk and root head rewound, the parent head's share of the backdoor plausibly has no trigger features left to respond to.
+
+## 5.4 Phase 7: the peer reference
+
+Each client was scored against the coordinate median of the third of clients whose class sets are most like its own, instead of the global median. Both references were logged on the same updates. The method, results and reasons it failed are in [chapter 6.15](06_fedhep_guard.md).
+
+- **On identical updates** it separated backdoor attackers worse at α 0.1 (AUROC 0.60–0.65 against 0.66–0.69).
+- **Acting on it** raised honest isolations (4.0 → 7.0 per run at α 0.5) and backdoor success (11 → 27% at α 0.1).
+- **What carried forward:** most honest isolations at α 0.5 are not unusual clients but whole parent groups (6.16).
+
+![Peer reference outcomes](../figures/phase7_peer_outcomes.png)
+

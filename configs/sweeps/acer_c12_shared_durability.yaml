@@ -1,0 +1,19 @@
+# Acer (XPU), Phase 8 over 100 rounds: FedHEP-Guard with the shared signal (union of the whole update without the
+# personal heads and the critical layers, plus the trunk-and-root rewind) against the plain and the stealth
+# backdoor, attackers stopping at round 50. Same setting as acer_c9_final_durability.yaml, whose x9__*__r3wc_tr
+# runs (FedHEP-Guard with the whole-update signal) are the control. 2 x 3 = 6 runs of 100 rounds, about 6 hours.
+seeds: [42, 123, 7]
+common:
+  data.alpha: 0.5
+  run.rounds: 100
+  run.eval_every: 5
+  fedhep.exit_guard: true
+  attack.count: 3
+  attack.stop_round: 50
+axes:
+  - x12__backdoor3: {attack.kind: backdoor}
+    x12__stealth3: {attack.kind: stealth_backdoor}
+  - r3sc_tr: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+              plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+              plus.global_rule: arc_nnm_tm, plus.global_f: 3, plus.gap_gate: 8, plus.signal: shared_critical,
+              plus.rewind: trunk_root}

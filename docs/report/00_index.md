@@ -14,8 +14,8 @@
 | 2 | [FedHEP (Phase 1)](02_fedhep.md) | What is FedHEP, what does it change in FedAvg, and did we reproduce it? |
 | 3 | [Defended FedHEP (Phases 1c, 2)](03_defended_fedhep.md) | What does the published defense add, and where does it fail? |
 | 4 | [FedHEP+ (Phase 3 and follow-up)](04_fedhep_plus.md) | Our first improvement: what it changes, what it fixed, where it breaks |
-| 5 | [Ideas that did not work (Phases 4, 5, 6)](05_ideas_that_did_not_work.md) | Drill-down, classic rules and dropped components, and why each failed |
-| 6 | [FedHEP-Guard (Phase 6)](06_fedhep_guard.md) | The current best model: every mechanism, its formula, where it acts, and its results |
+| 5 | [Ideas that did not work (Phases 4–7)](05_ideas_that_did_not_work.md) | Drill-down, classic rules, dropped components and the peer reference, and why each failed |
+| 6 | [FedHEP-Guard (Phases 6–8)](06_fedhep_guard.md) | The current best model: every mechanism, its formula, where it acts, its results, and the experiments still running |
 | 7 | [The canonical benchmark](07_benchmark.md) | Every model under the same attacks, settings and machine |
 | 8 | [Configuration reference](08_configuration_reference.md) | Every config key, symbol, preset, sweep file and run prefix |
 
@@ -27,7 +27,7 @@
 | FedHEP | FedAvg | three heads (root, parent, local), hierarchy | 47.8% at D1, 65.5% at α = 0.05 | no defense: sign flip −14 points |
 | Defended FedHEP | FedHEP | SCCF trust weights, trust ledger | most accurate under attack in Phase 2 | never removes anyone; backdoor 79% |
 | FedHEP+ | Defended FedHEP | robust z screen, permanent isolation, regrouping | sign flip +8.3, backdoor 79% → 21% | isolates unusual honest clients; blind to ALIE and Min-Max |
-| FedHEP-Guard | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | union screen: plain and adaptive backdoor under 1.5% at D1 (Mac); with the rewind, 0–1% over 100 rounds (Acer) | 4–6 honest clients isolated per run; D2 backdoor still open |
+| FedHEP-Guard | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | plain backdoor 0.3% on every seed over 100 rounds, stealth backdoor 0.4% on 2 of 3 seeds (Acer); best worst case under model poisoning in 3 of 4 GPU grid settings | honest isolations, half of them whole parent groups (6.16); one late-caught stealth seed at 34%; D2 not yet run |
 
 ## Presenting kit: which chart or table answers which question
 
@@ -47,7 +47,10 @@
 | Does it isolate honest clients, and when? | `figures/phase6_isolation_rounds_n15.png`, `figures/phase6_isolation_rounds_n30.png` (compare `figures/phase3_cascade.png`) | grid summary; gap-gate table | 6.12 |
 | Does it hold at scale and under strong skew? | — | grid summary per setting | 6.12 |
 | Why not just raise the gap gate? | `figures/phase6_gap_gate_tradeoff.png` | — | 6.12 |
-| What is being tested next? | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` (when the Acer runs are in) | P22–P25 | 6.15 |
+| Does the full FedHEP-Guard hold over 100 rounds? | `figures/phase6_guard_durability.png` | FedHEP-Guard 100-round table | 6.9 |
+| Why are honest clients isolated? | `figures/phase6_group_isolations.png`, `figures/phase6_honest_isolation_summary.png` | — | 6.13, 6.16 |
+| Did the peer reference help? | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` | P22–P25 | 6.15 (refuted) |
+| What is being tested next? | `report/figures/diagrams/18_shared_signal.png` | P26–P29 | 6.16 |
 | Does it remove a backdoor? | `figures/phase6_rewind.png`, `figures/phase6_durability.png` | 100-round table | 6.9 |
 | Does it survive an adaptive attacker? | `figures/phase6_stealth.png` | stealth table | 6.10 |
 | What if the attacker count is unknown? | `figures/phase6_fmis.png` | f table | 6.11 |

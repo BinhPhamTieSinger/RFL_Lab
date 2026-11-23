@@ -1,0 +1,34 @@
+flowchart LR
+  UP["$$\begin{array}{c}\text{client }i\text{'s update }\Delta_i\text{ (weights; BatchNorm buffers left out)}\end{array}$$"]:::same
+  TR["$$\begin{array}{c}\text{trunk and root head} \cr \text{shared by every client}\end{array}$$"]:::same
+  PH["$$\begin{array}{c}\text{parent head }W_p \cr \text{shared inside a parent group only}\end{array}$$"]:::gone
+  LH["$$\begin{array}{c}\text{local head }W_l \cr \text{one client only}\end{array}$$"]:::gone
+  W["$$\begin{array}{c}\text{whole update (FedHEP-Guard now)} \cr \displaystyle v_i = \Delta_i \cr \text{groups split by their parent heads}\end{array}$$"]:::changed
+  S["$$\begin{array}{c}\text{shared signal (Phase 8)} \cr \displaystyle v_i = \Delta_i \text{ restricted to trunk and } W_r\end{array}$$"]:::new
+  U["$$\begin{array}{c}\text{union with the critical layers} \cr \text{[1] of FedHEP-Guard, rest unchanged}\end{array}$$"]:::same
+  UP --> TR
+  UP --> PH
+  UP --> LH
+  TR --> S
+  TR --> W
+  PH --> W
+  LH --> W
+  S -->|"$$\begin{array}{c}\text{tested}\end{array}$$"| U
+  W -.->|"$$\begin{array}{c}\text{now}\end{array}$$"| U
+  subgraph LEG[" "]
+    direction LR
+    l0["$$\begin{array}{c}\text{unchanged}\end{array}$$"]:::same
+    l1["$$\begin{array}{c}\text{Phase 8: what is scored}\end{array}$$"]:::new
+    l2["$$\begin{array}{c}\text{FedHEP-Guard's whole-update signal}\end{array}$$"]:::changed
+    l3["$$\begin{array}{c}\text{left out of the shared signal}\end{array}$$"]:::gone
+  end
+  style LEG fill:#fcfcfb,stroke:#e4e3df
+  classDef same fill:#f2f1ee,stroke:#9a9893,color:#0b0b0b
+  classDef new fill:#d5f2e6,stroke:#1baf7a,stroke-width:2px,color:#0b0b0b
+  classDef changed fill:#fdefc8,stroke:#eda100,stroke-width:2px,color:#0b0b0b
+  classDef gone fill:#fde3d9,stroke:#eb6834,stroke-dasharray:4 3,color:#0b0b0b
+  classDef trunk fill:#e8eef9,stroke:#2a78d6,color:#0b0b0b
+  classDef head fill:#fdefc8,stroke:#eda100,color:#0b0b0b
+  classDef k fill:#d5f2e6,stroke:#1baf7a,color:#0b0b0b
+  classDef x fill:#fde3d9,stroke:#eb6834,color:#0b0b0b
+  classDef w fill:#fdefc8,stroke:#eda100,color:#0b0b0b

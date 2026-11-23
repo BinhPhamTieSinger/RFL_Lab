@@ -133,13 +133,14 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         if len(scored) > 1:
             in_ref = torch.tensor([self.screen.population == "all" or c not in isolated for c in scored])
             updates = [to_global[c] - start for c in scored]
-            if self.screen.signal == "weights_critical":
+            if self.screen.signal in ("weights_critical", "shared_critical"):
                 # Union of two screens: each signal is z-scored and gap-gated on its own, and a client's z is the
                 # lower of the two, so either signal alone can exclude or isolate it (GPU batch 1: the whole update
                 # and the critical layers each missed the backdoor on a different seed).
+                first = self.screen.signal.removesuffix("_critical")    # "weights" or "shared" (Phase 8)
                 parts = {name: self._signal_z(name, to_global, updates, scored, in_ref)
-                         for name in ("weights", "critical")}
-                raw_scores, score_stats, z_logged, z = parts["weights"]
+                         for name in (first, "critical")}
+                raw_scores, score_stats, z_logged, z = parts[first]
                 score_stats = {**score_stats, "critical": parts["critical"][1],
                                "critical_scores": parts["critical"][0]}
                 for c, v in parts["critical"][3].items():
@@ -240,7 +241,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
             score_stats = {"median": float(med), "mad": float(mad), "scale": scale,
                            "relative_floor": self.screen.relative_floor * abs(float(med)),
                            "absolute_floor": self.screen.mad_floor, "reference_n": int(in_ref.sum())}
-        if self.screen.shadow_reference and signal in ("weights", "critical", "root_head"):
+        if self.screen.shadow_reference and signal in ("weights", "shared", "critical", "root_head"):
             # Logged only (Phase 7): the same signal scored against another reference, for paired comparisons.
             shadow = screening_scores(updates, self.global_defense.layout, self._masks(scored),
                                       replace(self.screen, signal=signal, reference=self.screen.shadow_reference),

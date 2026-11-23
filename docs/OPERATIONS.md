@@ -161,15 +161,17 @@ A run that already has `metrics.json` is skipped, so an interrupted sweep resume
 ### A queue of sweeps
 The Mac no longer runs sweeps (2026-11-19); it analyses, writes code and pushes. Its earlier runs stay valid for Mac-only comparisons.
 
-Acer (inside tmux, so it survives closing the SSH window). The current file is `acer_c10_peer.yaml` (Phase 7, 24 runs, about 7–8 hours); push the finished `acer_c9` results first, then take the new code:
+Acer (inside tmux, so it survives closing the SSH window). The current files are Phase 8: `acer_c11_shared.yaml` (21 runs), `acer_c11_control.yaml` (3) and `acer_c12_shared_durability.yaml` (6 runs of 100 rounds), about 14 hours in all:
 ```bash
-tmux new -s rfl10        # or: tmux attach -t rfl10
+tmux new -s rfl11        # or: tmux attach -t rfl11
 cd ~/Documents/RFL_Lab && source ~/venvs/rfl/bin/activate
 bash scripts/runner_sync.sh acer --update
-python -m pytest -q tests/test_peer_reference.py
-python scripts/sweep.py configs/sweeps/acer_c10_peer.yaml
+python -m pytest -q tests/test_shared_signal.py
+python scripts/sweep.py configs/sweeps/acer_c11_shared.yaml && \
+python scripts/sweep.py configs/sweeps/acer_c11_control.yaml && \
+python scripts/sweep.py configs/sweeps/acer_c12_shared_durability.yaml
 ```
-Detach with Ctrl-b then d; `tmux attach -t rfl10` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same sweep command again. Push results any time with `bash scripts/runner_sync.sh acer`.
+Detach with Ctrl-b then d; `tmux attach -t rfl11` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same sweep command again. Push results any time with `bash scripts/runner_sync.sh acer`.
 
 GPU server: see "Lab GPU server" above; the next file after the large grid is `configs/sweeps/gpu_c7_stealth.yaml`.
 

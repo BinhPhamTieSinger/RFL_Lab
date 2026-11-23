@@ -1,0 +1,25 @@
+# Acer (XPU), Phase 8: the "shared" signal. FedHEP-Guard's union screen without rewind, with its whole-update half
+# replaced by the whole update WITHOUT the personal heads (plus.signal: shared_critical). Phases 6-7 logs: at
+# alpha 0.5 about half of the union screen's honest isolations are whole parent groups isolated in one round,
+# and the whole-update signal includes the parent head that group members share (report 6.16).
+# Controls already on the Acer: x10_*__r3wc_shp (no attack, backdoor) and x8_f3__*__r3wc (sign flip, ALIE);
+# the missing Min-Max control is acer_c11_control.yaml. 15 clients, 30 rounds, 3 attackers. 7 x 3 = 21 runs,
+# about 7 hours.
+seeds: [42, 123, 7]
+common:
+  data.num_clients: 15
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+  plus.global_f: 3
+axes:
+  - x11_a05__clean: {data.alpha: 0.5}
+    x11_a05__sign3: {data.alpha: 0.5, attack.kind: sign_flip, attack.count: 3}
+    x11_a05__alie3: {data.alpha: 0.5, attack.kind: alie, attack.count: 3}
+    x11_a05__minmax3: {data.alpha: 0.5, attack.kind: min_max, attack.count: 3}
+    x11_a05__backdoor3: {data.alpha: 0.5, attack.kind: backdoor, attack.count: 3}
+    x11_a01__clean: {data.alpha: 0.1}
+    x11_a01__backdoor3: {data.alpha: 0.1, attack.kind: backdoor, attack.count: 3}
+  - r3sc: &r3 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+               plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+               plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: shared_critical}

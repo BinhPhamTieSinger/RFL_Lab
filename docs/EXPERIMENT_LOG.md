@@ -1384,3 +1384,61 @@ A gate at the honest 95th percentile (14 and 21) would remove most chance openin
 - Predictions P22–P25 were written before the runs.
 - Charts: `python scripts/plot_phase7.py outputs` writes `docs/figures/phase7_peer_paired.png` and `phase7_peer_outcomes.png`.
 - Tests: `tests/test_peer_reference.py`, 9 tests covering peer choice, the colluder limit, critical layers, and shadow runs being identical to plain runs.
+
+## 2026-11-23 · Acer: FedHEP-Guard's first runs (x9, 100 rounds), Phase 7 refuted (x10), and why honest clients are isolated in whole groups
+
+All 42 runs synced from the Acer (XPU): `acer_c9_final_durability` (18 runs, 100 rounds) and `acer_c10_peer` (24 runs, 30 rounds). Seeds 42, 123, 7.
+
+**FedHEP-Guard over 100 rounds (x9).** D1, 3 attackers until round 50. These are the first runs of the full model: union screen + trunk-and-root rewind (`r3wc_tr`). Backdoor success at round 100, seeds 123 / 42 / 7:
+
+| Model | Plain backdoor | Stealth backdoor | Accuracy, plain / stealth | Honest isolated, plain / stealth (3 runs) |
+|---|---|---|---|---|
+| FedHEP (no defense) | 67 / 75 / 77% | 67 / 73 / 77% | 43.06 / 43.51 | 0 / 0 |
+| Union screen, no rewind | 0.3 / 0.4 / 0.6% | 0.5 / 1.6 / 0.4% | 43.47 / 42.30 | 8 / 16 |
+| **FedHEP-Guard** | **0.3 / 0.3 / 0.3%** | 0.4 / 0.4 / **33.8%** | 41.66 / 43.96 | 18 / 10 |
+
+![FedHEP-Guard over 100 rounds](figures/phase6_guard_durability.png)
+
+- **The plain backdoor is held on every seed,** including seed 42, which defeated the root-head and whole-update screens (x6). The union screen isolates seed 42's attackers in rounds 3–4.
+- **Stealth seed 7 got through FedHEP-Guard.** The attackers were isolated late, in rounds 15–18, and the rewinds reached back only to rounds 15–16. The poisoning from rounds 1–14 stayed in and grew to 33.8% after the attack ended (17.9% with the exit guard).
+  - In the run without rewind, the same seed's attackers were caught in round 6. XPU runs are not bit-for-bit repeatable, so the two runs part ways early.
+  - In the FedHEP-Guard run, an honest pair was isolated in round 7 and the model rewound to round 5. Whether that rewind delayed the catch cannot be told from one run.
+  - One seed is not enough to say whether this is systematic. The Phase 8 durability runs repeat it.
+
+**Phase 7: the peer reference is refuted (x10).** Charts: `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png`.
+- **On identical updates it separates worse** at α 0.1: AUROC 0.60–0.65 against 0.66–0.69 for the global median.
+- **Acting on it:**
+  - honest isolations rose: 4.0 → 7.0 per run at α 0.5, 0.3 → 0.7 at α 0.1;
+  - backdoor success rose: 11.3 → 26.9% at α 0.1, and one α 0.5 seed reached 43.8%.
+- **Likely reasons:**
+  - A per-client reference is the median of only 5 peers. It is much noisier than the median of 15, so it adds more noise than the heterogeneity it removes.
+  - At α 0.5 nearly every client holds nearly every class, so Jaccard similarities are almost tied and the peers are close to arbitrary.
+- P22–P25 outcomes are in `PREDICTIONS.md`. The peer reference is dropped (report 5.4, 6.15).
+
+**Why honest clients are isolated: whole parent groups.**
+- At α = 0.5, about half of the union screen's honest isolations are a whole parent group isolated in one round. A "group" event means at least 3 honest members of one group in the same round.
+
+  | Screen (GPU grid, α = 0.5) | Share of honest isolations in group events, 15 clients | 30 clients |
+  |---|---|---|
+  | union screen | 51% | 56% |
+  | whole update alone | 53% | 73% |
+  | FedHEP+ | 2–3% | 2–3% |
+  | root head | 0% | 0% |
+
+- On the Acer, x9's three mass isolations (rounds 13, 14 and 16) were exactly group 2, mostly group 2, and exactly group 1.
+- **The cause:** the whole-update signal includes the personal heads (`fc2_parent`, `fc2_local`; the critical-layer signal leaves them out). Members of one parent train the same parent head, so as training goes on a group's updates drift away together.
+  - The whole-update gap ratio grows from about 3 to about 20 over rounds 9–13.
+  - The group's z-scores fall together until they all pass the cut.
+- It also explains why mild skew is worse. At α = 0.5 the clients' own data differ little, so the group direction dominates.
+
+![Whole-group isolations](figures/phase6_group_isolations.png)
+
+**Run plan: Phase 8, the shared signal (Acer).** A new signal, `plus.signal: shared`, is the whole update without the personal heads; `shared_critical` is its union with the critical layers (report 6.16, diagram 18). Tests are in `tests/test_shared_signal.py`. Predictions P26–P29 were written before the runs.
+
+| Sweep | Runs | Prefix | Approx. time | Purpose |
+|---|---|---|---|---|
+| `acer_c11_shared.yaml` | 21 | `x11_` | 7 h | no attack, sign flip, ALIE, Min-Max and backdoor at α 0.5; no attack and backdoor at α 0.1 |
+| `acer_c11_control.yaml` | 3 | — | 1 h | the union screen under Min-Max, the one missing Acer control |
+| `acer_c12_shared_durability.yaml` | 6 | `x12_` | 6 h | FedHEP-Guard with the shared signal, 100 rounds, both backdoors |
+
+Controls already on the Acer: `x10_*__r3wc_shp`, `x8_f3__*__r3wc` and `x9__*__r3wc_tr`.

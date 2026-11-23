@@ -103,6 +103,10 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P23 | (Paired.) With no attack, the peer reference halves the share of honest client-rounds with \|z\| > 2.5 on the whole update at α 0.1; at α 0.5, where most clients hold most classes, it changes it by less than a third | 0.5 | the share falls by less than half at α 0.1 |
 | P24 | (Acting.) The union screen acting on the peer reference isolates at most half as many honest clients per run with no attack as the same screen on the median (both α), and still keeps backdoor success under 5% on every seed at α 0.5 | 0.35 | more than half as many honest isolations, or any α 0.5 seed above 5% |
 | P25 | (Acting.) At α 0.1 the peer reference lowers backdoor success by at least 10 points on average against the median reference (same seeds, Acer) | 0.3 | a smaller drop, or a rise |
+| P26 | (Phase 8, Acer, α 0.5, no attack.) With the shared signal (whole update without the personal heads), no run isolates 3 or more honest members of one parent group in the same round, and honest isolations per run fall to at most half the union screen's on the Acer (3.8 per run over 6 runs) | 0.55 | a whole-group isolation in any no-attack run, or more than 1.9 honest isolations per run |
+| P27 | (Phase 8.) The shared union screen keeps backdoor success under 1% on every seed at α 0.5 (30 rounds), as the union screen does | 0.55 | any α 0.5 seed at 1% or more |
+| P28 | (Phase 8.) The shared union screen still isolates every sign-flip, ALIE and Min-Max attacker at α 0.5 | 0.8 | any of the 27 attackers left in |
+| P29 | (Phase 8, 100 rounds.) FedHEP-Guard with the shared signal holds the plain and the stealth backdoor under 1% at round 100 on every seed (with the whole-update signal: stealth seed 7 reached 33.8%) | 0.4 | any seed at 1% or more at round 100 |
 
 ## 3. The model we expect to publish
 
@@ -201,4 +205,8 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P18: at α 0.1 every screen isolates more honest clients than at α 0.5; R3 at most half of FedHEP+ | **Half refuted:** FedHEP+ does (2.7 → 7.7 per run at 15 clients), but R3 stays at 1.3 and the union screen falls (4.3 → 1.7); R3 is far below half of FedHEP+ (1.3 against 7.7) | `gg15_*__clean__*` |
 | P20: stealth backdoor passes the whole-update and union screens more often, but carries less backdoor | **Refuted in its premise, half held in effect:** undefended it reaches 71–83% (the plain one 74–84%); it defeats FedHEP+ (56–75% from 5–29%) and the whole-update screen on one seed (61%), but not the union screen (0.2–0.5%) | `m7__stealth3__*` |
 | P21: f = 6 costs L0 at least 1 point with no attack, R3 less; f = 1 lets sign flip through L0 | **Half refuted:** f = 6 costs L0 nothing (47.56 against 47.43), while R3 loses 1.2 points; f = 1 costs L0 5 points under sign flip, as predicted | `x8_*` |
+| P22: paired, the peer reference separates backdoor attackers better at α 0.1 (AUROC +0.10), about as well at α 0.5 | **Refuted at α 0.1, held at α 0.5:** whole-update AUROC 0.65 against 0.69 for the median (shadow arm), 0.60 against 0.66 (peer arm); at α 0.5 0.97–1.00 against 0.98 | `x10_*__backdoor3__*` |
+| P23: paired, no attack, the peer reference halves honest client-rounds with \|z\| > 2.5 at α 0.1, less than a third change at α 0.5 | **Mixed:** at α 0.1 0.035 → 0.005 in the arm acting on the median (held), but 0.080 → 0.067 in the arm acting on the peer reference (refuted); at α 0.5 −24% and −37% | `x10_*__clean__*` |
+| P24: acting on the peer reference halves honest isolations and keeps α 0.5 backdoor under 5% | **Refuted:** honest isolations rose (α 0.5: 4.0 → 7.0 per run; α 0.1: 0.3 → 0.7); α 0.5 backdoor 0.4 / 0.3 / **43.8%** | `x10_*__r3wc_peer` |
+| P25: acting on the peer reference lowers α 0.1 backdoor by 10 points | **Refuted:** it rose, 11.3% → 26.9% | `x10_a01__backdoor3__*` |
 

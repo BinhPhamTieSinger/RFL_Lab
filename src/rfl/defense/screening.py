@@ -42,7 +42,8 @@ from rfl.defense.soft_cosine import FlatLayout, bound_update_norms, coordinate_m
 class ScreenOptions:
     signal: str = "root_head"           # "root_head" | "weights" | "critical" | "sign_align" | "probe_logits" |
                                         # "head_gap" (rfl.defense.probe) | "weights_critical" (union of the
-                                        # weights and critical screens, combined in the FedHEP+ server)
+                                        # weights and critical screens, combined in the FedHEP+ server) |
+                                        # "shared" (whole update without the personal heads) | "shared_critical"
     reference: str = "mean_direction"   # "mean_direction" | "median"
     z_cut: float = 2.5
     evidence_cut: float = 1.5
@@ -74,7 +75,7 @@ class ScreenOptions:
         if self.isolation_patience < 1 or self.exclusion_patience < 1:
             raise ValueError("Patience must be positive")
         if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
-                               "weights_critical"):
+                               "weights_critical", "shared", "shared_critical"):
             raise ValueError(f"Unknown screening signal {self.signal!r}")
         if self.reference not in ("mean_direction", "median", "peer"):
             raise ValueError(f"Unknown screening reference {self.reference!r}")
@@ -92,7 +93,16 @@ def _signal(updates: Sequence[torch.Tensor], layout: FlatLayout, class_masks: to
             opts: ScreenOptions) -> tuple[torch.Tensor, torch.Tensor | None]:
     """(signal vectors, their class masks or None)."""
     stack = torch.stack(list(updates)).float()
-    params = bound_update_norms(stack[:, ~layout.buffer_mask.to(stack.device)], opts.norm_bound)
+    weights = stack[:, ~layout.buffer_mask.to(stack.device)]
+    if opts.signal == "shared":
+        # Phase 8: the whole update without the personal heads. Members of one parent share its parent head, so
+        # that head's coordinates split honest clients by group (report 6.16).
+        keep = torch.ones(weights.shape[1], dtype=torch.bool, device=weights.device)
+        for name, s, e in layout.params:
+            if name.startswith(PERSONAL_HEADS):
+                keep[s:e] = False
+        weights = weights[:, keep]
+    params = bound_update_norms(weights, opts.norm_bound)
     vecs, mask = params, None
     if opts.signal == "root_head" and class_masks is not None and layout.classifier is not None:
         s, e = layout.classifier

@@ -8,6 +8,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location("plot_results", Path(__file__).with_name("plot_results.py"))
@@ -452,6 +453,113 @@ def fig_honest_isolation_summary(runs: dict) -> None:
     pr.save(fig, "phase6_honest_isolation_summary.png")
 
 
+def fig_guard_durability(runs: dict) -> None:
+    """acer_c9_final_durability (x9): the full FedHEP-Guard over 100 rounds, per seed, against the plain and the
+    stealth backdoor (attackers stop at round 50): undefended FedHEP, the union screen without rewind, and
+    FedHEP-Guard (union screen + trunk-and-root rewind). Phase 8 runs (x12, shared signal) are added when present."""
+    attacks = [("backdoor3", "plain backdoor"), ("stealth3", "stealth backdoor")]
+    models = [("fedhep", "FedHEP (no defense)", ":"), ("r3wc", "union screen, no rewind", "--"),
+              ("r3wc_tr", "FedHEP-Guard", "-")]
+    if not all(len(_runs(runs, f"x9__{a}__{m}")) == 3 for a, _ in attacks for m, _, _ in models):
+        return
+    extra = [("x12", "r3sc_tr", "FedHEP-Guard, shared signal", (0, (5, 1, 1, 1)))]
+    colors = dict(zip(SEEDS, (pr.SLOT[0], pr.SLOT[1], pr.SLOT[2]), strict=True))
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.3), sharey=True)
+    for ax, (a, title) in zip(axes, attacks, strict=True):
+        rows = [("x9", m, label, style) for m, label, style in models]
+        rows += [(p, m, label, style) for p, m, label, style in extra if len(_runs(runs, f"{p}__{a}__{m}")) == 3]
+        for prefix, m, label, style in rows:
+            for run in _runs(runs, f"{prefix}__{a}__{m}"):
+                hist = [h for h in run["history"] if h.get("asr") is not None]
+                ax.plot([h["round"] for h in hist], [h["asr"] for h in hist], color=colors[run["seed"]],
+                        linestyle=style, linewidth=1.8 if m.endswith("_tr") else 1.2,
+                        label=f"{label}, seed {run['seed']}")
+        ax.axvline(50, color=pr.INK2, linewidth=1, linestyle=":")
+        ax.text(51, 92, "attackers stop", fontsize=8, color=pr.INK2)
+        ax.set_title(title, fontsize=10)
+        ax.set_xlabel("round")
+        ax.set_ylim(0, 100)
+    axes[0].set_ylabel("backdoor success on honest clients (%)")
+    handles, labels = axes[1].get_legend_handles_labels()
+    fig.legend(handles, labels, fontsize=7.5, ncol=4, loc="lower center", frameon=False)
+    fig.suptitle("FedHEP-Guard over 100 rounds (D1, 3 attackers until round 50, Acer; colour = seed)", fontsize=11)
+    fig.tight_layout(rect=(0, 0.17, 1, 1))
+    pr.save(fig, "phase6_guard_durability.png")
+
+
+def _group_events(m: dict) -> tuple[int, int]:
+    """(honest isolations, those isolated in a round with at least 3 honest members of one parent group)."""
+    bad, prev, groups = set(m["attackers"]), set(), None
+    total = mass = 0
+    for d in m.get("diagnostics", []):
+        iso = set(d.get("isolated", []))
+        new = (iso - prev) - bad
+        if new and groups:
+            per = defaultdict(int)
+            for c in new:
+                per[groups.get(str(c), groups.get(c))] += 1
+            total += len(new)
+            if len(new) >= 3 and max(per.values()) >= 3:
+                mass += len(new)
+        prev, groups = iso, d.get("groups") or groups
+    return total, mass
+
+
+def fig_group_isolations(runs: dict) -> None:
+    """Report 6.16: share of honest isolations that come as whole parent groups (at least 3 honest members of one
+    group isolated in the same round), per screening signal, GPU grid at alpha 0.5, all attacks pooled; and the
+    z-scores of one such group before it is isolated (x9 plain backdoor, FedHEP-Guard, seed 123)."""
+    models = [("plus", "FedHEP+"), ("r3", "R3, root head"), ("r3w", "R3, whole update"),
+              ("r3wc", "union screen\n(whole update + critical)")]
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(14, 4.3), gridspec_kw={"width_ratios": [1.2, 1]})
+    w = 0.38
+    for j, (n, color) in enumerate(((15, pr.SLOT[0]), (30, pr.SLOT[1]))):
+        shares, labels = [], []
+        for model, label in models:
+            tot = mass = 0
+            for name in runs:
+                parts = name.split("__")
+                if parts[0] == f"gg{n}_a05" and len(parts) == 3 and parts[2] == model:
+                    for m in _runs(runs, name):
+                        t, k = _group_events(m)
+                        tot, mass = tot + t, mass + k
+            shares.append(100 * mass / tot if tot else 0)
+            labels.append(f"{label}")
+            ax.text(models.index((model, label)) + (j - 0.5) * w, (100 * mass / tot if tot else 0) + 1.5,
+                    f"{100 * mass / tot:.0f}%\n({tot})" if tot else "-", ha="center", fontsize=7.5)
+        ax.bar([i + (j - 0.5) * w for i in range(len(models))], shares, w - 0.03, color=color,
+               label=f"{n} clients")
+    ax.set_xticks(range(len(models)), [label for _, label in models], fontsize=8.5)
+    ax.set_ylabel("honest isolations that are whole groups (%)")
+    ax.set_ylim(0, 80)
+    ax.set_title("Honest clients isolated a whole parent group at a time\n(GPU grid, α = 0.5, every attack; "
+                 "in brackets: honest isolations)", fontsize=10)
+    ax.legend(fontsize=8)
+    run = next((m for m in _runs(runs, "x9__backdoor3__r3wc_tr") if m["seed"] == 123), None)
+    if run:
+        bad = set(run["attackers"])
+        group_of = {int(k): v for k, v in run["diagnostics"][11]["groups"].items()}
+        target = {c for c, g in group_of.items() if g == 2} - bad
+        for c in sorted(group_of):
+            if c in bad:
+                continue
+            zs = [(d["round"], d["z"].get(str(c), d["z"].get(c))) for d in run["diagnostics"][:16]]
+            zs = [(r, z) for r, z in zs if z is not None]
+            bx.plot([r for r, _ in zs], [z for _, z in zs], color=pr.SLOT[1] if c in target else "#c9c7c1",
+                    linewidth=1.8 if c in target else 1.0)
+        bx.axhline(-2.5, color=pr.INK2, linewidth=0.8, linestyle="--")
+        bx.text(1.2, -2.35, "cut", fontsize=8, color=pr.INK2)
+        bx.plot([], [], color=pr.SLOT[1], label="the 5 honest members of parent group 2")
+        bx.plot([], [], color="#c9c7c1", label="the other honest clients")
+        bx.set_xlabel("round")
+        bx.set_ylabel("z (lower of the two signals)")
+        bx.set_title("One group drifts away together, then is isolated in round 13\n(FedHEP-Guard, plain backdoor, "
+                     "seed 123, Acer)", fontsize=10)
+        bx.legend(fontsize=8, loc="lower left")
+    fig.tight_layout()
+    pr.save(fig, "phase6_group_isolations.png")
+
+
 def fig_isolation_rounds(runs: dict, n: int) -> None:
     """GPU grid: in which rounds each screen isolates honest clients. Cumulative honest clients isolated per round,
     mean over 3 seeds, for the screening models, with no attack and under three attacks at the middle attacker
@@ -563,6 +671,8 @@ def main() -> None:
     fig_gap_gate_tradeoff(runs)
     fig_dropped(runs)
     fig_honest_isolation_summary(runs)
+    fig_guard_durability(runs)
+    fig_group_isolations(runs)
     fig_isolation_rounds(runs, 15)
     fig_isolation_rounds(runs, 30)
     fig_signals(runs)

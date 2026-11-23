@@ -94,8 +94,8 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 
 | Key | Symbol | Default | Values and meaning |
 |---|---|---|---|
-| `signal` | $s_i$ | `root_head` | what each client is scored on: `root_head` (root-head rows of its classes, as SCCF), `weights` (whole update without BatchNorm), `critical` (the most disputed layers), `weights_critical` (union of the two, FedHEP-Guard), `sign_align` (AlignIns sign agreement), `probe_logits`, `head_gap` (predictions on server probe images) |
-| `reference` | $\tilde r$ | `mean_direction` | `mean_direction` (SCCF's mean of unit vectors), `median` (coordinate-wise median) or `peer` (a per-client median over its peers, Phase 7, 6.15) |
+| `signal` | $s_i$ | `root_head` | what each client is scored on: `root_head` (root-head rows of its classes, as SCCF), `weights` (whole update without BatchNorm, personal heads included), `critical` (the most disputed layers), `weights_critical` (union of the two, FedHEP-Guard), `shared` (whole update without BatchNorm and without the personal heads, Phase 8, 6.16), `shared_critical` (union of `shared` and `critical`), `sign_align` (AlignIns sign agreement), `probe_logits`, `head_gap` (predictions on server probe images) |
+| `reference` | $\tilde r$ | `mean_direction` | `mean_direction` (SCCF's mean of unit vectors), `median` (coordinate-wise median) or `peer` (a per-client median over its peers, Phase 7, 6.15, refuted) |
 | `peer_share` | $\kappa$ (6.15) | 0.333 | with `reference: peer` (Phase 7): each client's reference is the coordinate median of this share of the other clients, those holding the most similar classes (Jaccard of class masks) |
 | `shadow_reference` | — | `""` | also score every update against this reference (`median`, `peer`, `mean_direction`) and log it as `shadow_scores`, without acting on it |
 | `critical_k` | $k$ | 5 | layers scored by the critical-layer signal |
@@ -214,8 +214,10 @@ axes:
 | `x6__` | 100-round durability | Acer | 6.9 |
 | `m7__` | stealth backdoor | Mac | 6.10 |
 | `x8_` | mis-specified $f$ | Acer | 6.11 |
-| `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 6 (pending) |
-| `x10_` | peer reference against the global median (Phase 7) | Acer | 6.15 (running) |
+| `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 6.9 |
+| `x10_` | peer reference against the global median (Phase 7, refuted) | Acer | 6.15 |
+| `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 6.16 (running) |
+| `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 6.16 (queued) |
 | `gg15_`, `gg30_`, `gg50_` | large grid | GPU | 6.12 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |
 | `bm_` | canonical benchmark | GPU | 7 |
