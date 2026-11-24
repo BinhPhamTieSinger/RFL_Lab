@@ -222,3 +222,6 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P27 (Phase 8): backdoor under 1% on every α 0.5 seed | **Refuted:** 0.5 / 0.3 / 78%; on seed 7 the attackers were caught in round 25 | `x11_a05__backdoor3__r3sc` |
 | P28 (Phase 8): every sign-flip, ALIE and Min-Max attacker isolated at α 0.5 | **Held:** 27 of 27, all in round 3 | `x11_a05__{sign3,alie3,minmax3}__r3sc` |
 | P29 (Phase 8): FedHEP-Guard with the shared signal under 1% at round 100 on every seed, both backdoors | **Refuted:** plain 0.4 / 0.5 / 80%, stealth 1.1 / 0.5 / 62% (seed 7 again) | `x12__*__r3sc_tr` |
+| P30 (Phase 8 at scale): at 30 clients, α 0.5, no attack, the shared union screen at most half the union screen's honest isolations, no whole-group event | **Refuted:** 7.3 against 6.0 per run, and one whole-group event of 4 (seed 7) | `x13_n30a05__clean__*` |
+| P32 (Phase 8 at scale): at 30 clients with 6 backdoor attackers, the shared union screen under 5% on every seed | **Refuted:** 0.9 / 63 / 73% (the union screen: 0.6 / 1.0 / 1.7%) | `x13_n30a05__backdoor6__*` |
+| P31 (Phase 8 at scale, 50 clients) | **Pending:** the 50-client runs stopped with an out-of-memory error on the Acer (fixed in `classic.nnm`) | `x13_n50a01__clean__*` |

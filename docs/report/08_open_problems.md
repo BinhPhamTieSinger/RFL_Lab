@@ -69,13 +69,15 @@ So the gap ratio cannot tell an honest outlier from a backdoor attacker: both st
 
 **What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (7.5).
 
-## 8.3 Phase 8 at scale (Acer, next)
+## 8.3 Phase 8 at scale (Acer)
 
-The shared signal, tested at 15 clients, cut honest isolations by three quarters at α = 0.5 but let the backdoor through on one seed in three, so it was not adopted (chapter 7.6). One question about it remains open, because the honest-isolation problem is worst at 30 and 50 clients: how much of it is cause 2, which the shared signal removes, and how much is cause 1, which it does not?
+The shared signal, tested at 15 clients, cut honest isolations by three quarters at α = 0.5 but let the backdoor through on one seed in three, so it was not adopted (chapter 7.6). Its scale test asked how much of the honest-isolation problem at 30 and 50 clients is cause 2, which the shared signal removes, and how much is cause 1, which it does not.
 
-| Sweep | Runs | What it tests | Controls |
+| Sweep | Runs | What it tests | Status |
 |---|---|---|---|
-| `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack), where honest isolations are worst (P30–P32) | both arms in the same sweep |
+| `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack) (P30–P32) | 30 clients done (7.6); 50 clients stopped with an out-of-memory error in L0's nearest-neighbour step, fixed, to be rerun |
+
+**At 30 clients with no attack, cause 1 dominates on the Acer:** the union screen isolated 6.0 honest clients per run, only 1.0 of them in whole-group events, and the shared signal isolated 7.3. On the GPU the same setting gave 14.7 per run with about half in groups (8.2), so the split differs by run and machine; both machines agree that removing the parent head is not enough.
 
 ## 8.4 What comes next
 

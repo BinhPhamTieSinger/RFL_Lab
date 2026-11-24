@@ -1520,3 +1520,18 @@ Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients)
 ![Seed 7](figures/phase8_seed7.png)
 
 **Decision.** The shared signal is not adopted; FedHEP-Guard keeps the whole-update signal. Its write-up moved to report 7.6. It stays in the benchmark (`shared`, `guard_shared`) and in the scale test `acer_c13_shared_scale.yaml` (P30–P32), which measures how much of the 30- and 50-client honest-isolation problem is whole-group (cause 2). P26, P27 and P29 refuted, P28 held (`PREDICTIONS.md`). Next candidate (report 8.4): keep the whole-update signal but require a client to stand out on the shared signal too, at a lower bar; evaluate such rules offline by logging both signals' scores on the same updates.
+
+## 2026-11-24 · Acer: Phase 8 at 30 clients (P30, P32 refuted); 50-client runs stopped by an out-of-memory error, fixed
+
+**Runs** (`acer_c13_shared_scale.yaml`, Acer, 30 clients, α 0.5, 3 seeds): union screen (`r3wc`) against the shared union screen (`r3sc`).
+
+| Condition | Honest isolated per run: union | shared | In whole-group events: union | shared | Backdoor, seeds 123 / 42 / 7: union | shared |
+|---|---|---|---|---|---|---|
+| No attack | 6.0 | 7.3 | 1.0 | 1.3 | — | — |
+| 6 backdoor attackers | 11.7 | 3.7 | 5.3 | 1.3 | 0.6 / 1.0 / 1.7% | 0.9 / 63 / 73% |
+
+- No attack: the shared signal did not help; only 3 of the union screen's 18 honest isolations were whole groups, so on the Acer at 30 clients cause 1 (single clients, the gate opening by chance) dominates. On the GPU the same setting gave 14.7 per run, about half in groups.
+- Backdoor: honest isolations fell by two thirds, but two seeds let the backdoor in (attackers caught in rounds 26–27). Same mechanism as seed 7 at 15 clients (report 7.6).
+- P30 and P32 refuted; P31 pending.
+
+**Crash.** The first 50-client run (`x13_n50a01__clean__r3wc_s42`) stopped in L0's nearest-neighbour mixing: `stack[near]` builds an (n, n − f, d) tensor, 50 × 40 × 1.7 M floats = 12.8 GB, more than the Acer's 13.4 GB GPU holds with the model loaded. The GPU server (32 GB) ran the same step for the large grid's 50-client runs. Fix in `src/rfl/defense/classic.py`: when the tensor would exceed half the accelerator's memory, it is built in blocks of rows; each row's mean is computed exactly as before (`tests/test_nnm_memory.py` checks bit-for-bit equality). On the GPU server nothing changes for any setting tested (12.8 GB < 16 GB), and on the CPU and the Mac there is no limit, as before.

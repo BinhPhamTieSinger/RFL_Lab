@@ -499,10 +499,21 @@ On seed 7 the union screen's whole-update half scored the three backdoor attacke
 
 So on this seed a large part of what made the attackers stand out was in the personal heads. Backdoor attackers train the heads too, to map the trigger to the target class. The heads carry both the group signature that causes honest isolations and part of the backdoor signature that catches attackers. Removing them removes both.
 
+**At 30 clients (Acer, `acer_c13_shared_scale`, both arms in one sweep).** α = 0.5, 30 rounds, 3 seeds:
+
+| Condition | Honest isolated per run: union screen | shared | Of them in whole-group events: union | shared | Backdoor success, seeds 123 / 42 / 7: union | shared |
+|---|---|---|---|---|---|---|
+| No attack | 6.0 | 7.3 | 1.0 | 1.3 | — | — |
+| 6 backdoor attackers | 11.7 | **3.7** | 5.3 | 1.3 | 0.6 / 1.0 / 1.7% | 0.9 / **63** / **73%** |
+
+- **With no attack the shared signal did not help at 30 clients** (7.3 against 6.0 per run). Only 3 of the union screen's 18 honest isolations here were whole groups, so there was little for it to remove: on the Acer, at this size, most honest isolations are single clients (cause 1, chapter 8.2).
+- **Under the backdoor it cut honest isolations by two thirds, but lost the backdoor on two seeds of three.** The union screen caught all 6 attackers by rounds 4–6. The shared screen caught them on seed 123 by round 8, but on seed 42 three of them only in rounds 26–27 and on seed 7 all six in round 27. The same mechanism as on seed 7 at 15 clients.
+- The 50-client runs of this sweep stopped with an out-of-memory error on the Acer (fixed; they run next).
+
 **What we keep from it.**
 - Whole-group honest isolations do come from the personal heads, as chapter 8.2 concluded: without them they almost vanish.
 - A signal cannot simply drop the heads. A fix has to tell a group drifting together apart from attackers, not hide both.
-- The shared signal stays in the benchmark (`shared`, `guard_shared`) and in the scale test (8.3), which measures how much of the honest-isolation problem it removes at 30 and 50 clients.
+- The shared signal stays in the benchmark (`shared`, `guard_shared`). At 30 clients with no attack it removed nothing, because there most honest isolations are single clients: the next fix has to target the gap gate (cause 1), not the signal.
 
 Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are left out, and that a drifting parent group is split off by the whole-update signal but not by the shared one. It also runs the shared union end to end.
 

@@ -139,14 +139,30 @@ def arc_clip(stack: torch.Tensor, f: int) -> torch.Tensor:
     return stack * scale.unsqueeze(1)
 
 
+def _gather_budget(device: torch.device) -> int | None:
+    """Bytes the gathered neighbour tensor of nnm may take: half the accelerator's memory. None (no limit) on the
+    CPU and on Apple's MPS, whose memory is shared with the system."""
+    if device.type == "cuda":
+        return torch.cuda.get_device_properties(device).total_memory // 2
+    if device.type == "xpu":
+        return torch.xpu.get_device_properties(device).total_memory // 2
+    return None
+
+
 def nnm(stack: torch.Tensor, f: int) -> torch.Tensor:
     """Nearest-neighbour mixing: each row becomes the mean of its n - f nearest rows (Euclidean), itself
-    included."""
+    included. The gathered (n, n - f, d) tensor is built in blocks of rows when it would not fit in half the
+    accelerator's memory (50 clients on the Acer's 13 GB); each row's mean is computed the same way either way."""
     n = stack.shape[0]
     if f == 0:
         return stack.mean(dim=0, keepdim=True).expand_as(stack).clone()
     near = torch.argsort(_sq_dists(stack), dim=1, stable=True)[:, :n - f].to(stack.device)
-    return stack[near].mean(dim=1)
+    budget = _gather_budget(stack.device)
+    row_bytes = (n - f) * stack[0].numel() * stack.element_size()
+    rows = n if budget is None else max(1, min(n, budget // row_bytes))
+    if rows == n:
+        return stack[near].mean(dim=1)
+    return torch.cat([stack[near[i:i + rows]].mean(dim=1) for i in range(0, n, rows)])
 
 
 def arc_nnm_trimmed_mean_rule(stack: torch.Tensor, f: int) -> RuleResult:
