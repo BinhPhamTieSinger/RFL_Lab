@@ -1,4 +1,4 @@
-# 7. Ideas that did not work (Phases 3–7)
+# 7. Ideas that did not work (Phases 3–8)
 
 Each idea here was a hypothesis with a pass criterion set before the runs. None met its criterion. They are reported in full, each with its formula, diagram, hypothesis, experiment and the reason it failed, because each one explains part of FedHEP+'s and FedHEP-Guard's design ([chapter 4](04_fedhep_plus.md), [chapter 5](05_fedhep_guard.md)).
 
@@ -16,6 +16,7 @@ Each idea here was a hypothesis with a pass criterion set before the runs. None 
 | 6 | Holding f fixed | R3 lost 1.8 points under ALIE; lowering $f$ after exclusions might let ALIE back into the trimmed mean | L0 keeps assuming $f$ attackers after the screen removed them | −1.1 points under ALIE: it made things worse |
 | 6 | Rewinding every shared weight | the personal heads might also hold part of the backdoor | rewind personal heads too | costs 0.6 points against rewinding the trunk and root head, for no gain |
 | 7 | Peer reference | an honest client with unusual classes looks like an attacker against one global median; BoBa compares clients only with similar ones | each client scored against the median of the third of clients with the most similar class sets | separated attackers worse at α 0.1, and doubled honest isolations at α 0.5; one α 0.5 seed let 44% of the backdoor in |
+| 8 | Shared signal | whole-group honest isolations come from the shared parent head | FedHEP-Guard's whole-update signal without the personal heads | it cut honest isolations by three quarters, but the heads also carry part of the backdoor: one seed in three let it through (78–80%) |
 
 ## 7.1 Phase 3: variants of FedHEP+
 
@@ -444,3 +445,64 @@ The two AUROC values in a cell come from the two arms (acting on the median, act
 - **A noisier yardstick.** With $\kappa = 1/3$ each client's reference is the median of only 5 peers, much noisier than the median of all 15. The extra noise outweighs the heterogeneity the peers remove.
 - **Arbitrary peers at α = 0.5.** Nearly every client holds nearly every class (about 667 images over 100 classes), so the Jaccard similarities are almost tied and the peers are close to arbitrary.
 - **The wrong diagnosis.** The honest isolations it targeted are mostly not "clients with unusual data". At α = 0.5 about half are whole parent groups, split off by the parent head inside the whole-update signal (chapter 8.2).
+
+## 7.6 Phase 8: the shared signal
+
+**The problem it targeted.** About half of the union screen's honest isolations at α = 0.5 are whole parent groups isolated in one round (chapter 8.2, cause 2). The whole-update signal includes the parent head, which the members of one group share, so a group whose data drift together moves away from the median together.
+
+**What it changes.** Only the whole-update half of signal [1]. The new signal scores the update restricted to the coordinates every client shares, the trunk and the root head:
+
+$$v_i^{\mathrm{shared}} = \mathrm{bound}\bigl(\Delta_i\big\vert_{\text{trunk} \,\cup\, W_r}\bigr), \qquad s_i = \cos\bigl(v_i^{\mathrm{shared}},\ \operatorname{med}_k v_k^{\mathrm{shared}}\bigr)$$
+
+It is combined with the critical layers exactly as now: each signal z-scored and gap-gated on its own, and a client's z is the lower of the two.
+
+![The shared signal: what is scored](figures/diagrams/18_shared_signal.png)
+
+**Legend:**
+
+| Symbol | Meaning | Config key, value |
+|---|---|---|
+| $\Delta_i\big\vert_{\text{trunk} \cup W_r}$ | client $i$'s weight update restricted to the trunk and the root head (BatchNorm buffers, $W_p$ and $W_l$ left out) | `plus.signal: shared` |
+| bound | the norm bound of chapter 3, $k = 3$ | `plus.norm_bound` |
+| — | union with the critical layers | `plus.signal: shared_critical` |
+
+**Hypothesis.** Without the personal heads, a drifting group no longer stands out, while backdoor attackers still do, because the backdoor is learned by the shared trunk and root head. The risk was stated before the runs: the parent head also carries part of the backdoor (chapter 7.4e), and on some seeds that part may be what splits the attackers off.
+
+**The experiment** (Acer, 30 rounds unless marked, 3 seeds; predictions P26–P29). The shared union screen (`r3sc`) against the union screen (`r3wc`), both without rewind, and FedHEP-Guard with each signal (with rewind) over 100 rounds. All runs on the Acer. Sweeps: `acer_c11_shared.yaml`, `acer_c11_control.yaml`, `acer_c12_shared_durability.yaml`; controls `x10_*__r3wc_shp`, `x8_f3__*__r3wc`, `x9__*__r3wc_tr`.
+
+| Condition | Honest isolated per run: union screen | shared | Of them in whole-group events: union | shared | Backdoor success, seeds 123 / 42 / 7: union | shared |
+|---|---|---|---|---|---|---|
+| α 0.5, no attack | 3.8 (6 runs) | 2.3 | 1.0 | 1.0 | — | — |
+| α 0.5, sign flip | 3.3 | **0** | 2.3 | 0 | — | — |
+| α 0.5, ALIE | 4.7 | **0** | 1.7 | 0 | — | — |
+| α 0.5, Min-Max | 2.0 | 1.0 | 0 | 0 | — | — |
+| α 0.5, backdoor | 3.2 (6 runs) | 1.0 | 1.2 | 0 | 0.4 / 0.2 / 0.5% | 0.5 / 0.3 / **78%** |
+| α 0.1, no attack | 0.3 | 1.3 | 0 | 0 | — | — |
+| α 0.1, backdoor | 0 | 1.0 | 0 | 0 | 0.3 / 11.5 / 22% | 35 / 23 / 25% |
+| FedHEP-Guard, plain backdoor, 100 rounds | 6.0 | **2.0** | 4.7 | 0 | 0.3 / 0.3 / 0.3% | 0.4 / 0.5 / **80%** |
+| FedHEP-Guard, stealth backdoor, 100 rounds | 3.3 | 2.3 | 0 | 0 | 0.4 / 0.4 / 34% | 1.1 / 0.5 / **62%** |
+
+Every sign-flip, ALIE and Min-Max attacker was caught by both screens, in round 3. Accuracy was within half a point except where the shared screen isolated fewer honest clients: 45.76 against 44.09 under ALIE, 46.79 against 45.57 under the backdoor, and 44.18 against 41.66 for FedHEP-Guard over 100 rounds with the plain backdoor.
+
+![Phase 8: the shared signal](../figures/phase8_shared.png)
+
+**What happened.**
+- **Honest isolations fell by three quarters at α = 0.5:** 0.9 per run over the five conditions, against 3.4 for the union screen. Whole-group events almost disappeared: one event of 3 clients in 15 runs, against 1.2 isolated clients per run in such events. Over 100 rounds FedHEP-Guard with the shared signal isolated 2.0 honest clients per run instead of 6.0 and was 2.5 points more accurate.
+- **But the backdoor got through on seed 7**, at 30 rounds (78%) and over 100 rounds (80% plain, 62% stealth). On the other two seeds it stayed under 1.1%.
+- **At α = 0.1 it is worse on both counts:** more honest isolations (1.3 against 0.3) and more backdoor (28% on average against 11%; it caught 2 of 9 attackers, the union screen 5).
+
+**Why it failed: the risk stated before the runs came true.**
+
+![Seed 7: why the attackers were not caught](../figures/phase8_seed7.png)
+
+On seed 7 the union screen's whole-update half scored the three backdoor attackers at z = −2.8 to −3.8 in round 2, with a gap ratio of 10, so its gate was open and they were caught in rounds 3–4. Without the personal heads the same attackers scored −2.1 to −2.6, and the gap ratio was 7.6, under the gate of 8. The gate stayed shut while the attackers were still far out. When it opened, in rounds 5–6, their z had risen to −1.6 to −2.3, inside the cut. The critical-layer half flagged them in rounds 2 and 3 and then lost them (z −1.1 to −1.4 in round 4), too briefly for the screen to act. They were caught in round 25, after the backdoor was learned.
+
+So on this seed a large part of what made the attackers stand out was in the personal heads. Backdoor attackers train the heads too, to map the trigger to the target class. The heads carry both the group signature that causes honest isolations and part of the backdoor signature that catches attackers. Removing them removes both.
+
+**What we keep from it.**
+- Whole-group honest isolations do come from the personal heads, as chapter 8.2 concluded: without them they almost vanish.
+- A signal cannot simply drop the heads. A fix has to tell a group drifting together apart from attackers, not hide both.
+- The shared signal stays in the benchmark (`shared`, `guard_shared`) and in the scale test (8.3), which measures how much of the honest-isolation problem it removes at 30 and 50 clients.
+
+Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are left out, and that a drifting parent group is split off by the whole-update signal but not by the shared one. It also runs the shared union end to end.
+

@@ -8,8 +8,8 @@
 2. **The published defense never removes an attacker** and does nothing against a backdoor: 79% backdoor success, the same as no defense (6.4).
 3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4, 6.5–6.7).
 4. **FedHEP-Guard fixes failures 2 and 3, not failure 1, as far as tested.** Its screen catches adaptive attackers (9 of 9 at D1, 12 of 12 at D2) and holds up best when the model is poisoned; the full model keeps the plain backdoor at 0.3% for 100 rounds. The full model has so far been run only against backdoors, on the Acer; most numbers come from its screen without the rewind (chapter 5, 6.8–6.13).
-5. **Many ideas failed** along the way: FedHEP+'s variants, checking groups first, the classic robust rules, seven Phase 6 components and the peer reference. Each failure shaped the next design (chapter 7).
-6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. A fix for one of the two causes is being tested (chapter 8). The benchmark of every model in every setting is queued on the GPU server (6.1).
+5. **Many ideas failed** along the way: FedHEP+'s variants, checking groups first, the classic robust rules, seven Phase 6 components, the peer reference and the shared signal. Each failure shaped the next design (chapter 7).
+6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. Two causes are known. A fix for one, the shared signal, cut honest isolations by three quarters but let the backdoor through on one seed in three, so it was not adopted (7.6, chapter 8). The benchmark of every model in every setting is queued on the GPU server (6.1).
 
 ![The research path](figures/diagrams/10_research_path.png)
 
@@ -23,7 +23,7 @@
 | 4 | [FedHEP+](04_fedhep_plus.md) | our first model: what it adds, changes and removes, formulas, why each part, its variants |
 | 5 | [FedHEP-Guard](05_fedhep_guard.md) | our current model: seven mechanisms with formulas and reasons, its rungs, the exact configuration |
 | 6 | [Results](06_results.md) | **6.1 the benchmark** (every model, every condition, every setting, one machine), then the diagnostic results model by model |
-| 7 | [Ideas that did not work](07_ideas_that_did_not_work.md) | every rejected idea of Phases 3–7: formula, diagram, hypothesis, experiment, why it failed |
+| 7 | [Ideas that did not work](07_ideas_that_did_not_work.md) | every rejected idea of Phases 3–8: formula, diagram, hypothesis, experiment, why it failed |
 | 8 | [Open problems](08_open_problems.md) | what is not solved, why, and what is running now |
 | 9 | [Configuration reference](09_configuration_reference.md) | every config key, symbol, preset, sweep file and run prefix |
 
@@ -80,9 +80,10 @@ Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/rep
 | Why not just use FLAME or Bulyan? | `figures/phase5_three_seeds.png` | 7.3 |
 | Components dropped in Phase 6 | `figures/phase6_dropped_components.png`, `figures/phase6_signals.png`, diagrams `11`–`17` | 7.4 |
 | The peer reference | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` | 7.5 |
+| The shared signal | `report/figures/diagrams/18_shared_signal.png`, `figures/phase8_shared.png`, `figures/phase8_seed7.png` | 7.6 |
 | **Open problems** | | |
 | Why are honest clients isolated? | `figures/phase6_gap_gate_tradeoff.png`, `figures/phase6_group_isolations.png` | 8.2 |
-| What is being tested now? | `report/figures/diagrams/18_shared_signal.png` | 8.3 |
+| What is being tested now? | the scale test of the shared signal | 8.3 |
 
 ## Conventions
 
@@ -122,7 +123,7 @@ Entries written before 2026-11-23, when chapter 6 held the model, its results an
 | 6.1–6.7 FedHEP-Guard mechanisms | 5.1–5.7 | 6.13 what is open | 8.1 |
 | 6.8 the ladder | 6.9 | 6.14 exact configuration | 5.8 |
 | 6.9 backdoor recovery | 6.10 | 6.15 peer reference | 7.5 |
-| 6.10 adaptive backdoor | 6.11 | 6.16 shared signal (Phase 8) | 8.3 |
+| 6.10 adaptive backdoor | 6.11 | 6.16 shared signal (Phase 8) | 7.6 |
 | 6.11 wrong $f$ | 6.12 | 7.1–7.4 canonical benchmark | 6.1 |
 | 6.12 at scale | 6.13 and 8.2 | 7.5 every model, per machine | 6.14 |
 | | | 8.x configuration | 9.x |

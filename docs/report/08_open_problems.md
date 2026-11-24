@@ -6,7 +6,7 @@ What FedHEP-Guard does not solve yet, why, and what is being tested. Each proble
 
 | # | Problem | Evidence | Status |
 |---|---|---|---|
-| 1 | **Honest clients isolated, more with more clients** | per run with no attack (GPU): 4.3 and 14.7 at 15 and 30 clients (α = 0.5); 1.7, 7.0 and 22.0 at 15, 30 and 50 clients (α = 0.1). FedHEP+: 1.0–7.7. About half are whole parent groups | two causes found (8.2); the shared signal, against cause 2, is being tested (8.3); cause 1 has no fix yet |
+| 1 | **Honest clients isolated, more with more clients** | per run with no attack (GPU): 4.3 and 14.7 at 15 and 30 clients (α = 0.5); 1.7, 7.0 and 22.0 at 15, 30 and 50 clients (α = 0.1). FedHEP+: 1.0–7.7. About half are whole parent groups | two causes found (8.2). The shared signal (Phase 8) removed most whole-group isolations at 15 clients but let the backdoor through on one seed in three, so it was not adopted (7.6); its scale test runs next (8.3). Cause 1 has no fix yet |
 | 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (6.10) | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
 | 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (35–48% on both machines; the whole update stops it on one seed of three); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 6.1) |
 | 4 | **A third of the clients attacking with a backdoor** | 5 of 15: 12% (GPU) and one seed at 20% (Mac); 9 of 30: 5.3% (GPU; one seed at 11%); FLAME holds | open |
@@ -69,43 +69,20 @@ So the gap ratio cannot tell an honest outlier from a backdoor attacker: both st
 
 **What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (7.5).
 
-## 8.3 Phase 8: the shared signal (running on the Acer)
+## 8.3 Phase 8 at scale (Acer, next)
 
-**What changes.** Only the whole-update half of signal [1]. The new signal scores the update restricted to the coordinates every client shares, the trunk and the root head:
+The shared signal, tested at 15 clients, cut honest isolations by three quarters at α = 0.5 but let the backdoor through on one seed in three, so it was not adopted (chapter 7.6). One question about it remains open, because the honest-isolation problem is worst at 30 and 50 clients: how much of it is cause 2, which the shared signal removes, and how much is cause 1, which it does not?
 
-$$v_i^{\mathrm{shared}} = \mathrm{bound}\bigl(\Delta_i\big\vert_{\text{trunk} \,\cup\, W_r}\bigr), \qquad s_i = \cos\bigl(v_i^{\mathrm{shared}},\ \operatorname{med}_k v_k^{\mathrm{shared}}\bigr)$$
-
-It is combined with the critical layers exactly as now: each signal z-scored and gap-gated on its own, and a client's z is the lower of the two.
-
-![The shared signal: what is scored](figures/diagrams/18_shared_signal.png)
-
-**Legend:**
-
-| Symbol | Meaning | Config key, value |
-|---|---|---|
-| $\Delta_i\big\vert_{\text{trunk} \cup W_r}$ | client $i$'s weight update restricted to the trunk and the root head (BatchNorm buffers, $W_p$ and $W_l$ left out) | `plus.signal: shared` |
-| bound | the norm bound of chapter 3, $k = 3$ | `plus.norm_bound` |
-| — | union with the critical layers | `plus.signal: shared_critical` |
-
-**Why it should keep the backdoor catches.** The backdoor is learned by the shared trunk and root head, and both stay in the signal. The risk: the parent head also carries part of the backdoor (chapter 7.4e), and on some seeds that part may have been what split the attackers off.
-
-**The experiment** (Acer, predictions P26–P32):
-
-| Sweep | Runs | What it tests | Controls (Acer) |
+| Sweep | Runs | What it tests | Controls |
 |---|---|---|---|
-| `acer_c11_shared.yaml` (`x11_`) | 21 | shared union screen without rewind: no attack, sign flip, ALIE, Min-Max, backdoor at α 0.5; no attack and backdoor at α 0.1 | `x10_*__r3wc_shp`, `x8_f3__*__r3wc` |
-| `acer_c11_control.yaml` | 3 | union screen under Min-Max at α 0.5 | — |
-| `acer_c12_shared_durability.yaml` (`x12_`) | 6 | FedHEP-Guard with the shared signal, 100 rounds, both backdoors | `x9__*__r3wc_tr` |
 | `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack), where honest isolations are worst (P30–P32) | both arms in the same sweep |
-
-Tests: `tests/test_shared_signal.py`. It checks that only the personal heads are left out, and that a drifting parent group is split off by the whole-update signal but not by the shared one. It also runs the shared union end to end.
-
 
 ## 8.4 What comes next
 
 - **GPU server:**
   - now running: the rest of the 50-client grid (P14, P19), about one day;
   - queued next: the canonical benchmark (chapter 6.1), with the full FedHEP-Guard under every attack at D1 and D2, then the stealth study at scale (`gpu_c7_stealth`).
-- **Acer:** Phase 8 results (P26–P29), then Phase 8 at scale (`acer_c13_shared_scale`, P30–P32): the shared signal at 30 and 50 clients, where honest isolations are worst. If they hold, the shared union becomes FedHEP-Guard's signal [1], and the benchmark's `guard` model is re-run with it.
+- **Acer:** Phase 8 at scale (`acer_c13_shared_scale`, P30–P32), to measure how much of the honest-isolation problem at 30 and 50 clients is cause 2.
+- **A fix for cause 2 that keeps the backdoor.** The heads carry both the group signature and part of the backdoor signature (7.6), so the next candidate should tell them apart rather than drop the heads. One option: keep the whole-update signal, but isolate a client only if it also stands out on the shared signal at a lower bar (for example $|z| \ge 2$), so that a group drifting only in its heads is spared. To test such rules without new acting runs, the screen should log the scores of both signals on the same updates, as the floor counterfactual did (8.2).
 - **Cause 1 needs its own fix.** At 50 clients half the honest isolations are single clients flagged because the gap gate opens by chance. A gate that scales with $n$ costs backdoor catches (above). Candidates to test once Phase 8 has reported: requiring both signals to agree when $n$ is large, or a gate on the gap's size relative to the score scale rather than to the median gap.
 - **After that:** the open problems 3–6 above, in that order.

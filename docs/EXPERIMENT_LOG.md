@@ -1502,3 +1502,21 @@ Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients)
 **Charts** (`scripts/plot_benchmark.py`): one overview per setting (every model × every condition: accuracy, backdoor success, detection F1, honest clients isolated) and one detail chart per setting and condition (adds attackers isolated, and in which round attackers and honest clients are isolated). A GPU run fills a cell when its configuration is the cell's, whatever its name. Already filled: D1 67 of 410 cells, D2 32, 30 clients α 0.5 40, 15 clients α 0.1 40, 30 clients α 0.1 40, 50 clients α 0.1 8; the rest are empty until the benchmark runs.
 
 ![Benchmark overview, D1 (partly filled)](figures/bench/overview_gg15_a05.png)
+
+## 2026-11-24 · Acer: Phase 8 (the shared signal) refuted as a replacement; it cuts honest isolations but loses the backdoor on seed 7
+
+**Runs** (Acer, XPU, 3 seeds): `acer_c11_shared.yaml` (21), `acer_c11_control.yaml` (3), `acer_c12_shared_durability.yaml` (6, 100 rounds). Shared union screen (`r3sc`: whole update without the personal heads, united with the critical layers) against the union screen (`r3wc`); controls `x10_*__r3wc_shp`, `x8_f3__*__r3wc`, `x9__*__r3wc_tr`, all on the Acer. Chart script: `scripts/plot_phase8.py`.
+
+**Results.**
+- α 0.5, honest isolations per run: no attack 2.3 against 3.8; sign flip 0 against 3.3; ALIE 0 against 4.7; Min-Max 1.0 against 2.0; backdoor 1.0 against 3.2. Overall 0.9 against 3.4. Whole-group events: one of 3 clients in 15 runs, against 1.2 isolated clients per run in such events.
+- α 0.5, attackers: every sign-flip, ALIE and Min-Max attacker caught in round 3. Backdoor 0.5 / 0.3 / 78% (seeds 123 / 42 / 7); the union screen 0.4 / 0.2 / 0.5%.
+- α 0.1: honest isolations 1.3 against 0.3; backdoor 35 / 23 / 25% against 0.3 / 11.5 / 22%.
+- FedHEP-Guard over 100 rounds: plain backdoor 0.4 / 0.5 / 80% against 0.3 / 0.3 / 0.3%, honest isolations 2.0 against 6.0 per run, accuracy 44.18 against 41.66. Stealth 1.1 / 0.5 / 62% against 0.4 / 0.4 / 34%.
+
+![Phase 8](figures/phase8_shared.png)
+
+**Seed 7.** Without the personal heads the backdoor attackers scored z −2.1 to −2.6 in round 2 instead of −2.8 to −3.8, and the gap ratio was 7.6 instead of 10, so the gate (8) stayed shut. When it opened in rounds 5–6 their z was already inside the cut. The critical-layer half flagged them only in rounds 2–3. They were caught in round 25. The risk named before the runs (report 8.3, now 7.6) came true: the personal heads carry part of the backdoor signature as well as the group signature.
+
+![Seed 7](figures/phase8_seed7.png)
+
+**Decision.** The shared signal is not adopted; FedHEP-Guard keeps the whole-update signal. Its write-up moved to report 7.6. It stays in the benchmark (`shared`, `guard_shared`) and in the scale test `acer_c13_shared_scale.yaml` (P30–P32), which measures how much of the 30- and 50-client honest-isolation problem is whole-group (cause 2). P26, P27 and P29 refuted, P28 held (`PREDICTIONS.md`). Next candidate (report 8.4): keep the whole-update signal but require a client to stand out on the shared signal too, at a lower bar; evaluate such rules offline by logging both signals' scores on the same updates.

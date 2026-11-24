@@ -218,9 +218,9 @@ axes:
 | `x8_` | mis-specified $f$ | Acer | 6.12 |
 | `x9__` | FedHEP-Guard over 100 rounds against both backdoors | Acer | 6.10 |
 | `x10_` | peer reference against the global median (Phase 7, refuted) | Acer | 7.5 |
-| `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 8.3 (running) |
-| `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 8.3 (queued) |
-| `x13_` | shared union screen against the union screen at 30 and 50 clients (Phase 8 at scale) | Acer | 8.3 (queued) |
+| `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 7.6 |
+| `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 7.6 |
+| `x13_` | shared union screen against the union screen at 30 and 50 clients (Phase 8 at scale) | Acer | 8.3 (next) |
 | `gg15_`, `gg30_`, `gg50_` | large grid (10, 20 and 30% attackers, 8 models) | GPU | 6.13 |
 | `gg<n>_a<α>__<condition>__<model>` | the benchmark (`bench_*.yaml`); shares the grid's names, so the grid's 20%-attacker runs are its cells | GPU | 6.1 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |

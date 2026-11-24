@@ -218,3 +218,7 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P9 on CUDA: trunk-only rewind leaves success above 30% | **Held:** 45% (trunk) against 42% (trunk and root head) | `c5__r3_trunk`, `c5__r3_tr` |
 | P13 on CUDA: root-head gated screen above 80% by round 100 | **Refuted:** 7 / 71 / 49% | `c6__r3g8` |
 | P18 at 30 and 50 clients: R3 isolates at most half of FedHEP+'s honest clients at α 0.1 | **Refuted:** R3 5.0 against 2.3 (30 clients) and 6.0 against 1.0 (50 clients); FedHEP+ isolates fewer at α 0.1 than at α 0.5 once there are 30 clients | `gg30_a01__clean`, `gg50_a01__clean` |
+| P26 (Phase 8): no whole-group event and at most 1.9 honest isolations per run with the shared signal, α 0.5, no attack | **Refuted:** 2.3 per run (1 / 3 / 3), and one whole-group event of 3 on seed 42. Across all five α 0.5 conditions honest isolations fell by three quarters (0.9 against 3.4 per run) | `x11_a05__clean__r3sc` |
+| P27 (Phase 8): backdoor under 1% on every α 0.5 seed | **Refuted:** 0.5 / 0.3 / 78%; on seed 7 the attackers were caught in round 25 | `x11_a05__backdoor3__r3sc` |
+| P28 (Phase 8): every sign-flip, ALIE and Min-Max attacker isolated at α 0.5 | **Held:** 27 of 27, all in round 3 | `x11_a05__{sign3,alie3,minmax3}__r3sc` |
+| P29 (Phase 8): FedHEP-Guard with the shared signal under 1% at round 100 on every seed, both backdoors | **Refuted:** plain 0.4 / 0.5 / 80%, stealth 1.1 / 0.5 / 62% (seed 7 again) | `x12__*__r3sc_tr` |
