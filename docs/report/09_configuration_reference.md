@@ -111,6 +111,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `population` | — | `kept` | z measured against the clients still kept (`kept`) or every non-banned client (`all`, Phase 3c, rejected, 7.1c) |
 | `two_sided` | — | false | also flag clients far **above** the others: $z \leftarrow -\lvert z\rvert$ (R2 onward) |
 | `gap_gate` | $\gamma$ | 0.0 | above 0: bad evidence only in rounds whose sorted scores split, gap ratio $g \ge \gamma$ (R3: 8) |
+| `high_gate` | $\gamma_{\mathrm{high}}$ | 0.0 | two-sided only: a client far **above** the others counts only in rounds with $g \ge \gamma_{\mathrm{high}}$; 0 = same as `gap_gate` (under test: 20, 8.2) |
 
 **Decisions:**
 
@@ -220,7 +221,8 @@ axes:
 | `x10_` | peer reference against the global median (Phase 7, refuted) | Acer | 7.5 |
 | `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 7.6 |
 | `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 7.6 |
-| `x13_` | shared union screen against the union screen at 30 and 50 clients (Phase 8 at scale) | Acer | 8.3 (next) |
+| `x13_` | shared union screen against the union screen at 30 and 50 clients (Phase 8 at scale) | Acer | 8.3 |
+| `x14_` | union screen with the high-side gate (`plus.high_gate: 20`) and its controls | Acer | 8.2 (running) |
 | `gg15_`, `gg30_`, `gg50_` | large grid (10, 20 and 30% attackers, 8 models) | GPU | 6.13 |
 | `gg<n>_a<α>__<condition>__<model>` | the benchmark (`bench_*.yaml`); shares the grid's names, so the grid's 20%-attacker runs are its cells | GPU | 6.1 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |

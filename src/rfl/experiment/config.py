@@ -78,6 +78,9 @@ class PlusConfig:
                                          # against the median of the clients holding the most similar classes)
     peer_share: float = 0.333            # "peer": share of the other clients used as a client's peers
     shadow_reference: str = ""           # also score against this reference and log it, without acting
+    high_gate: float = 0.0               # two-sided: z far ABOVE the others counts only in rounds whose gap ratio
+                                         # reaches this (0: same as gap_gate). Report 8.2: backdoor attackers sit
+                                         # low; colluding ALIE / Min-Max high, in rounds with gap ratios of 30-130
     z_cut: float = 2.5                   # leave a client out this round when its robust z < -z_cut
     evidence_cut: float = 1.5            # isolate for good when its running z falls below -evidence_cut
     evidence_decay: float = 0.7

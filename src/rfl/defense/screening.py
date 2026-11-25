@@ -67,6 +67,7 @@ class ScreenOptions:
     sign_topk: float = 0.3             # "sign_align": share of each update's largest coordinates compared
     peer_share: float = 1 / 3          # reference "peer": share of the other reference clients used as peers
     shadow_reference: str = ""         # also score against this reference and log it, without acting ("" = off)
+    high_gate: float = 0.0             # two-sided: the high side acts only when gap_ratio >= this (0: = gap_gate)
 
 
     def __post_init__(self) -> None:

@@ -1,0 +1,437 @@
+{
+ "runs": 196,
+ "replay_matches_real": 195,
+ "separability": {
+  "15": {
+   "two-sided |z|, whole update": 0.822605396395719,
+   "low side \u2212z, whole update": 0.9272673383963707,
+   "two-sided |z|, critical layers": 0.7530073063137579,
+   "low side \u2212z, critical layers": 0.8421570857457955,
+   "low side, smoothed over rounds (EMA 0.7), whole update": 0.957340338872597
+  },
+  "30": {
+   "two-sided |z|, whole update": 0.8137620576495705,
+   "low side \u2212z, whole update": 0.8376403787245893,
+   "two-sided |z|, critical layers": 0.6509858583958672,
+   "low side \u2212z, critical layers": 0.7618836413598142,
+   "low side, smoothed over rounds (EMA 0.7), whole update": 0.8505711743517729
+  },
+  "50": {
+   "two-sided |z|, whole update": 0.6517895300183186,
+   "low side \u2212z, whole update": 0.7272758795939696,
+   "two-sided |z|, critical layers": 0.5039175371969858,
+   "low side \u2212z, critical layers": 0.661971784609137,
+   "low side, smoothed over rounds (EMA 0.7), whole update": 0.8079878231727875
+  }
+ },
+ "rules": {
+  "FedHEP-Guard's screen (now)": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 150,
+    "caught": 192,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 48,
+    "caught": 42,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 18,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 9,
+    "caught": 15,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 4,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 351,
+    "caught": 324,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 142,
+    "caught": 86,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 65,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 294,
+    "caught": 190,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 102,
+    "caught": 34,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 118,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "high side only if gap ratio \u2265 20": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 113,
+    "caught": 184,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 42,
+    "caught": 41,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 14,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 7,
+    "caught": 15,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 4,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 320,
+    "caught": 324,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 117,
+    "caught": 78,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 53,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 153,
+    "caught": 190,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 43,
+    "caught": 26,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 53,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "high side only if gap ratio \u2265 30": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 113,
+    "caught": 172,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 41,
+    "caught": 41,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 14,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 7,
+    "caught": 15,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 4,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 318,
+    "caught": 321,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 117,
+    "caught": 78,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 50,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 151,
+    "caught": 190,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 37,
+    "caught": 26,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 48,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "high side \u2265 30, cut 2.0": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 71,
+    "caught": 172,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 25,
+    "caught": 29,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 5,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 3,
+    "caught": 15,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 2,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 131,
+    "caught": 321,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 50,
+    "caught": 47,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 21,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 56,
+    "caught": 190,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 16,
+    "caught": 8,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 23,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "high side \u2265 30, whole-update signal only": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 98,
+    "caught": 142,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 37,
+    "caught": 14,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 13,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 3,
+    "caught": 14,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 0,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 179,
+    "caught": 296,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 67,
+    "caught": 54,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 18,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 77,
+    "caught": 117,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 17,
+    "caught": 11,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 22,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "two-sided, cut 2.0": {
+   "15/poison": {
+    "runs": 58,
+    "honest": 91,
+    "caught": 192,
+    "attackers": 192
+   },
+   "15/backdoor": {
+    "runs": 18,
+    "honest": 25,
+    "caught": 29,
+    "attackers": 60
+   },
+   "15/clean": {
+    "runs": 6,
+    "honest": 8,
+    "caught": 0,
+    "attackers": 0
+   },
+   "20/poison": {
+    "runs": 4,
+    "honest": 3,
+    "caught": 15,
+    "attackers": 16
+   },
+   "20/clean": {
+    "runs": 1,
+    "honest": 2,
+    "caught": 0,
+    "attackers": 0
+   },
+   "30/poison": {
+    "runs": 54,
+    "honest": 136,
+    "caught": 324,
+    "attackers": 324
+   },
+   "30/backdoor": {
+    "runs": 18,
+    "honest": 57,
+    "caught": 49,
+    "attackers": 108
+   },
+   "30/clean": {
+    "runs": 6,
+    "honest": 24,
+    "caught": 0,
+    "attackers": 0
+   },
+   "50/poison": {
+    "runs": 20,
+    "honest": 90,
+    "caught": 190,
+    "attackers": 190
+   },
+   "50/backdoor": {
+    "runs": 6,
+    "honest": 27,
+    "caught": 8,
+    "attackers": 60
+   },
+   "50/clean": {
+    "runs": 5,
+    "honest": 38,
+    "caught": 0,
+    "attackers": 0
+   }
+  }
+ }
+}

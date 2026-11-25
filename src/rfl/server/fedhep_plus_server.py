@@ -257,6 +257,10 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         score_stats["gap_ratio"] = split
         if self.screen.gap_gate > 0 and split < self.screen.gap_gate:
             z = {c: max(v, 0.0) for c, v in z.items()}   # no separate group this round: no bad evidence
+        elif self.screen.two_sided and self.screen.high_gate > 0 and split < self.screen.high_gate:
+            # The high side (clients unusually close to the others) only in rounds that split strongly, as with
+            # colluding ALIE / Min-Max attackers; backdoor attackers and most honest outliers' flags differ (8.2).
+            z = {c: (0.0 if z_logged[c] > 0 else v) for c, v in z.items()}
         return raw_scores, score_stats, z_logged, z
 
     def _probe_scores(self, uploads: dict[int, torch.Tensor], scored: list[int], in_ref: torch.Tensor

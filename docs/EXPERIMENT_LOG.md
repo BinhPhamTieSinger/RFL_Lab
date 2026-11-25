@@ -1554,3 +1554,20 @@ Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients)
 ## 2026-11-25 · Acer: Phase 8 at scale complete (P31 held)
 
 Last run (`x13_n50a01__clean__r3sc_s7`): 17 honest clients isolated, 49.68% over the three seeds. Union screen 22.3 per run (27 of 67 in whole-group events, 40 single), shared union screen 15.0 per run (13 of 45 grouped, 32 single). The shared signal removed a third of the honest isolations, half of the grouped and a fifth of the single ones. Conclusion of Phase 8 at scale: whole-group isolations (cause 2) are a minority at 30 and 50 clients; the gap gate opening on honest outliers (cause 1) is the main cause, so the next fix targets the gate (report 8.3, 8.4). P30 and P32 refuted, P31 held.
+
+## 2026-11-25 · Offline replay of the union screen on 196 GPU runs; the high-side gate; literature addendum
+
+**Replay.** `scripts/replay_screen.py` rebuilds FedHEP-Guard's screen decisions from the logged scores of every GPU union-screen run (`gg*__r3wc_s*`, 196 runs); it reproduces the real isolations in 195 (one differs in round 29).
+
+- Who is isolated: sign-flip, ALIE and Min-Max attackers by both signals in 88% of cases, in round 3, at gap ratios around 130; backdoor attackers mostly low on both signals (75%), round 6, gap ratio 11; honest clients by one signal in 80–85%, with mixed signs in about half, rounds 8–12, gap ratio 11–14.
+- The gap gate opens as often in backdoor rounds as in attack-free rounds (15 clients 15–28% against 17–19%; 30 clients about 40% against 30–35%; 50 clients 43–55% against 40–49%), and in 93–100% of model-poisoning rounds.
+- Per-round AUROC of backdoor attackers against honest clients, whole update: two-sided 0.82 / 0.81 / 0.65 at 15 / 30 / 50 clients; low side only 0.93 / 0.84 / 0.73; low side smoothed over rounds 0.96 / 0.85 / 0.81.
+- Replayed rules: high side only at gap ratio 20 gives honest isolations 2.3 / 8.8 / 10.6 per run (now 3.0 / 10.8 / 23.6) and backdoor catches of at least 68 / 72 / 43% (now 70 / 80 / 57%), ALIE 97%. Every rule tried trades honest isolations against backdoor catches.
+
+![Separability](figures/replay_separability.png)
+
+![Replayed rules](figures/replay_rules.png)
+
+**New option and sweeps.** `plus.high_gate` (default 0 keeps the previous screen; `tests/test_high_gate.py`). `acer_c14_high_gate.yaml` (21 runs) and `acer_c14_control.yaml` (6 runs), checked against the Acer controls' configurations (same settings except `high_gate`; ALIE z 0.43 and Min-Max with colluder knowledge, as in `x8_f3`/`x11`). Predictions P33–P36.
+
+**Literature.** `LITERATURE_REVIEW.md` addendum: temporal accumulation before deciding (FLDetector, FLTracer), distribution-aware voting (BoBa), learned separation (FLBuff), server-side synthetic data (SafeFL, related to SD-CSFL).

@@ -1,0 +1,15 @@
+# Acer (XPU): the union screen (r3wc) in the two conditions of acer_c14_high_gate.yaml that have no Acer control
+# yet. 2 conditions x 3 seeds = 6 runs, about 4 hours; run after acer_c14_high_gate.yaml.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - x14_a05__stealth3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: stealth_backdoor,
+                        attack.count: 3}
+    x14_n50a01__backdoor10: {data.num_clients: 50, data.alpha: 0.1, plus.global_f: 10, attack.kind: backdoor,
+                             attack.count: 10}
+  - r3wc: {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+           plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+           plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical}

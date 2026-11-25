@@ -134,7 +134,8 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
                            relative_floor=p.relative_floor, isolation_patience=p.isolation_patience,
                            exclusion_patience=p.exclusion_patience, two_sided=p.two_sided, gap_gate=p.gap_gate,
                            critical_k=p.critical_k, sign_topk=p.sign_topk,
-                           peer_share=p.peer_share, shadow_reference=p.shadow_reference)
+                           peer_share=p.peer_share, shadow_reference=p.shadow_reference,
+                           high_gate=p.high_gate)
     probe = None
     if p.signal in ("probe_logits", "head_gap"):
         probe = _probe_set(cfg, clients, p.probe_size)

@@ -110,6 +110,10 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P30 | (Phase 8 at scale, Acer, `acer_c13_shared_scale`.) At 30 clients, α 0.5, no attack, the shared union screen isolates at most half as many honest clients per run as the union screen in the same sweep, with no whole-group event (3 or more honest members of one parent in one round) | 0.5 | more than half as many, or any whole-group event |
 | P31 | (Phase 8 at scale.) At 50 clients, α 0.1, no attack, the shared signal removes less than 60% of the union screen's honest isolations, because there about half are single clients flagged when the gap gate opens by chance (cause 1, report 8.2) | 0.6 | the shared union screen isolates fewer than 40% as many honest clients as the union screen |
 | P32 | (Phase 8 at scale.) At 30 clients, α 0.5, with 6 backdoor attackers, the shared union screen keeps backdoor success under 5% on every seed (the union screen on the GPU: 1.2 / 11 / 3.5% with 9 attackers, 0.9% with 6) | 0.5 | any seed at 5% or more |
+| P33 | (High-side gate, Acer, `acer_c14_high_gate`.) At 50 clients, α 0.1, no attack, the union screen with `plus.high_gate: 20` isolates at most 13 honest clients per run (union screen: 22.3; the replay predicted 10.6) | 0.65 | more than 13 per run |
+| P34 | (High-side gate.) At 15 clients, α 0.5, every ALIE and Min-Max attacker is still isolated (9 of 9 each) | 0.7 | any attacker missed |
+| P35 | (High-side gate.) At 15 clients, α 0.5, the plain backdoor stays under 1% on every seed (union screen: 0.4 / 0.2 / 0.5%) | 0.6 | any seed at 1% or more |
+| P36 | (High-side gate.) At 15 clients, α 0.5, no attack, at most 2.5 honest clients isolated per run (union screen on the Acer: 3.8) | 0.5 | more than 2.5 per run |
 
 ## 3. The model we expect to publish
 
