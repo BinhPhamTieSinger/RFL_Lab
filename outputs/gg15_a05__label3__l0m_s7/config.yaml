@@ -1,0 +1,84 @@
+name: gg15_a05__label3__l0m
+method: fedhep_robust
+model: resnet9_multihead
+data:
+  dataset: cifar100
+  root: data
+  train_subset: 10000
+  test_subset: 3000
+  num_clients: 15
+  alpha: 0.5
+train:
+  local_epochs: 5
+  batch_size: 32
+  lr: 0.05
+  min_lr: 0.001
+  momentum: 0.9
+  nesterov: true
+  weight_decay: 0.0001
+run:
+  rounds: 30
+  eval_every: 5
+  seed: 7
+  device: auto
+  output_dir: outputs
+  deterministic: true
+fedhep:
+  num_groups: 3
+  similarity_on: full
+  exit_guard: true
+  head_agreement: true
+attack:
+  kind: label_flip
+  knowledge: colluders
+  alie_z: 1.0
+  rate: 0.0
+  count: 3
+  stop_round: 0
+  placement: random
+  backdoor_target: 0
+  backdoor_fraction: 0.5
+  scale: 1.0
+plus:
+  signal: root_head
+  probe_size: 200
+  critical_k: 5
+  sign_topk: 0.3
+  reference: mean_direction
+  peer_share: 0.333
+  shadow_reference: ''
+  z_cut: 2.5
+  evidence_cut: 1.5
+  evidence_decay: 0.7
+  regroup: false
+  readmit: false
+  max_excluded: 1.0
+  population: kept
+  drill_down: false
+  group_cut: 2.0
+  drill_cut: 1.0
+  drill_mode: exclude
+  min_group: 2
+  mad_floor: 0.0
+  relative_floor: 0.1
+  isolation_patience: 1
+  exclusion_patience: 1
+  two_sided: false
+  gap_gate: 0.0
+  global_rule: sccf
+  global_f: 3
+  global_f_fixed: false
+  rewind: none
+  rewind_window: 10
+robust:
+  rule: arc_nnm_tm
+  assumed_attackers: 3
+  flame_lambda: 0.001
+  flame_on: models
+  root_size: 100
+  momentum: 0.5
+baseline:
+  fedprox_mu: 0.01
+  ditto_lambda: 0.05
+  krum_selected: 3
+  fedrep_head_epochs: 1
