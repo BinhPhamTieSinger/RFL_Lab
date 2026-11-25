@@ -298,15 +298,22 @@ def fig_detail(tab: dict, setting: str, label: str, cond: str, title: str) -> No
                 for k in models]
         bars(ax, [None if v is None else 100 * v for v in vals], lambda v: f"{v:.0f}%",
              "attackers isolated by round 30 (%)\n◆ detection F1 (top axis)", 100,
-             missing=["not run" if get(k, "acc") is None else "never isolates" for k in models])
+             missing=["not run" if get(k, "acc") is None else "never isolates; F1 counts per-round exclusions"
+                      for k in models])
         twin = ax.twiny()
         f1 = [get(k, "f1") for k in models]
         twin.scatter([v for v in f1 if v is not None], [y for y, v in enumerate(f1) if v is not None], marker="D",
                      s=10, color=pr.INK, zorder=4)
         twin.set_xlim(0, 1)
         twin.tick_params(labelsize=7)
-    bars(ax_of["honest"], [None if get(k, "acc") is None else get(k, "honest") for k in models],
-         lambda v: f"{v:.1f}", "honest clients isolated per run")
+    def excl(k):   # rules that never isolate: the share of honest clients they leave out per round instead
+        return None if get(k, "acc") is None or get(k, "isolating") else get(k, "excluded")
+
+    bars(ax_of["honest"], [None if get(k, "acc") is None or excl(k) is not None else get(k, "honest")
+                           for k in models],
+         lambda v: f"{v:.1f}", "honest clients isolated per run",
+         missing=["not run" if get(k, "acc") is None else "" if excl(k) is None else
+                  f"never isolates; leaves out {100 * excl(k):.0f}% of honest per round" for k in models])
 
     def heat(ax, field, title, vmax, cmap):
         arr = np.full((len(models), ROUNDS), np.nan)
