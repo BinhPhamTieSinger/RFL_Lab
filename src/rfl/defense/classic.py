@@ -140,12 +140,13 @@ def arc_clip(stack: torch.Tensor, f: int) -> torch.Tensor:
 
 
 def _gather_budget(device: torch.device) -> int | None:
-    """Bytes the gathered neighbour tensor of nnm may take: half the accelerator's memory. None (no limit) on the
-    CPU and on Apple's MPS, whose memory is shared with the system."""
+    """Bytes the gathered neighbour tensor of nnm may take. CUDA: half the card's memory. XPU: an eighth, because
+    the Acer's Intel GPU has no memory of its own and shares the 14 GB of system memory, so a larger block
+    starves the whole machine. None (no limit) on the CPU and on Apple's MPS."""
     if device.type == "cuda":
         return torch.cuda.get_device_properties(device).total_memory // 2
     if device.type == "xpu":
-        return torch.xpu.get_device_properties(device).total_memory // 2
+        return torch.xpu.get_device_properties(device).total_memory // 8
     return None
 
 
