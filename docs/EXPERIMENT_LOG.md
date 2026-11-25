@@ -1535,3 +1535,14 @@ Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients)
 - P30 and P32 refuted; P31 pending.
 
 **Crash.** The first 50-client run (`x13_n50a01__clean__r3wc_s42`) stopped in L0's nearest-neighbour mixing: `stack[near]` builds an (n, n − f, d) tensor, 50 × 40 × 1.7 M floats = 12.8 GB, more than the Acer's 13.4 GB GPU holds with the model loaded. The GPU server (32 GB) ran the same step for the large grid's 50-client runs. Fix in `src/rfl/defense/classic.py`: when the tensor would exceed half the accelerator's memory, it is built in blocks of rows; each row's mean is computed exactly as before (`tests/test_nnm_memory.py` checks bit-for-bit equality). On the GPU server nothing changes for any setting tested (12.8 GB < 16 GB), and on the CPU and the Mac there is no limit, as before.
+
+## 2026-11-25 · Benchmark, first results (GPU server, interim)
+
+**Progress.** Merged from `pc` (1,381 new runs). Benchmark: 1,758 of 11,070 runs (FedAvg family complete; D1 750 of 1,200; D2 274 of 1,200; the others only the large grid's reused runs). Large grid, 50 clients: 260 of 624. The job runs on 3 GPUs (GPU 0 is held by another user's job); D1, D2 and the grid advance together, so many cells have only 1–2 seeds so far. Charts redrawn (`python scripts/plot_benchmark.py outputs`).
+
+**First readings (D1, cells with 3 seeds only).**
+- Full FedHEP-Guard, no attack: 47.1%, 4.3 honest clients isolated per run (screen alone: 47.4%, 4.3). No rewind fired.
+- Full FedHEP-Guard, sign flip: 44.6% against 45.8% for the screen (−1.4, −1.7, −0.5 by seed). Both caught every attacker in round 3 and isolated the same honest clients; the difference is the rewind after the round-3 catch. To be confirmed on label flip, noise and ALIE when they have 3 seeds.
+- FedAvg: no attack 38.4%, sign flip 15.9%, noise 1.3%, backdoor 87.9%. Multi-Krum: 24.2% with no attack, 0.4% backdoor.
+
+![Benchmark overview, D1 (interim)](figures/bench/overview_gg15_a05.png)

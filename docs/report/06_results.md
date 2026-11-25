@@ -39,13 +39,17 @@ FedAvg and Multi-Krum have no FedHEP server, so they cannot run ALIE, Min-Max or
 [//]: # (BENCH:index START)
 #### D1: 15 clients, α = 0.5, 3 attackers (`gg15_a05`)
 
-67 of 410 cells run.
+327 of 410 cells run.
 
 ![Benchmark overview, D1](../figures/bench/overview_gg15_a05.png)
 
 ![No attack, D1](../figures/bench/gg15_a05__clean.png)
 
 ![Sign flip, D1](../figures/bench/gg15_a05__sign.png)
+
+![Label flip, D1](../figures/bench/gg15_a05__label.png)
+
+![Random noise, D1](../figures/bench/gg15_a05__noise.png)
 
 ![ALIE, D1](../figures/bench/gg15_a05__alie.png)
 
@@ -55,7 +59,7 @@ FedAvg and Multi-Krum have no FedHEP server, so they cannot run ALIE, Min-Max or
 
 #### D2: 20 clients, α = 0.2, 4 attackers (`gg20_a02`)
 
-32 of 410 cells run.
+297 of 410 cells run.
 
 ![Benchmark overview, D2](../figures/bench/overview_gg20_a02.png)
 
@@ -63,67 +67,78 @@ FedAvg and Multi-Krum have no FedHEP server, so they cannot run ALIE, Min-Max or
 
 ![Sign flip, D2](../figures/bench/gg20_a02__sign.png)
 
+![Label flip, D2](../figures/bench/gg20_a02__label.png)
+
+![Random noise, D2](../figures/bench/gg20_a02__noise.png)
+
+![ALIE, D2](../figures/bench/gg20_a02__alie.png)
+
 ![Min-Max, D2](../figures/bench/gg20_a02__minmax.png)
 
 ![Backdoor, D2](../figures/bench/gg20_a02__backdoor.png)
 
 #### 30 clients, α = 0.5, 6 attackers (`gg30_a05`)
 
-40 of 410 cells run.
+50 of 410 cells run.
 
 ![Benchmark overview, 30 clients, α 0.5](../figures/bench/overview_gg30_a05.png)
 
-Detail charts: [No attack](../figures/bench/gg30_a05__clean.png) · [Sign flip](../figures/bench/gg30_a05__sign.png) · [ALIE](../figures/bench/gg30_a05__alie.png) · [Min-Max](../figures/bench/gg30_a05__minmax.png) · [Backdoor](../figures/bench/gg30_a05__backdoor.png)
+Detail charts: [No attack](../figures/bench/gg30_a05__clean.png) · [Sign flip](../figures/bench/gg30_a05__sign.png) · [Label flip](../figures/bench/gg30_a05__label.png) · [Random noise](../figures/bench/gg30_a05__noise.png) · [ALIE](../figures/bench/gg30_a05__alie.png) · [Min-Max](../figures/bench/gg30_a05__minmax.png) · [Backdoor](../figures/bench/gg30_a05__backdoor.png)
 
 #### 15 clients, α = 0.1, 3 attackers (`gg15_a01`)
 
-40 of 410 cells run.
+50 of 410 cells run.
 
 ![Benchmark overview, 15 clients, α 0.1](../figures/bench/overview_gg15_a01.png)
 
-Detail charts: [No attack](../figures/bench/gg15_a01__clean.png) · [Sign flip](../figures/bench/gg15_a01__sign.png) · [ALIE](../figures/bench/gg15_a01__alie.png) · [Min-Max](../figures/bench/gg15_a01__minmax.png) · [Backdoor](../figures/bench/gg15_a01__backdoor.png)
+Detail charts: [No attack](../figures/bench/gg15_a01__clean.png) · [Sign flip](../figures/bench/gg15_a01__sign.png) · [Label flip](../figures/bench/gg15_a01__label.png) · [Random noise](../figures/bench/gg15_a01__noise.png) · [ALIE](../figures/bench/gg15_a01__alie.png) · [Min-Max](../figures/bench/gg15_a01__minmax.png) · [Backdoor](../figures/bench/gg15_a01__backdoor.png)
 
 #### 30 clients, α = 0.1, 6 attackers (`gg30_a01`)
 
-40 of 410 cells run.
+50 of 410 cells run.
 
 ![Benchmark overview, 30 clients, α 0.1](../figures/bench/overview_gg30_a01.png)
 
-Detail charts: [No attack](../figures/bench/gg30_a01__clean.png) · [Sign flip](../figures/bench/gg30_a01__sign.png) · [ALIE](../figures/bench/gg30_a01__alie.png) · [Min-Max](../figures/bench/gg30_a01__minmax.png) · [Backdoor](../figures/bench/gg30_a01__backdoor.png)
+Detail charts: [No attack](../figures/bench/gg30_a01__clean.png) · [Sign flip](../figures/bench/gg30_a01__sign.png) · [Label flip](../figures/bench/gg30_a01__label.png) · [Random noise](../figures/bench/gg30_a01__noise.png) · [ALIE](../figures/bench/gg30_a01__alie.png) · [Min-Max](../figures/bench/gg30_a01__minmax.png) · [Backdoor](../figures/bench/gg30_a01__backdoor.png)
 
 #### 50 clients, α = 0.1, 10 attackers (`gg50_a01`)
 
-8 of 410 cells run.
+50 of 410 cells run.
 
 ![Benchmark overview, 50 clients, α 0.1](../figures/bench/overview_gg50_a01.png)
 
-Detail charts: [No attack](../figures/bench/gg50_a01__clean.png)
+Detail charts: [No attack](../figures/bench/gg50_a01__clean.png) · [Sign flip](../figures/bench/gg50_a01__sign.png) · [Label flip](../figures/bench/gg50_a01__label.png) · [Random noise](../figures/bench/gg50_a01__noise.png) · [ALIE](../figures/bench/gg50_a01__alie.png) · [Min-Max](../figures/bench/gg50_a01__minmax.png) · [Backdoor](../figures/bench/gg50_a01__backdoor.png)
 
 #### 50 clients, α = 0.5, 10 attackers (`gg50_a05`)
 
-0 of 410 cells run.
+18 of 410 cells run.
 
 ![Benchmark overview, 50 clients, α 0.5](../figures/bench/overview_gg50_a05.png)
 
-Detail charts: none yet.
+Detail charts: [No attack](../figures/bench/gg50_a05__clean.png) · [Sign flip](../figures/bench/gg50_a05__sign.png) · [Label flip](../figures/bench/gg50_a05__label.png) · [Random noise](../figures/bench/gg50_a05__noise.png) · [Backdoor](../figures/bench/gg50_a05__backdoor.png)
 
 #### 20 clients, α = 0.5, 4 attackers (`gg20_a05`)
 
-0 of 410 cells run.
+10 of 410 cells run.
 
 ![Benchmark overview, 20 clients, α 0.5](../figures/bench/overview_gg20_a05.png)
 
-Detail charts: none yet.
+Detail charts: [No attack](../figures/bench/gg20_a05__clean.png) · [Sign flip](../figures/bench/gg20_a05__sign.png) · [Label flip](../figures/bench/gg20_a05__label.png) · [Random noise](../figures/bench/gg20_a05__noise.png) · [Backdoor](../figures/bench/gg20_a05__backdoor.png)
 
 #### 15 clients, α = 0.05, 3 attackers (the paper's setting) (`gg15_a005`)
 
-0 of 410 cells run.
+10 of 410 cells run.
 
 ![Benchmark overview, 15 clients, α 0.05 (paper)](../figures/bench/overview_gg15_a005.png)
 
-Detail charts: none yet.
+Detail charts: [No attack](../figures/bench/gg15_a005__clean.png) · [Sign flip](../figures/bench/gg15_a005__sign.png) · [Label flip](../figures/bench/gg15_a005__label.png) · [Random noise](../figures/bench/gg15_a005__noise.png) · [Backdoor](../figures/bench/gg15_a005__backdoor.png)
 
 [//]: # (BENCH:index END)
+
+**First results (2026-11-25, interim: 1,758 of 11,070 runs).** D1 is 63% done, D2 23%; the other settings hold only the large grid's runs and FedAvg and Multi-Krum. Cells with fewer than 3 seeds are marked in the charts and are not compared here.
+- **The full FedHEP-Guard has run for the first time without an attack.** D1, no attack: 47.1% accuracy and 4.3 honest clients isolated per run, the same count as its screen alone (47.4%, 4.3). The rewind did not fire in these runs.
+- **Under sign flip the full model is 1.2 points less accurate than its screen** (44.6 against 45.8, 3 seeds: −1.4, −1.7, −0.5 by seed), although both caught all attackers in round 3 and isolated the same honest clients. This is the price of the rewind when there is nothing to undo; it is checked again once the label-flip, noise and ALIE cells have 3 seeds.
+- **FedAvg collapses at D1 and D2** (sign flip 15.9%, random noise 1.3% at D1; backdoor 88–90%), as in Phase 2. **Multi-Krum** is robust but only 24.2% accurate at D1 and 17.6% at D2: it trains on few clients' data.
 
 **What the benchmark will decide.** Set before the results, so the results can refute them (in the style of `PREDICTIONS.md`):
 1. **FedHEP-Guard against FedHEP+.** FedHEP-Guard wins under ALIE, Min-Max and both backdoors at D1. At D2 it loses less than 1 point with no attack, where FedHEP+ loses 2.
