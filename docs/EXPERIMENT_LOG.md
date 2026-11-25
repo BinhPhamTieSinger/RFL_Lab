@@ -1546,3 +1546,7 @@ Predictions P2, P3 (at D2), P8, P9, P13 (on CUDA) and P18 (at 30 and 50 clients)
 - FedAvg: no attack 38.4%, sign flip 15.9%, noise 1.3%, backdoor 87.9%. Multi-Krum: 24.2% with no attack, 0.4% backdoor.
 
 ![Benchmark overview, D1 (interim)](figures/bench/overview_gg15_a05.png)
+
+## 2026-11-25 · Acer: Phase 8 at 50 clients (5 of 6 runs)
+
+`acer_c13_shared_scale.yaml`, 50 clients, α 0.1, no attack, Acer (with the blocked nearest-neighbour step). Union screen: 24 / 21 / 22 honest clients isolated (seeds 123 / 42 / 7), 27 of 67 in whole-group events, first isolations in round 3; accuracy 48.4% on average. Shared signal: 17 and 11 on seeds 123 and 42 (24 and 21 for the union screen on the same seeds), accuracy 49.2%. About 40% fewer: P31 (less than 60% removed) holds so far. The last run (shared, seed 7) did not complete; the sweep stops at once on the Acer (under investigation).
