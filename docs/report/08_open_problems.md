@@ -75,9 +75,20 @@ The shared signal, tested at 15 clients, cut honest isolations by three quarters
 
 | Sweep | Runs | What it tests | Status |
 |---|---|---|---|
-| `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack) (P30–P32) | 30 clients done (7.6); 50 clients: 5 of 6 runs done (below), the last one (shared, seed 7) still to run |
+| `acer_c13_shared_scale.yaml` (`x13_`) | 18 | the shared union screen against the union screen at 30 clients (α 0.5, no attack and 6 backdoor attackers) and 50 clients (α 0.1, no attack) (P30–P32) | done (30 clients in 7.6, 50 clients below) |
 
-**At 50 clients (α = 0.1, no attack) both causes act.** The union screen isolated 24, 21 and 22 honest clients per run (seeds 123 / 42 / 7; the GPU's runs: 22.0 per run), 40% of them in whole-group events, from round 3 on. The shared signal, on the two seeds run so far, isolated 17 and 11 (against 24 and 21 on the same seeds): about 40% fewer, but still 14 per run. Removing the parent head's group signature (cause 2) helps at this size, but most of the problem is left, as P31 expected.
+**At 50 clients (α = 0.1, no attack) both causes act, and cause 1 is the larger.**
+
+| Acer, 50 clients, α 0.1, no attack | Union screen | Shared union screen |
+|---|---|---|
+| Honest clients isolated, seeds 123 / 42 / 7 | 24 / 21 / 22 | 17 / 11 / 17 |
+| Per run | **22.3** (GPU: 22.0) | **15.0** |
+| In whole-group events (3 runs) | 27 of 67 | 13 of 45 |
+| Single clients (3 runs) | 40 of 67 | 32 of 45 |
+| First honest isolation | round 3 | round 3 (seed 42: 12) |
+| Accuracy | 48.41 | 49.68 |
+
+The shared signal removed a third of the honest isolations (22.3 → 15.0), half of the whole-group ones and a fifth of the single ones (P31 held: less than 60% removed). Even if every whole-group isolation were removed, 13 honest clients per run would still be isolated one by one. So at scale the main cause is cause 1, the gap gate opening on honest outliers, and the next fix has to target it.
 
 **At 30 clients with no attack, cause 1 dominates on the Acer:** the union screen isolated 6.0 honest clients per run, only 1.0 of them in whole-group events, and the shared signal isolated 7.3. On the GPU the same setting gave 14.7 per run with about half in groups (8.2), so the split differs by run and machine; both machines agree that removing the parent head is not enough.
 
