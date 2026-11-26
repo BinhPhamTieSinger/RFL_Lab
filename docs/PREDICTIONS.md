@@ -118,6 +118,9 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P38 | (Same.) With no attack it isolates at most as many honest clients per run as the union screen: 3.7 at D2, 4.3 at D1 (replay: 3.0 and 3.2) | 0.55 | more than 3.7 at D2 or more than 4.3 at D1 |
 | P39 | (Same.) At D1 every Min-Max attacker and at least 8 of 9 ALIE attackers are still isolated (replay: 100% and 87%) | 0.5 | any Min-Max attacker or more than one ALIE attacker missed |
 | P40 | (Same, with the rewind, `guard_g6h20`.) At D2 the rewind still costs 0.5–2.5 points against `r3wc_g6h20` in at least 6 of the 8 conditions, as it does for FedHEP-Guard (0.8–1.8 in all 8), because it also fires after honest isolations | 0.6 | a cost under 0.5 points in 3 or more conditions |
+| P41 | (Low-side gate 6 with high-side gate 20, Acer, `acer_c15_low_gate`, written 2026-11-26 before any run.) At 15 clients, α 0.5, the stealth backdoor stays under 5% on every seed (high-side gate alone, c14: 0.4 / 71 / 57%, seeds 42 / 123 / 7; the replay of this rule on those runs catches every attacker by round 6) | 0.55 | any seed at 5% or more |
+| P42 | (Same.) With no attack, at most 3.8 honest clients isolated per run at 15 clients and at most 16 at 50 clients, α 0.1 (union screen: 3.8 and 22.3; high-side gate alone: 2.3 and 12.3) | 0.5 | more than 3.8 or more than 16 |
+| P43 | (Same.) At 15 clients every ALIE and Min-Max attacker is isolated (9 of 9 each), as with the high-side gate alone | 0.7 | any attacker missed |
 
 ## 3. The model we expect to publish
 
@@ -233,3 +236,7 @@ Runs that are cheap on the server and were out of reach on the laptops: 100 roun
 | P30 (Phase 8 at scale): at 30 clients, α 0.5, no attack, the shared union screen at most half the union screen's honest isolations, no whole-group event | **Refuted:** 7.3 against 6.0 per run, and one whole-group event of 4 (seed 7) | `x13_n30a05__clean__*` |
 | P32 (Phase 8 at scale): at 30 clients with 6 backdoor attackers, the shared union screen under 5% on every seed | **Refuted:** 0.9 / 63 / 73% (the union screen: 0.6 / 1.0 / 1.7%) | `x13_n30a05__backdoor6__*` |
 | P31 (Phase 8 at scale, 50 clients): the shared signal removes less than 60% of the union screen's honest isolations | **Held:** 15.0 against 22.3 per run (a third removed); whole-group isolations 13 against 27, single ones 32 against 40 (3 runs each) | `x13_n50a01__clean__*` |
+| P33 (high-side gate, Acer, 50 clients, α 0.1): at most 13 honest isolations per run, no attack | **Held:** 12.3 per run (19 / 6 / 12, seeds 42 / 123 / 7) against 22.3 for the union screen; accuracy 50.4% against 48.4% | `x14_n50a01__clean__r3wc_hg20` |
+| P34 (high-side gate, 15 clients): every ALIE and Min-Max attacker still isolated | **Held:** 9 of 9 each; Min-Max on seed 7 caught in round 7 instead of 3 | `x14_a05__{alie3,minmax3}__r3wc_hg20` |
+| P35 (high-side gate, 15 clients): plain backdoor under 1% on every seed | **Refuted, narrowly:** 0.4 / 0.5 / 1.7% (seeds 42 / 123 / 7); seed 7's attackers were caught in round 6 instead of 4 | `x14_a05__backdoor3__r3wc_hg20` |
+| P36 (high-side gate, 15 clients): at most 2.5 honest isolations per run, no attack | **Held:** 2.3 per run (1, 0 and 6 on seeds 42, 123, 7) against 3.8 for the union screen | `x14_a05__clean__r3wc_hg20` |

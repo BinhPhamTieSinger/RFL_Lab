@@ -115,10 +115,27 @@ Every run of FedHEP-Guard's screen logs, each round, both signals' scores, their
 
 No rule removes honest isolations without losing some backdoor catches: with these two signals the two groups overlap. Two rules stand out.
 
-- **The high-side gate (20)** is the best trade when honest isolations matter most. At 50 clients it halves them; the drop in backdoor catches is partly an artefact of the lower bound. Live runs test it on the Acer (`acer_c14_high_gate.yaml`, P33–P36).
+- **The high-side gate (20)** is the best trade when honest isolations matter most. At 50 clients it halves them; the drop in backdoor catches is partly an artefact of the lower bound. The live test on the Acer agrees (below).
 - **A lower gate on the low side (6), with the high-side gate (20)**, is the best trade when the backdoor matters most. Against the screen as it is, it catches 83% of backdoor attackers instead of 68% at 15 clients and 96% instead of 54% at D2, for about the same honest isolations (3.2 against 3.0, 3.0 against 3.7), and isolates a third fewer honest clients at 50 clients (15.4 against 23.6). It catches the three runs the real screen lost in the benchmark: D1 stealth seed 7 (all three attackers in round 4; the real screen caught none) and D2 seed 42, plain and stealth (in round 3). Why it works: the backdoor attackers' low-side z stands apart from round 2 on, but four or more attackers spread over a range make no single large gap, so the gap ratio sits at 4–8 and the gate at 8 stays shut (6.1, "why seed 42 gets through").
 
 **Caveats.** The gate of 6 was picked from 24 replayed combinations (low-side gate 0, 4, 6 or 8; cut 1.5, 2.0 or 2.5; high side at 8 or 20) on the same runs it is scored on, so it may be tuned to them. D2 has only 3 runs per condition. ALIE catches at 15 clients fall to 87% (one seed's attackers are caught late or not at all in the replay). Both rules need the live test, which needs no new code: `plus.gap_gate: 6` with `plus.high_gate: 20`. It is queued as two benchmark models (with and without the rewind), run first in D1 and D2 by `gpu_c8_gates.yaml` (P37–P40).
+
+**The high-side gate, live (Acer, `acer_c14_high_gate.yaml`, 18 of 21 runs, 2026-11-26).** Against the union screen on the Acer, same seeds:
+
+| Condition (30 rounds) | Honest isolated per run: union screen / high-side gate | Attackers caught | Backdoor success, seeds 42 / 123 / 7 |
+|---|---|---|---|
+| 50 clients, α 0.1, no attack | 22.3 / **12.3** | | |
+| 15 clients, no attack | 3.8 / **2.3** | | |
+| 15 clients, ALIE | 4.7 / 5.3 | 9 of 9 / 9 of 9 | |
+| 15 clients, Min-Max | 2.0 / 3.3 | 9 of 9 / 9 of 9 (seed 7 in round 7) | |
+| 15 clients, backdoor | 3.2 / 4.3 | 18 of 18 / 9 of 9 | 0.2–0.5% / 0.4 / 0.5 / **1.7%** |
+| 15 clients, stealth backdoor | control running (`acer_c14_control.yaml`) | – / 8 of 9 | – / 0.4 / **71 / 57%** |
+
+- **It does what the replay predicted with no attack:** honest isolations fall by 45% at 50 clients and by 40% at 15 clients, and accuracy at 50 clients rises from 48.4% to 50.4%. Every ALIE and Min-Max attacker is still caught (P33, P34 and P36 held). Under attack it isolates about one more honest client per run than the union screen.
+- **The stealth backdoor got through on seeds 123 and 7**, with the attackers caught in rounds 13–23. **The high-side gate is not the cause:** the attackers sit on the low side (z mostly between −1.5 and −5.3 from round 2), and replaying the union screen's own rule on these runs' logs gives the same late isolations. The cause is the gap gate on the low side, as at D2 on the GPU: on both signals the gap ratio fell below 8 every second or third round (4–7.4), and each closed round resets the streak of 3 rounds the screen needs. Replaying the low-side gate of 6 on the same logs isolates all three attackers in rounds 3 (seed 123) and 6 (seed 7). These runs were not among those the gate of 6 was chosen on, so this is a first out-of-sample check, though still offline. The plain backdoor reached 1.7% on seed 7 (caught in round 6, not 4): P35 refuted, narrowly.
+- **Next on the Acer:** the same sweep with the low-side gate at 6 (`acer_c15_low_gate.yaml`, 18 runs, P41–P43), paired seed by seed with c14.
+
+![The high-side gate on the Acer](../figures/acer_c14_high_gate.png)
 
 The smoothed low-side score separates best of all (0.99 at D2), which points to the next signal to build: a per-client score accumulated over rounds before any gate is applied, as FLDetector and FLTracer do (`LITERATURE_REVIEW.md`).
 
@@ -148,7 +165,7 @@ The shared signal removed a third of the honest isolations (22.3 → 15.0), half
 ## 8.4 What comes next
 
 - **GPU server:** the benchmark (6.1) and the rest of the 50-client grid; at the next resubmission `gpu_c8_gates.yaml` first (the low-side gate of 6 with the high-side gate of 20, with and without the rewind, D1 and D2, P37–P40); then the stealth study at scale (`gpu_c7_stealth`).
-- **Acer:** the high-side gate (`acer_c14_high_gate.yaml` with `acer_c14_control.yaml`, P33–P36): the union screen with `plus.high_gate: 20` at 15 clients (no attack, backdoor, stealth backdoor, ALIE, Min-Max) and 50 clients (no attack, backdoor).
+- **Acer:** the end of the high-side gate test (its 50-client backdoor runs, then `acer_c14_control.yaml`, the union-screen stealth control), then the low-side gate (`acer_c15_low_gate.yaml`, P41–P43).
 - **A smoothed per-client score.** The replay's best separator is each client's low-side score averaged over rounds (8.2). A screen that gates on that score, rather than on the round's scores, is the next candidate; the replay can test it first. An observe-only mode (score and log every round, never exclude) would remove the replay's lower-bound limit.
 - **Cause 2 without dropping the heads.** The heads carry both the group signature and part of the backdoor signature (7.6). A rule that spares a group drifting only in its heads, by requiring the shared signal to agree at a lower bar, can be replayed once both signals are logged on the same updates.
 - **After that:** the open problems 3–6 above, in that order.

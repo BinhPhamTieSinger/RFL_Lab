@@ -13,6 +13,9 @@ Writes, under docs/figures/bench/:
   <setting>__<condition>.png one condition in detail, once at least one model has run it: accuracy, attackers
                              caught, detection F1, honest clients isolated, backdoor success, and in which round
                              attackers and honest clients are isolated
+  ranking.png                every model ranked across the settings it has completed: worst accuracy under attack,
+                             highest backdoor success, honest clients left out per round with no attack
+  The overview's bottom row names the best model of each column; the best cells are outlined.
 docs/results/benchmark.json with every number drawn, and the chart index of report 6.1 (between the markers
 "[//]: # (BENCH:index START)" and "[//]: # (BENCH:index END)" in docs/report/06_results.md; link-reference
 lines like these render as nothing in any Markdown viewer)."""
@@ -216,7 +219,37 @@ def _heat(ax, grid, cmap, vmin, vmax, fmt, models, cols, empty):
     ax.set_yticks(range(len(models)), [])
 
 
+# Which way is better for each overview panel, and which models compete. Honest clients isolated: only models that
+# isolate at least half of the attackers (mean over this setting's attacks); a model that removes no one would
+# otherwise win with 0.
+BETTER = {"acc": max, "asr": min, "f1": max, "honest": min}
+
+
+def isolators(data: dict) -> set[str]:
+    shares: dict = defaultdict(list)
+    for cond, runs in data.items():
+        for k, v in runs.items():
+            if cond != "clean" and v.get("caught") is not None:
+                shares[k].append(v["caught"])
+    return {k for k, v in shares.items() if statistics.fmean(v) >= 0.5}
+
+
+def best(data: dict, cond: str, field: str, models: list[str]) -> tuple[list[str], float] | None:
+    """The best model(s) of one overview column, ties at the shown precision kept: (models, value)."""
+    iso = isolators(data)
+    vals = {k: v[field] for k, v in data.get(cond, {}).items()
+            if k in models and v.get(field) is not None and (field != "honest" or k in iso)}
+    if not vals:
+        return None
+    top = BETTER[field](vals.values())
+    digits = 2 if field == "f1" else 0 if field == "asr" else 1
+    return [k for k in models if k in vals and round(vals[k], digits) == round(top, digits)], top
+
+
 def fig_overview(tab: dict, setting: str, label: str) -> None:
+    import textwrap
+
+    from matplotlib.patches import Rectangle
     models = MODELS
     data = tab.get(setting, {})
     get = lambda c, k, f: (data.get(c, {}).get(k) or {}).get(f)  # noqa: E731
@@ -230,24 +263,54 @@ def fig_overview(tab: dict, setting: str, label: str) -> None:
               ("detection F1\n(mean over rounds)", attacks, titles[1:], "f1", "Blues", 0, 1, lambda v: f"{v:.2f}"),
               ("honest clients\nisolated per run", conds, titles, "honest", "Oranges", 0, None, lambda v: f"{v:.1f}")]
     widths = [len(p[1]) for p in panels]
-    fig, axes = plt.subplots(1, 4, figsize=(4.2 + 0.52 * sum(widths), 1.6 + 0.2 * len(models)),
-                             gridspec_kw={"width_ratios": widths}, sharey=True)
-    for ax, (title, cs, ts, field, cmap, vmin, vmax, fmt) in zip(axes, panels, strict=True):
+    best_h = 2.9   # inches for the row of best models under the heatmaps
+    fig, axes = plt.subplots(2, 4, figsize=(4.2 + 0.52 * sum(widths), 2.2 + 0.2 * len(models) + best_h),
+                             gridspec_kw={"width_ratios": widths,
+                                          "height_ratios": [0.2 * len(models) + 0.6, best_h]})
+    for ax, bax, (title, cs, ts, field, cmap, vmin, vmax, fmt) in zip(axes[0], axes[1], panels, strict=True):
         grid = [[get(c, k, field) if applies(k, c) else None for c in cs] for k in models]
         vals = [v for row in grid for v in row if v is not None]
         lo = vmin if vmin is not None else (min(vals) if vals else 0)
-        hi = vmax if vmax is not None else (max(vals) if vals else 1)
-        _heat(ax, grid, cmap, lo, max(hi, lo + 1e-6), fmt, models, ts, empty(cs))
+        hi = max(vmax if vmax is not None else (max(vals) if vals else 1), lo + 1e-6)
+        _heat(ax, grid, cmap, lo, hi, fmt, models, ts, empty(cs))
+        ax.xaxis.tick_top()
+        ax.set_xticks(range(len(ts)), ts, rotation=60, ha="left", fontsize=7.5)
         ax.set_title(title, fontsize=9.5)
-    _family_ticks(axes[0], models)
-    _separators(axes, models)
+        # the row of best models: the best value in its colour, the model's name below; the best cells outlined
+        bax.set_xlim(-0.5, len(cs) - 0.5)
+        bax.set_ylim(1, 0)
+        bax.axis("off")
+        cm = plt.get_cmap(cmap)
+        for j, c in enumerate(cs):
+            b = best(data, c, field, models)
+            if b is None:
+                bax.text(j, 0.06, "–", ha="center", va="center", fontsize=6, color="#b5b3ae")
+                continue
+            winners, v = b
+            for k in winners:
+                ax.add_patch(Rectangle((j - 0.5, models.index(k) - 0.5), 1, 1, fill=False, edgecolor=pr.INK,
+                                       linewidth=1.3))
+            shade = (v - lo) / (hi - lo)
+            bax.add_patch(Rectangle((j - 0.48, 0.0), 0.96, 0.11, color=cm(shade)))
+            bax.text(j, 0.055, fmt(v), ha="center", va="center", fontsize=6.5, fontweight="bold",
+                     color="white" if (shade > 0.6 if cmap != "RdYlGn" else abs(shade - 0.5) > 0.35) else pr.INK)
+            few = (data[c][winners[0]]["seeds"] < len(SEEDS))
+            name = LABEL[winners[0]] + ("*" if few else "") + (f" (+{len(winners) - 1} tied)" if len(winners) > 1 else "")
+            bax.text(j, 0.14, textwrap.fill(name, 30), rotation=90, ha="center", va="top", fontsize=6.3,
+                     color=FAMILIES[FAMILY[winners[0]]][1] if FAMILY[winners[0]] else pr.INK)
+    axes[1][0].text(-0.5, 0.055, "Best ", ha="right", va="center", fontsize=8.5, fontweight="bold")
+    _family_ticks(axes[0][0], models)
+    _separators(axes[0], models)
     seeds = sorted({v["seeds"] for c in data.values() for v in c.values()})
     filled = sum(1 for c in data.values() for _ in c)
     fig.suptitle(f"Benchmark, {label}: every model under every condition (GPU server, mean of 3 seeds; "
                  f"{filled} of {sum(applies(k, c) for k in models for c in conds)} cells run"
                  + (f"; some cells have fewer seeds: {seeds}" if seeds and seeds != [3] else "") + ")",
                  fontsize=10.5, x=0.01, ha="left")
-    fig.tight_layout(rect=(0, 0, 1, 0.985))
+    fig.text(0.01, 0.004, "Best: the best value of each column (outlined in the heatmap); * fewer than 3 seeds. "
+             "Accuracy and F1: highest; backdoor success and honest isolations: lowest, the latter among models that "
+             "isolate at least half of the attackers (mean over this setting's attacks).", fontsize=7.5, color=pr.INK2)
+    fig.tight_layout(rect=(0, 0.012, 1, 0.985))
     FIG.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG / f"overview_{setting}.png", dpi=120)
     plt.close(fig)
@@ -344,6 +407,102 @@ def fig_detail(tab: dict, setting: str, label: str, cond: str, title: str) -> No
     plt.close(fig)
 
 
+RANK_METRICS = [("worst", "worst accuracy\nunder attack (%)", "RdYlGn", True, lambda v: f"{v:.1f}"),
+                ("bd", "highest backdoor\nsuccess (%)", "Reds", False, lambda v: f"{v:.0f}"),
+                ("excl", "honest clients left out\nper round, no attack (%)", "Oranges", False, lambda v: f"{v:.0f}")]
+
+
+def ranking(tab: dict) -> dict:
+    """Per setting, for each model with every applicable condition run: worst accuracy under attack, highest backdoor
+    success, and the share of honest clients left out per round with no attack (isolated or excluded, so rules that
+    never isolate are comparable). All three are percentages, so the score is simple: the percentage points a model
+    is behind the best complete model of the setting, averaged over the three metrics and the settings (equal
+    weights). A setting counts once at least half of the models have run every condition there."""
+    conds = [c for c, _ in CONDITIONS]
+    out: dict = {"settings": [], "models": {}}
+    for n, a, label in mb.SETTINGS:
+        setting = setting_tag(n, a)
+        data = tab.get(setting, {})
+        rows = {}
+        for k in MODELS:
+            need = [c for c in conds if applies(k, c)]
+            if not all(k in data.get(c, {}) for c in need):
+                continue
+            rows[k] = {"worst": min(data[c][k]["acc"] for c in need if c != "clean"),
+                       "bd": max(data[c][k]["asr"] for c in need if c in BACKDOORS),
+                       "excl": 100 * data["clean"][k]["excluded"],
+                       "seeds": min(data[c][k]["seeds"] for c in need)}
+        if len(rows) < len(MODELS) / 2:   # too few models complete for a ranking to mean anything
+            continue
+        for field, _t, _c, higher, _f in RANK_METRICS:
+            best_v = (max if higher else min)(r[field] for r in rows.values())
+            for r in rows.values():
+                r[f"gap_{field}"] = abs(r[field] - best_v)   # percentage points behind the best model
+        out["settings"].append({"tag": setting, "label": label if label in ("D1", "D2") else f"{n} clients, α {a:g}",
+                                "models": len(rows), "seeds": min(r["seeds"] for r in rows.values())})
+        for k, r in rows.items():
+            out["models"].setdefault(k, {})[setting] = r
+    for k, per in out["models"].items():
+        gaps = [r[f"gap_{f}"] for r in per.values() for f, *_ in RANK_METRICS]
+        per["score"] = statistics.fmean(gaps)
+    return out
+
+
+def fig_ranking(rk: dict) -> None:
+    import numpy as np
+    from matplotlib.patches import Rectangle
+    settings = rk["settings"]
+    if not settings:
+        return
+    models = sorted(rk["models"], key=lambda k: rk["models"][k]["score"])
+    cols = [f"{st['label'].replace(', ', chr(10))}\n{st['models']} models" + (f"\n(≥{st['seeds']} seed{'s' * (st['seeds'] > 1)})"
+                                                         if st["seeds"] < len(SEEDS) else "") for st in settings]
+    fig, axes = plt.subplots(1, 1 + len(RANK_METRICS), figsize=(5.5 + 1.6 + 0.75 * len(settings) * len(RANK_METRICS),
+                                                                  2.4 + 0.2 * len(models)),
+                             gridspec_kw={"width_ratios": [1.6] + [0.75 * len(settings)] * len(RANK_METRICS)})
+    ax = axes[0]
+    score = [rk["models"][k]["score"] for k in models]
+    ax.barh(range(len(models)), score, color=[FAMILIES[FAMILY[k]][1] for k in models], height=0.72)
+    for y, (k, v) in enumerate(zip(models, score, strict=True)):
+        done = sum(1 for st in settings if st["tag"] in rk["models"][k])
+        ax.text(v, y, f" {v:.1f}  ({done} setting{'s' * (done > 1)})", va="center", fontsize=6.3)
+    ax.set_ylim(len(models) - 0.5, -0.5)
+    ax.set_xlim(0, max(score) * 1.45)
+    ax.set_xlabel("points behind the best model, mean over\nthe three metrics and the settings (0 = best in all)",
+                  fontsize=8)
+    ax.set_title("overall", fontsize=9.5)
+    ax.grid(axis="y", visible=False)
+    ax.add_patch(Rectangle((0, -0.5), max(score) * 1.45, 1, fill=False, edgecolor=pr.INK, linewidth=1.3))
+    _family_ticks(ax, models)
+    for ax, (field, title, cmap, higher, fmt) in zip(axes[1:], RANK_METRICS, strict=True):
+        grid = [[(rk["models"][k].get(st["tag"]) or {}).get(field) for st in settings] for k in models]
+        vals = [v for row in grid for v in row if v is not None]
+        lo, hi = min(vals), max(vals)
+        _heat(ax, grid, cmap if higher else cmap, lo, max(hi, lo + 1e-6), fmt, models, cols,
+              [["–"] * len(settings) for _ in models])
+        ax.xaxis.tick_top()
+        ax.set_xticks(range(len(cols)), cols, fontsize=6.8, rotation=0, ha="center")
+        ax.set_title(title, fontsize=9.5)
+        for j, st in enumerate(settings):   # the best model of each setting, outlined
+            col = [(y, row[j]) for y, row in enumerate(grid) if row[j] is not None]
+            top = (max if higher else min)(v for _, v in col)
+            for y, v in col:
+                if np.isclose(v, top):
+                    ax.add_patch(Rectangle((j - 0.5, y - 0.5), 1, 1, fill=False, edgecolor=pr.INK, linewidth=1.3))
+    _separators(axes[1:], models)
+    fig.suptitle("Benchmark ranking: which model is best across every setting run so far (GPU server).\nRows sorted by "
+                 "how many percentage points each model is behind the best one, averaged over three metrics and the "
+                 "settings",
+                 fontsize=10.5, x=0.01, ha="left")
+    fig.text(0.01, 0.004, "Equal weights for the three metrics are a choice, not a finding. FedAvg and Multi-Krum "
+             "face no ALIE, Min-Max or stealth backdoor, so their worst case and backdoor are over fewer attacks. "
+             "Outlined: best of each column. Settings with fewer seeds are preliminary.", fontsize=7.5,
+             color=pr.INK2)
+    fig.tight_layout(rect=(0, 0.012, 1, 0.965))
+    fig.savefig(FIG / "ranking.png", dpi=110)
+    plt.close(fig)
+
+
 CHAPTER = ROOT / "docs" / "report" / "06_results.md"
 EMBED = ("gg15_a05", "gg20_a02")   # the report's two settings: detail charts shown, the others linked
 
@@ -370,6 +529,22 @@ def report_block(tab: dict) -> str:
         else:
             lines += ["Detail charts: " + " · ".join(f"[{t}](../figures/bench/{setting}__{c}.png)"
                                                      for c, t in present), ""]
+    rk = ranking(tab)
+    if rk["settings"]:
+        top = sorted(rk["models"], key=lambda k: rk["models"][k]["score"])[:5]
+        lines += ["#### Ranking across every setting", "",
+                  "Every model that has run every condition of a setting is ranked there on three metrics: worst "
+                  "accuracy under attack, highest backdoor success, and the share of honest clients left out per "
+                  "round with no attack. The score is how many percentage points a model is behind the best model of the "
+                  "setting, averaged over the three metrics and the settings, with equal weights (a choice, not a "
+                  "finding). "
+                  "Settings ranked: " + ", ".join(f"{st['label']} ({st['models']} models"
+                                                  + (f", some cells {st['seeds']} seed{'s' * (st['seeds'] > 1)}"
+                                                     if st["seeds"] < len(SEEDS) else "") + ")"
+                                                  for st in rk["settings"]) + ".", "",
+                  "Top five so far: " + "; ".join(f"{i}. {LABEL[k]} ({rk['models'][k]['score']:.1f} points)"
+                                                   for i, k in enumerate(top, 1)) + ".", "",
+                  "![Benchmark ranking](../figures/bench/ranking.png)", ""]
     return "\n".join(lines)
 
 
@@ -393,6 +568,7 @@ def main() -> None:
         for cond, title in CONDITIONS:
             if tab.get(setting, {}).get(cond):   # a detail chart once at least one model has run
                 fig_detail(tab, setting, label, cond, title)
+    fig_ranking(ranking(tab))
     out = ROOT / "docs" / "results" / "benchmark.json"
     out.write_text(json.dumps(tab, indent=1))
     write_report(tab)

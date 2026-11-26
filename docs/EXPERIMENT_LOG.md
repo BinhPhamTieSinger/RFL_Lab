@@ -1593,3 +1593,21 @@ Last run (`x13_n50a01__clean__r3sc_s7`): 17 honest clients isolated, 49.68% over
 ![Replayed rules](figures/replay_rules.png)
 
 **New benchmark models and sweep.** `r3wc_g6h20` and `guard_g6h20` (`plus.gap_gate: 6`, `plus.high_gate: 20`, without and with the rewind) added to `scripts/make_benchmark.py` (54 models, 11,502 runs); `gpu_c8_gates.yaml` runs them in D1 and D2 first (96 runs, same names as the benchmark; `tests/test_benchmark_spec.py`). Predictions P37–P40.
+
+## 2026-11-26 (afternoon) · Acer c14, the high-side gate: P33, P34, P36 held, P35 refuted; benchmark Best rows and ranking
+
+**Acer c14** (`acer_c14_high_gate.yaml`, XPU, 30 rounds, 18 of 21 runs; the 50-client backdoor runs are still running). Union screen with `plus.high_gate: 20` (`x14_*__r3wc_hg20`) against the Acer union-screen controls (`x8_f3__*__r3wc`, `x10_a05__*__r3wc_shp`, `x11_a05__minmax3__r3wc`, `x13_n50a01__clean__r3wc`). Seeds 42 / 123 / 7.
+- 50 clients, α 0.1, no attack: 19 / 6 / 12 honest isolated (mean 12.3) against 22.3; accuracy 50.4% against 48.4%. **P33 held.**
+- 15 clients, no attack: 1 / 0 / 6 (2.3) against 3.8. **P36 held.**
+- ALIE and Min-Max: 9 of 9 each, rounds 3 (Min-Max seed 7: round 7). **P34 held.** Honest isolations 5.3 and 3.3 (union screen 4.7 and 2.0).
+- Plain backdoor: 0.4 / 0.5 / 1.7%, attackers caught in rounds 4 / 3 / 6. **P35 refuted** (seed 7 at 1.7%).
+- Stealth backdoor: 0.4 / **71.1 / 57.4%**; seed 123: two of three attackers caught in rounds 18 and 23; seed 7: all three in round 13. Union-screen control not run yet (`acer_c14_control.yaml`).
+- Why the stealth backdoor got through: the attackers are on the low side (whole-update z −1.5 to −5.3 from round 2); the gap ratio drops below 8 every second or third round (4–7.4), resetting the 3-round streak. Replaying the union screen's own rule on these logs gives the same isolations, so the high-side gate did not cause it. Replaying the low-side gate of 6 (high side 20) isolates every attacker in round 3 (seed 123) and 6 (seed 7): a first out-of-sample check of the rule chosen on the GPU runs, still offline.
+
+![Acer c14](figures/acer_c14_high_gate.png)
+
+**Next on the Acer:** finish c14 and `acer_c14_control.yaml`, then `acer_c15_low_gate.yaml` (the same 6 conditions at 15 and 50 clients with `plus.gap_gate: 6`, 18 runs, paired with c14 by seed; P41–P43).
+
+**Benchmark charts.** Each overview chart ends with a Best row naming the best model of each column (accuracy and F1 highest; backdoor success and honest isolations lowest, the latter among models that isolate at least half of the attackers), with the best cells outlined. A ranking chart closes report 6.1 (`docs/figures/bench/ranking.png`): every model complete in a setting is scored by how many percentage points it is behind that setting's best model on worst accuracy under attack, highest backdoor success and honest clients left out per round with no attack, averaged with equal weights over the three metrics and the settings (D1, D2, 30 clients α 0.5 so far; a setting counts once half of the models are complete). Top so far: FedHEP+ with the whole update and no regrouping 11.7, R3 head gap 12.7, shared union screen 13.3, union screen 14.1, FedHEP-Guard with shared signal 14.4, FedHEP-Guard 15.1, FLAME 15.6. The order of the top seven is within 4 points and not settled.
+
+![Benchmark ranking](figures/bench/ranking.png)

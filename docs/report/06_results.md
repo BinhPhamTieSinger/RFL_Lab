@@ -137,6 +137,14 @@ Detail charts: [No attack](../figures/bench/gg20_a05__clean.png) · [Sign flip](
 
 Detail charts: [No attack](../figures/bench/gg15_a005__clean.png) · [Sign flip](../figures/bench/gg15_a005__sign.png) · [Label flip](../figures/bench/gg15_a005__label.png) · [Random noise](../figures/bench/gg15_a005__noise.png) · [Backdoor](../figures/bench/gg15_a005__backdoor.png)
 
+#### Ranking across every setting
+
+Every model that has run every condition of a setting is ranked there on three metrics: worst accuracy under attack, highest backdoor success, and the share of honest clients left out per round with no attack. The score is how many percentage points a model is behind the best model of the setting, averaged over the three metrics and the settings, with equal weights (a choice, not a finding). Settings ranked: D1 (52 models, some cells 2 seeds), D2 (52 models), 30 clients, α 0.5 (52 models, some cells 1 seed).
+
+Top five so far: 1. FedHEP+, whole update, no regroup (11.7 points); 2. R3, head gap (12.7 points); 3. Union screen, shared signal (Phase 8) (13.3 points); 4. FedHEP-Guard without rewind (union screen) (14.1 points); 5. FedHEP-Guard, shared signal (Phase 8) (14.4 points).
+
+![Benchmark ranking](../figures/bench/ranking.png)
+
 [//]: # (BENCH:index END)
 
 **Results so far (2026-11-26: 3,287 of 11,502 runs).** **D2 is complete for the 52 models queued first** (410 cells, 3 seeds each). D1 has 990 of their 1,230 runs (every cell, 170 with 3 seeds). 30 clients, α 0.5, has every cell but mostly one seed: its numbers below are marked preliminary. The other settings hold the large grid's runs and FedAvg and Multi-Krum. The two models added on 2026-11-26 (gate 6, high side 20; chapter 8.2) have no runs yet. All numbers are from the GPU server.
@@ -152,6 +160,12 @@ Detail charts: [No attack](../figures/bench/gg15_a005__clean.png) · [Sign flip]
 - FedHEP-Guard: plain backdoor 0.0 / 0.0% (2 seeds); **stealth backdoor 1% on seed 42 but 81% on seed 7**, where neither it nor its screen isolates any attacker. FedHEP+ with the whole update: 0 / 0% and 0 / 1%. FedHEP+: 18 / 5 / 42%, stealth 70 / 76%.
 - FedHEP-Guard catches every ALIE and Min-Max attacker; FedHEP+ with the whole update catches none. At D1 this costs little (ALIE does almost no harm). At 30 clients (preliminary) Min-Max takes FedHEP+ with the whole update to 35.1%, against 41.9% for the union screen.
 - **Correction to the 2026-11-25 note.** It said the rewind did not fire in the D1 no-attack runs. It fired 0, 4 and 2 times (seeds 7, 42, 123); accuracy was 47.1% against 47.4% for the screen.
+
+**Across D1, D2 and 30 clients (the ranking chart at the end of this section).** Each model is scored by how many percentage points it is behind the best model on three metrics: worst accuracy under attack, highest backdoor success, and honest clients left out per round with no attack. Averaged over the three settings, with equal weights:
+- **First: FedHEP+ with the whole-update signal and no regrouping** (11.7 points), because it holds the backdoor at D1 and D2 (mean success at most 7%; one seed of three at 18–19% at D2) and leaves few honest clients out at D2. Its weak point is the largest setting: at 30 clients (one seed) Min-Max takes it to 35.1% and the stealth backdoor reaches 53%, because it is blind to the high side.
+- Then R3 with the head-gap signal (12.7), the shared union screen of Phase 8 (13.3), FedHEP-Guard without the rewind (14.1), FedHEP-Guard with the shared signal (14.4), **FedHEP-Guard (15.1)** and FLAME (15.6). The rewind costs FedHEP-Guard about one point here: it lowers the worst accuracy (honest isolations trigger it) and leaves more honest clients out at 30 clients.
+- **The order among the top seven is not settled.** They are within 4 points of each other; D1 and 30 clients are not complete (2 and 1 seeds in some cells), and the weights are a choice. The ranking will be redrawn as the benchmark fills.
+- **Every overview chart now ends with a Best row** naming the best model of each column; the best cells are outlined.
 
 ![Benchmark overview, D2](../figures/bench/overview_gg20_a02.png)
 

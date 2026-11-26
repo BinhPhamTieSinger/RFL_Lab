@@ -189,6 +189,14 @@ bash scripts/runner_sync.sh acer --update
 python scripts/sweep.py configs/sweeps/acer_c14_high_gate.yaml && python scripts/sweep.py configs/sweeps/acer_c14_control.yaml
 ```
 
+After c14, the low-side gate (`acer_c15_low_gate.yaml`, 18 runs, about 8 hours; predictions P41–P43; report 8.2). No new code: it lowers `plus.gap_gate` to 6.
+```bash
+tmux new -s rfl15        # or: tmux attach -t rfl15
+cd ~/Documents/RFL_Lab && source ~/venvs/rfl/bin/activate
+bash scripts/runner_sync.sh acer --update   # only once c14 and its control have finished
+python scripts/sweep.py configs/sweeps/acer_c14_control.yaml && python scripts/sweep.py configs/sweeps/acer_c15_low_gate.yaml
+```
+
 Detach with Ctrl-b then d; `tmux attach -t rfl11` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same sweep command again. Push results any time with `bash scripts/runner_sync.sh acer`.
 
 GPU server: see "Lab GPU server" above; the next file after the large grid is `configs/sweeps/gpu_c7_stealth.yaml`.
