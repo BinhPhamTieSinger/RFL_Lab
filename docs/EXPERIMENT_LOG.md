@@ -1571,3 +1571,25 @@ Last run (`x13_n50a01__clean__r3sc_s7`): 17 honest clients isolated, 49.68% over
 **New option and sweeps.** `plus.high_gate` (default 0 keeps the previous screen; `tests/test_high_gate.py`). `acer_c14_high_gate.yaml` (21 runs) and `acer_c14_control.yaml` (6 runs), checked against the Acer controls' configurations (same settings except `high_gate`; ALIE z 0.43 and Min-Max with colluder knowledge, as in `x8_f3`/`x11`). Predictions P33–P36.
 
 **Literature.** `LITERATURE_REVIEW.md` addendum: temporal accumulation before deciding (FLDetector, FLTracer), distribution-aware voting (BoBa), learned separation (FLBuff), server-side synthetic data (SafeFL, related to SD-CSFL).
+
+## 2026-11-26 · GPU benchmark: D2 complete; why seed 42 escapes at D2; the rewind fires on honest isolations; replay of a lower low-side gate
+
+**Branch incident.** `runner_sync.sh pc` was run on the Mac: it renamed the Mac's `main` to `pc` and force-pushed the Mac's history over GitHub's `pc`, replacing the GPU server's commit `b167386d` (1,515 new runs). The commit was still on the Mac as the old `origin/pc`; the Mac's branch was renamed back to `main` and `b167386d` merged (only `outputs/` changed). `runner_sync.sh` now refuses to run on a `main` checkout (OPERATIONS.md, section 4). The GPU server's next `runner_sync.sh pc` restores `pc` on GitHub.
+
+**Benchmark: 3,287 of 11,502 runs** (GPU server, 30 rounds, seeds 42 / 123 / 7). D2: all 410 cells of the first 52 models with 3 seeds. D1: 990 of 1,230 runs. 30 clients α 0.5: every cell, mostly one seed (preliminary).
+
+- D2 accuracy: every screened FedHEP-server model 51–55% under every attack, except random noise against R3 gate 8 / 12 (41.6 / 41.2%) and R3 with a rewind (49.6%). FedHEP: ALIE 55.0%, Min-Max 52.4%, sign flip 43.0%, noise 11.2%. FLAME 46.0% with no attack; Multi-Krum 17.6%; FedAvg noise 0.7%.
+- D2 backdoor, seeds 42 / 123 / 7: FedHEP-Guard plain 39 / 1 / 1%, stealth 41 / 1 / 0%; its screen 40 / 1 / 47%, 41 / 1 / 1%; FedHEP+ whole update, no regroup (`plus_w`) 0 / 18 / 0%, 0 / 19 / 0%; FLAME 0 / 1 / 0%, 1 / 3 / 0%; Bulyan 0 / 12 / 0%, 1 / 31 / 0%; FedHEP+ 38 / 46 / 44%.
+- Seed 42 at D2 (`gg20_a02__{backdoor4,stealth4}__guard_s42`): the four attackers have the four lowest whole-update z in rounds 2, 5 and 6 (−2 to −7; lowest honest −1.9), but the gap ratio is 3.5–7.5 in every round but round 2, so the gate (8) stays shut; plain: one attacker isolated in round 9; stealth: none. `plus_w` (no gate) isolates them in rounds 3–4.
+- The rewind fires after every isolation, honest or not: 1–4 times per run with no attack at D2, 0 / 4 / 2 at D1 (seeds 7 / 42 / 123; this corrects the 2026-11-25 note "no rewind fired"), 8 at 30 clients (seed 123). FedHEP-Guard against its screen at D2: −1.6 (no attack), −1.4, −1.8, −1.4, −0.8, −1.8, −1.8, −1.1 points (sign, label, noise, ALIE, Min-Max, backdoor, stealth). At 30 clients, seed 123, no attack: 36.8% against 43.3%.
+- D1: FedHEP-Guard plain backdoor 0.0 / 0.0% (2 seeds); stealth 1% (seed 42) and 81% (seed 7: no attacker isolated by it or its screen). `plus_w`: 0 / 0%, 0 / 1%.
+- Honest isolations per run, no attack: D2 FedHEP-Guard 5.0, screen 3.7, FedHEP+ 8.7, `plus_w` 3.0, R3 1.7; D1 4.3, 4.3, 2.7, 5.0, 1.3; 30 clients (preliminary) 18.0 (1 seed), 14.7, 4.3, 8.3, 0.7.
+- The four benchmark predictions of 6.1: 1 half refuted, 2 half held, 3 held so far, 4 answered (report 6.1, "Outcomes so far").
+
+![Benchmark overview, D2](figures/bench/overview_gg20_a02.png)
+
+**Replay on 220 runs** (the 196 grid runs plus the benchmark's D1 and D2 union-screen runs; 218 reproduced exactly, two differ by one isolation each). Per-round AUROC of backdoor attackers against honest clients at D2: two-sided 0.94, low side 0.98, low side smoothed 0.99. A grid of 24 replayed rules (low-side gate 0 / 4 / 6 / 8, cut 1.5 / 2.0 / 2.5, high side at 8 or 20): low-side gate 6 with the high side at 20 gives honest 3.2 / 3.0 / 10.2 / 15.4 per run (15 / 20 / 30 / 50 clients; now 3.0 / 3.7 / 10.8 / 23.6) and backdoor catches of 83 / 96 / 79 / 52% (now 68 / 54 / 81 / 57%); ALIE 87% at 15 clients, 100% elsewhere; Min-Max 100%. It catches the attackers of D1 stealth seed 7 (round 4) and D2 seed 42 (round 3). Chosen on the same runs: live test needed.
+
+![Replayed rules](figures/replay_rules.png)
+
+**New benchmark models and sweep.** `r3wc_g6h20` and `guard_g6h20` (`plus.gap_gate: 6`, `plus.high_gate: 20`, without and with the rewind) added to `scripts/make_benchmark.py` (54 models, 11,502 runs); `gpu_c8_gates.yaml` runs them in D1 and D2 first (96 runs, same names as the benchmark; `tests/test_benchmark_spec.py`). Predictions P37–P40.

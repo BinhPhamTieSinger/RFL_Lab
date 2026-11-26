@@ -7,8 +7,9 @@ What FedHEP-Guard does not solve yet, why, and what is being tested. Each proble
 | # | Problem | Evidence | Status |
 |---|---|---|---|
 | 1 | **Honest clients isolated, more with more clients** | per run with no attack (GPU): 4.3 and 14.7 at 15 and 30 clients (α = 0.5); 1.7, 7.0 and 22.0 at 15, 30 and 50 clients (α = 0.1). FedHEP+: 1.0–7.7. About half are whole parent groups | two causes found (8.2). The shared signal (Phase 8) removed most whole-group isolations at 15 clients but let the backdoor through on one seed in three, so it was not adopted (7.6); its scale test runs next (8.3). Cause 1 has no fix yet |
-| 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (6.10) | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
-| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU); at D2 no model tested stops the plain backdoor (35–48% on both machines; the whole update stops it on one seed of three); FedHEP-Guard not yet run at D2 | GPU benchmark (chapter 6.1) |
+| 2 | **A late catch lets a backdoor stay** | one stealth seed over 100 rounds: attackers caught in rounds 15–18, the rewind reaches back only 10 rounds, backdoor grew to 34% (6.10). In the benchmark (30 rounds) the stealth backdoor reaches 81% at D1 on seed 7, where no attacker is caught | repeated with the shared signal in `acer_c12_shared_durability` (8.3) |
+| 3 | **Backdoors under strong skew** | α = 0.1: 15–31% get through (GPU). At D2 (benchmark, 2026-11-26) FedHEP-Guard stops the plain and stealth backdoor on two seeds of three (39 / 1 / 1%, 41 / 1 / 0%); on seed 42 the gap gate stays shut while the attackers stand apart (6.1). FLAME stops it on every seed at 6–8 points of accuracy | a lower gate on the low side catches seed 42 in the replay (8.2); live test `gpu_c8_gates.yaml` |
+| 3b | **The rewind fires on honest isolations** | it resets the trunk and root head after every isolation: 1–4 times per run with no attack at D2, costing 0.8–1.8 points in every condition; 8 times and 6.5 points at 30 clients (one seed) (6.1) | open; it shrinks with problem 1. Untested idea: rewind only when the isolated client was flagged on the low side, where backdoor attackers sit |
 | 4 | **A third of the clients attacking with a backdoor** | 5 of 15: 12% (GPU) and one seed at 20% (Mac); 9 of 30: 5.3% (GPU; one seed at 11%); FLAME holds | open |
 | 5 | **Removing ALIE attackers costs accuracy** | catching all 9 ALIE attackers leaves the union screen 2.5 points below FedHEP+, which never catches them (GPU); fixing $f$ made it worse (7.4f) | open |
 | 6 | **Untested attacks** | IPM and delayed-onset attacks from the team's `oreh` code; colluders that report one class mask | not scheduled |
@@ -69,11 +70,11 @@ So the gap ratio cannot tell an honest outlier from a backdoor attacker: both st
 
 **What has been tried.** The peer reference judged each client against the clients with similar classes. It made things worse, because most of these isolations are not clients with unusual data (7.5).
 
-### What the screen's own logs show (offline replay of 196 GPU runs)
+### What the screen's own logs show (offline replay of 220 GPU runs)
 
-Every run of FedHEP-Guard's screen logs, each round, both signals' scores, their median and scale, and their gap ratio. `scripts/replay_screen.py` rebuilds the screen's decisions from these logs; replaying the real rule reproduces the real isolations in 195 of the 196 GPU runs (the other differs in one isolation in round 29). The same logs then show how well the scores separate attackers from honest clients, and what other rules would do.
+Every run of FedHEP-Guard's screen logs, each round, both signals' scores, their median and scale, and their gap ratio. `scripts/replay_screen.py` rebuilds the screen's decisions from these logs. The replay started on 2026-11-25 with the large grid's 196 union-screen runs; on 2026-11-26 the benchmark added its D1 and D2 runs, 220 in all (84 at 15 clients, 24 at 20 clients (D2), 81 at 30, 31 at 50). Replaying the real rule reproduces the real isolations in 218 of the 220; the other two differ by one isolation each. The same logs then show how well the scores separate attackers from honest clients, and what other rules would do.
 
-**Who gets isolated, and how** (every real isolation in the GPU grid's union-screen runs):
+**Who gets isolated, and how** (every real isolation in the large grid's 196 union-screen runs):
 
 | Isolated clients | Number | Flagged by | Sign of z (whole update, critical layers) | Round (median) | Gap ratio when flagged (median) |
 |---|---|---|---|---|---|
@@ -86,12 +87,14 @@ Every run of FedHEP-Guard's screen logs, each round, both signals' scores, their
 1. **The gap gate does not tell backdoor rounds from honest ones.** In rounds with no attack it opens in 17–19% of rounds at 15 clients, 30–35% at 30 and 40–49% at 50. In backdoor rounds it opens just as often (15–28%, about 40%, 43–55%). In sign-flip, ALIE and Min-Max rounds it opens in 93–100%. So the gate does its job against model poisoning, but backdoor attackers are caught only when it happens to be open while they stand out.
 2. **The two-sided fold costs backdoor separation.** Backdoor attackers sit on the low side: their updates point away from the others. Folding the high side in, which the two-sided screen does to catch ALIE and Min-Max, adds the honest clients that are unusually close to the median. Per-round AUROC of backdoor attackers against honest clients (rounds 1–10), whole-update signal:
 
-| | 15 clients | 30 clients | 50 clients |
-|---|---|---|---|
-| two-sided $\lvert z\rvert$ (what the screen uses) | 0.82 | 0.81 | 0.65 |
-| low side only ($-z$) | 0.93 | 0.84 | 0.73 |
-| low side, smoothed over rounds (EMA, 0.7) | **0.96** | **0.85** | **0.81** |
-| critical layers, two-sided | 0.75 | 0.65 | 0.50 |
+| | 15 clients | 20 clients (D2) | 30 clients | 50 clients |
+|---|---|---|---|---|
+| two-sided $\lvert z\rvert$ (what the screen uses) | 0.84 | 0.94 | 0.82 | 0.65 |
+| low side only ($-z$) | 0.93 | 0.98 | 0.85 | 0.73 |
+| low side, smoothed over rounds (EMA, 0.7) | **0.96** | **0.99** | **0.86** | **0.81** |
+| critical layers, two-sided | 0.74 | 0.71 | 0.65 | 0.50 |
+
+(220 runs; the 2026-11-25 figures, from 196 runs without D2, were 0.82 / 0.81 / 0.65, 0.93 / 0.84 / 0.73, 0.96 / 0.85 / 0.81 and 0.75 / 0.65 / 0.50.)
 
 ![Separability of backdoor attackers from honest clients](../figures/replay_separability.png)
 
@@ -101,14 +104,23 @@ Every run of FedHEP-Guard's screen logs, each round, both signals' scores, their
 
 ![Replayed decision rules](../figures/replay_rules.png)
 
-| Rule (replayed) | Honest per run, no attack: 15 / 30 / 50 clients | Backdoor attackers caught: 15 / 30 / 50 | ALIE caught |
-|---|---|---|---|
-| FedHEP-Guard's screen (now) | 3.0 / 10.8 / 23.6 | 70 / 80 / 57% | 100% |
-| **high side only when the gap ratio reaches 20** | **2.3 / 8.8 / 10.6** | 68 / 72 / 43% (lower bounds) | 97% |
-| high side only at 30 | 2.3 / 8.3 / 9.6 | 68 / 72 / 43% | 94% |
-| isolation cut 2.0 instead of 1.5 | 1.3 / 4.0 / 7.6 | 48 / 45 / 13% | 100% |
+| Rule (replayed) | Honest per run, no attack: 15 / 20 / 30 / 50 clients | Backdoor attackers caught (plain and stealth) | ALIE caught | Min-Max caught |
+|---|---|---|---|---|
+| FedHEP-Guard's screen (now) | 3.0 / 3.7 / 10.8 / 23.6 | 68 / 54 / 81 / 57% | 100% everywhere | 100% everywhere |
+| high side only when the gap ratio reaches 20 | 2.3 / 2.3 / 8.8 / 10.6 | 67 / 54 / 73 / 43% (lower bounds) | 87 / 100 / 100 / 100% | 100% everywhere |
+| high side only at 30 | 2.3 / 2.3 / 8.3 / 9.6 | 67 / 54 / 73 / 43% | 80 / 100 / 97 / 100% | 87 / 100 / 100 / 100% |
+| isolation cut 2.0 instead of 1.5 | 1.3 / 2.0 / 4.0 / 7.6 | 48 / 46 / 46 / 13% | 100% everywhere | 100% everywhere |
+| low side with no gate, high side at 20 | 5.0 / 5.7 / 13.0 / 18.2 | 98 / 96 / 83 / 55% | 87 / 100 / 100 / 100% | 100% everywhere |
+| **low side when the gap ratio reaches 6, high side at 20** | **3.2 / 3.0 / 10.2 / 15.4** | **83 / 96 / 79 / 52%** | 87 / 100 / 100 / 100% | 100% everywhere |
 
-No rule removes honest isolations without losing some backdoor catches: with these two signals the two groups overlap. The high-side gate is the best trade in the replay. At 50 clients it halves the honest isolations; the drop in backdoor catches is small at 15 clients and partly an artefact of the lower bound. Live runs test it on the Acer (`acer_c14_high_gate.yaml`, P33–P36). The smoothed low-side score separates best of all, which points to the next signal to build: a per-client score accumulated over rounds before any gate is applied, as FLDetector and FLTracer do (`LITERATURE_REVIEW.md`).
+No rule removes honest isolations without losing some backdoor catches: with these two signals the two groups overlap. Two rules stand out.
+
+- **The high-side gate (20)** is the best trade when honest isolations matter most. At 50 clients it halves them; the drop in backdoor catches is partly an artefact of the lower bound. Live runs test it on the Acer (`acer_c14_high_gate.yaml`, P33–P36).
+- **A lower gate on the low side (6), with the high-side gate (20)**, is the best trade when the backdoor matters most. Against the screen as it is, it catches 83% of backdoor attackers instead of 68% at 15 clients and 96% instead of 54% at D2, for about the same honest isolations (3.2 against 3.0, 3.0 against 3.7), and isolates a third fewer honest clients at 50 clients (15.4 against 23.6). It catches the three runs the real screen lost in the benchmark: D1 stealth seed 7 (all three attackers in round 4; the real screen caught none) and D2 seed 42, plain and stealth (in round 3). Why it works: the backdoor attackers' low-side z stands apart from round 2 on, but four or more attackers spread over a range make no single large gap, so the gap ratio sits at 4–8 and the gate at 8 stays shut (6.1, "why seed 42 gets through").
+
+**Caveats.** The gate of 6 was picked from 24 replayed combinations (low-side gate 0, 4, 6 or 8; cut 1.5, 2.0 or 2.5; high side at 8 or 20) on the same runs it is scored on, so it may be tuned to them. D2 has only 3 runs per condition. ALIE catches at 15 clients fall to 87% (one seed's attackers are caught late or not at all in the replay). Both rules need the live test, which needs no new code: `plus.gap_gate: 6` with `plus.high_gate: 20`. It is queued as two benchmark models (with and without the rewind), run first in D1 and D2 by `gpu_c8_gates.yaml` (P37–P40).
+
+The smoothed low-side score separates best of all (0.99 at D2), which points to the next signal to build: a per-client score accumulated over rounds before any gate is applied, as FLDetector and FLTracer do (`LITERATURE_REVIEW.md`).
 
 ## 8.3 Phase 8 at scale (Acer)
 
@@ -135,7 +147,7 @@ The shared signal removed a third of the honest isolations (22.3 → 15.0), half
 
 ## 8.4 What comes next
 
-- **GPU server:** the benchmark (6.1) and the rest of the 50-client grid, about 6 more days on 3 GPUs; then the stealth study at scale (`gpu_c7_stealth`).
+- **GPU server:** the benchmark (6.1) and the rest of the 50-client grid; at the next resubmission `gpu_c8_gates.yaml` first (the low-side gate of 6 with the high-side gate of 20, with and without the rewind, D1 and D2, P37–P40); then the stealth study at scale (`gpu_c7_stealth`).
 - **Acer:** the high-side gate (`acer_c14_high_gate.yaml` with `acer_c14_control.yaml`, P33–P36): the union screen with `plus.high_gate: 20` at 15 clients (no attack, backdoor, stealth backdoor, ALIE, Min-Max) and 50 clients (no attack, backdoor).
 - **A smoothed per-client score.** The replay's best separator is each client's low-side score averaged over rounds (8.2). A screen that gates on that score, rather than on the round's scores, is the next candidate; the replay can test it first. An observe-only mode (score and log every round, never exclude) would remove the replay's lower-bound limit.
 - **Cause 2 without dropping the heads.** The heads carry both the group signature and part of the backdoor signature (7.6). A rule that spares a group drifting only in its heads, by requiring the shared signal to agree at a lower bar, can be replayed once both signals are logged on the same updates.

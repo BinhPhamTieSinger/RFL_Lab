@@ -31,7 +31,7 @@ pr = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pr)
 plt = pr.plt
 Z_CUT, E_CUT, DECAY, PATIENCE, GATE = 2.5, 1.5, 0.7, 3, 8.0
-COLORS = [pr.INK, pr.SLOT[1], pr.SLOT[2], pr.SLOT[3], pr.SLOT[0], "#7a3fb8"]
+COLORS = [pr.INK, pr.SLOT[1], pr.SLOT[2], pr.SLOT[3], pr.SLOT[0], "#7a3fb8", "#b8860b", "#2e8b57", "#c0392b"]
 
 
 def load(outputs: Path) -> list[tuple[str, dict]]:
@@ -64,10 +64,11 @@ def rounds(m: dict) -> list[dict]:
 
 
 def replay(m: dict, *, two_sided: bool = True, high_gate: float = GATE, cut: float = E_CUT,
-           signals: tuple[str, ...] = ("w", "c")) -> dict[int, int]:
-    """{client: isolation round} under a variant of the screen. The real rule: two_sided, high_gate = GATE.
-    two_sided False with high_gate G: the low side acts when the gate (8) is open, the high side only when the
-    gap ratio reaches G."""
+           signals: tuple[str, ...] = ("w", "c"), low_gate: float = GATE) -> dict[int, int]:
+    """{client: isolation round} under a variant of the screen. The real rule: two_sided, high_gate = low_gate =
+    GATE. two_sided False with high_gate G: the high side acts only when the gap ratio reaches G. low_gate L: the
+    low side acts when the gap ratio reaches L (0: always, as in FedHEP+)."""
+    hi = GATE if two_sided and high_gate <= GATE else high_gate
     ev: dict[int, float] = {}
     streak: dict[int, int] = {}
     iso: dict[int, int] = {}
@@ -80,9 +81,9 @@ def replay(m: dict, *, two_sided: bool = True, high_gate: float = GATE, cut: flo
             for s in signals:
                 z, g = sig[s]
                 x = z.get(c, 0.0)
-                if g >= GATE and (x < 0 or (two_sided and high_gate <= GATE)):
-                    v = min(v, -abs(x))
-                elif x > 0 and g >= high_gate:
+                if x < 0 and g >= low_gate:
+                    v = min(v, x)
+                elif x > 0 and g >= hi:
                     v = min(v, -x)
             ev[c] = DECAY * ev.get(c, 0.0) + (1 - DECAY) * v
             streak[c] = streak.get(c, 0) + 1 if v < -cut else 0
@@ -96,7 +97,10 @@ RULES = {"FedHEP-Guard's screen (now)": {},
          "high side only if gap ratio ≥ 30": {"two_sided": False, "high_gate": 30.0},
          "high side ≥ 30, cut 2.0": {"two_sided": False, "high_gate": 30.0, "cut": 2.0},
          "high side ≥ 30, whole-update signal only": {"two_sided": False, "high_gate": 30.0, "signals": ("w",)},
-         "two-sided, cut 2.0": {"cut": 2.0}}
+         "two-sided, cut 2.0": {"cut": 2.0},
+         "low side ungated, high side ≥ 8": {"low_gate": 0.0},
+         "low side ungated, high side ≥ 20": {"low_gate": 0.0, "two_sided": False, "high_gate": 20.0},
+         "low side if gap ratio ≥ 6, high side ≥ 20": {"low_gate": 6.0, "two_sided": False, "high_gate": 20.0}}
 
 
 def auroc(bad: list[float], good: list[float]) -> float:
@@ -181,12 +185,13 @@ def fig_rules(res: dict) -> None:
                        label=rule, zorder=3)
         ax.set_xlabel("honest clients isolated per run, no attack")
         ax.set_ylabel("backdoor attackers caught (%, lower bound)")
-        ax.set_title(f"{n} clients (GPU grid, α 0.5 and 0.1)", fontsize=10)
+        ax.set_title(f"{n} clients (GPU, every α run)", fontsize=10)
         ax.set_ylim(0, 100)
-    axes[0][0].legend(fontsize=7, loc="lower right")
-    fig.suptitle("Replayed decision rules: every rule that blames fewer honest clients also catches fewer backdoor "
-                 "attackers", fontsize=10.5, x=0.01, ha="left")
-    fig.tight_layout()
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    fig.legend(handles, labels, fontsize=8, ncol=5, loc="lower center", frameon=False)
+    fig.suptitle("Replayed decision rules: honest clients blamed (no attack) against backdoor attackers caught",
+                 fontsize=10.5, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
     pr.save(fig, "replay_rules.png")
 
 

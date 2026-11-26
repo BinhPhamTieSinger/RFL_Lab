@@ -105,7 +105,7 @@ qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
 ```
 If the lab refuses the time limit, use the longest it allows and resubmit the same command when the job ends: finished runs are skipped. Progress: `ls outputs | grep -c '^gg'` (of 1,872). The grid files are written by `scripts/make_gpu_grid.py` (client counts, attacker counts, ALIE z per n and m); edit that script, not the YAML.
 
-**The benchmark** (report 6.1): 52 models × 8 conditions × 9 settings × 3 seeds = 11,070 runs, of which about 600 already exist in the large grid and are skipped. At about 50 runs per hour on four GPUs that is about 9 days, so it is split into one sweep file per setting, in priority order: `bench_0` FedAvg and Multi-Krum in every setting (270 runs), `bench_1` D1 and `bench_2` D2 (1,200 runs each, about a day each), then the grid's settings, then the follow-up and paper settings. After the job above has ended:
+**The benchmark** (report 6.1): 54 models × 8 conditions × 9 settings × 3 seeds = 11,502 runs (11,070 before the two models of 2026-11-26), of which about 600 already exist in the large grid and are skipped. At about 50 runs per hour on four GPUs that is about 9 days, so it is split into one sweep file per setting, in priority order: `bench_0` FedAvg and Multi-Krum in every setting (270 runs), `bench_1` D1 and `bench_2` D2 (1,200 runs each, about a day each), then the grid's settings, then the follow-up and paper settings. After the job above has ended:
 ```bash
 bash scripts/runner_sync.sh pc --update
 qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
@@ -114,7 +114,7 @@ qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
     configs/sweeps/bench_6_gg50_a01.yaml configs/sweeps/bench_7_gg50_a05.yaml configs/sweeps/bench_8_gg20_a05.yaml \
     configs/sweeps/bench_9_gg15_a005.yaml --procs 1 --set data.root=data
 ```
-Resubmit the same command each time the 3-day limit ends; finished runs are skipped. The sweep files are written by `scripts/make_benchmark.py` (models, settings, conditions); edit that script, not the YAML. On the Mac, `python scripts/plot_benchmark.py outputs` redraws every benchmark chart and the chart index of report 6.1, from whatever GPU runs exist. After the benchmark: `configs/sweeps/gpu_c7_stealth.yaml`.
+Resubmit the same command each time the 3-day limit ends; finished runs are skipped. **From 2026-11-26** put `configs/sweeps/gpu_c8_gates.yaml` first in that command (after `runner_sync.sh pc --update`, between jobs): it runs the two newest models (gate 6, high side 20; report 8.2) in D1 and D2, 96 runs, under the benchmark's own run names, so the bench files skip them afterwards. Never run it in a second job at the same time as a job holding `bench_1` or `bench_2`. The sweep files are written by `scripts/make_benchmark.py` (models, settings, conditions); edit that script, not the YAML. On the Mac, `python scripts/plot_benchmark.py outputs` redraws every benchmark chart and the chart index of report 6.1, from whatever GPU runs exist. After the benchmark: `configs/sweeps/gpu_c7_stealth.yaml`.
 
 **A sweep on all four GPUs:**
 ```bash
@@ -218,7 +218,7 @@ A runner never pulls code in the middle of a sweep; pushing results does not tou
 bash scripts/runner_sync.sh acer            # the Acer; the GPU server uses "pc". Any time, also during a sweep
 bash scripts/runner_sync.sh acer --update   # between sweeps: also rebase onto main for new code and sweep files
 ```
-The script commits `outputs/`, `outputs_parity/`, `outputs_env/` and `outputs_pilot/`, never code; uncommitted code edits (a colleague's) are set aside during the rebase and put back.
+The script commits `outputs/`, `outputs_parity/`, `outputs_env/` and `outputs_pilot/`, never code; uncommitted code edits (a colleague's) are set aside during the rebase and put back. It refuses to run on a checkout whose branch is `main`: on 2026-11-26 it was run on the Mac by mistake, renamed the Mac's `main` to `pc` and force-pushed the Mac's history over the GPU server's results on GitHub. Those results were recovered from the Mac's copy of the old `origin/pc` (commit `b167386d`) and merged; the GPU server's next `runner_sync.sh pc` restores its branch on GitHub.
 
 **First time on a runner** (the script arrives with the first rebase):
 ```bash

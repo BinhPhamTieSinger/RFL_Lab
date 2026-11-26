@@ -1,5 +1,5 @@
 # Benchmark, setting 2 of 9: D2 (20 clients, alpha 0.2, 4 attackers). Written by scripts/make_benchmark.py; edit that, not this file.
-# 50 models x 8 conditions x 3 seeds = 1200 runs. GPU server only. Runs the large grid already made (same names) are skipped.
+# 52 models x 8 conditions x 3 seeds = 1248 runs. GPU server only. Runs the large grid already made (same names) are skipped.
 seeds:
 - 42
 - 123
@@ -436,4 +436,29 @@ axes:
     plus.global_rule: arc_nnm_tm
     plus.gap_gate: 8
     plus.signal: weights_critical
+    plus.rewind: trunk_root
+  r3wc_g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+  guard_g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
     plus.rewind: trunk_root

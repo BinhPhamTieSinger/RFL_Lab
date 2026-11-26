@@ -69,3 +69,14 @@ def test_every_cell_key_is_distinct(bench):
     pb = _module("plot_benchmark")
     cells = pb.cells()
     assert len(cells) == sum(len(r) for r in bench.values())
+
+
+def test_first_sweeps_are_benchmark_runs(bench):
+    """gpu_c8_gates.yaml runs benchmark cells early: every run must be the benchmark run of the same name."""
+    mb = _module("make_benchmark")
+    every = {n: cfg for runs in bench.values() for n, cfg in runs.items()}
+    for fname, models in mb.FIRST.items():
+        runs = _runs(SWEEPS / fname)
+        assert len(runs) == 16 * len(models)   # names; each runs 3 seeds
+        for name, cfg in runs.items():
+            assert dataclasses.asdict(cfg) == dataclasses.asdict(every[name]), name

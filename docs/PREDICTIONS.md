@@ -114,6 +114,10 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P34 | (High-side gate.) At 15 clients, α 0.5, every ALIE and Min-Max attacker is still isolated (9 of 9 each) | 0.7 | any attacker missed |
 | P35 | (High-side gate.) At 15 clients, α 0.5, the plain backdoor stays under 1% on every seed (union screen: 0.4 / 0.2 / 0.5%) | 0.6 | any seed at 1% or more |
 | P36 | (High-side gate.) At 15 clients, α 0.5, no attack, at most 2.5 honest clients isolated per run (union screen on the Acer: 3.8) | 0.5 | more than 2.5 per run |
+| P37 | (Low-side gate 6 with high-side gate 20, GPU, `gpu_c8_gates`, written 2026-11-26 before any run.) At D2 the union screen with `plus.gap_gate: 6, plus.high_gate: 20` (`r3wc_g6h20`) keeps the plain and the stealth backdoor under 5% on every seed (union screen: 40 / 1 / 47% and 41 / 1 / 1%; the replay catches 96% of the attackers) | 0.5 | any seed at 5% or more |
+| P38 | (Same.) With no attack it isolates at most as many honest clients per run as the union screen: 3.7 at D2, 4.3 at D1 (replay: 3.0 and 3.2) | 0.55 | more than 3.7 at D2 or more than 4.3 at D1 |
+| P39 | (Same.) At D1 every Min-Max attacker and at least 8 of 9 ALIE attackers are still isolated (replay: 100% and 87%) | 0.5 | any Min-Max attacker or more than one ALIE attacker missed |
+| P40 | (Same, with the rewind, `guard_g6h20`.) At D2 the rewind still costs 0.5–2.5 points against `r3wc_g6h20` in at least 6 of the 8 conditions, as it does for FedHEP-Guard (0.8–1.8 in all 8), because it also fires after honest isolations | 0.6 | a cost under 0.5 points in 3 or more conditions |
 
 ## 3. The model we expect to publish
 

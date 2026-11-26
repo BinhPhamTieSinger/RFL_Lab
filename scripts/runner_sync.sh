@@ -8,6 +8,10 @@
 set -euo pipefail
 BRANCH=${1:?usage: runner_sync.sh <acer|pc> [--update]}
 cd "$(dirname "$0")/.."
+if [ "$(git branch --show-current)" = main ]; then   # the Mac's hub branch: running this there renames main and
+  echo "on main: this is the hub (use scripts/hub_collect.sh); a runner renames its branch first (OPERATIONS.md 4)"
+  exit 1                                             # force-pushes it over the runner's branch on GitHub
+fi
 [ "$(git branch --show-current)" = "$BRANCH" ] || git branch -M "$BRANCH"
 for d in outputs outputs_parity outputs_env outputs_pilot; do
   if [ -d "$d" ]; then git add "$d"; fi

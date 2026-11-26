@@ -1,0 +1,151 @@
+# GPU server: r3wc_g6h20, guard_g6h20 in D1 and D2 before the benchmark reaches them. Written by scripts/make_benchmark.py. Same run names as bench_1/bench_2, so whichever runs first is kept.
+# 2 settings x 8 conditions x 2 models x 3 seeds = 96 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__clean:
+    data.num_clients: 15
+    data.alpha: 0.5
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__sign3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__label3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: label_flip
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__noise3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: random_noise
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__alie3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.431
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__minmax3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__backdoor3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__stealth3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: stealth_backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__clean:
+    data.num_clients: 20
+    data.alpha: 0.2
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__sign4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: sign_flip
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__label4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: label_flip
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__noise4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: random_noise
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__alie4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 0.385
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__minmax4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__backdoor4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__stealth4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: stealth_backdoor
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+- r3wc_g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+  guard_g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.rewind: trunk_root

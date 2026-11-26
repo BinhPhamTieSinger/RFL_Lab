@@ -9,7 +9,7 @@
 3. **FedHEP+**, our first model, removes crude attackers: +8.3 points under sign flip, backdoor success 79% → 21%. It leaves three failures: honest clients with unusual data are isolated, adaptive attackers are not seen, and a backdoor that got in stays (chapter 4, 6.5–6.7).
 4. **FedHEP-Guard fixes failures 2 and 3, not failure 1, as far as tested.** Its screen catches adaptive attackers (9 of 9 at D1, 12 of 12 at D2) and holds up best when the model is poisoned; the full model keeps the plain backdoor at 0.3% for 100 rounds. The full model has so far been run only against backdoors, on the Acer; most numbers come from its screen without the rewind (chapter 5, 6.8–6.13).
 5. **Many ideas failed** along the way: FedHEP+'s variants, checking groups first, the classic robust rules, seven Phase 6 components, the peer reference and the shared signal. Each failure shaped the next design (chapter 7).
-6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. Two causes are known. A fix for one, the shared signal, cut honest isolations by three quarters but let the backdoor through on one seed in three, so it was not adopted (7.6, chapter 8). The benchmark of every model in every setting is queued on the GPU server (6.1).
+6. **Still open:** FedHEP-Guard isolates more honest clients than FedHEP+, and more with more clients: 22 of 50 per run at 50 clients. Two causes are known. A fix for one, the shared signal, cut honest isolations by three quarters but let the backdoor through on one seed in three, so it was not adopted (7.6, chapter 8). The benchmark of every model in every setting is running on the GPU server; D2 is complete: FedHEP-Guard stops the backdoor there on two seeds of three, and its rewind costs 0.8–1.8 points because honest isolations trigger it (6.1).
 
 ![The research path](figures/diagrams/10_research_path.png)
 
@@ -37,7 +37,7 @@
 | FedHEP | FedAvg | three heads (root, parent, local), hierarchy | 47.8% at D1, 65.5% at α = 0.05 | no defense: sign flip −14 points |
 | Defended FedHEP | FedHEP | SCCF trust weights, trust ledger | most accurate under attack in Phase 2 | never removes anyone; backdoor 79% |
 | FedHEP+ | Defended FedHEP | robust z screen, permanent isolation, regrouping | sign flip +8.3, backdoor 79% → 21% | isolates unusual honest clients; blind to ALIE and Min-Max; backdoor stays |
-| **FedHEP-Guard** | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | adaptive attackers 9 of 9 caught; plain backdoor 0.3% over 100 rounds on every seed; best worst case under model poisoning in every GPU setting | isolates honest clients, more with more clients (22 of 50 per run at 50 clients), half of them whole parent groups; one late-caught stealth seed at 34%; D2 not yet run |
+| **FedHEP-Guard** | FedHEP+ | L0 bound, two-sided union screen, gap gate, patience, rewind, optional exit guard | adaptive attackers 9 of 9 caught; plain backdoor 0.3% over 100 rounds on every seed; best worst case under model poisoning in every GPU setting | isolates honest clients, more with more clients (22 of 50 per run at 50 clients), half of them whole parent groups; one late-caught stealth seed at 34%; at D2 the backdoor gets through on one seed of three; the rewind costs 0.8–1.8 points at D2 because honest isolations trigger it |
 
 ## Did FedHEP-Guard fix FedHEP+'s failures?
 
@@ -45,7 +45,7 @@
 |---|---|---|
 | 1. Honest but unusual clients isolated | **Not fixed** (screen) | fewer than FedHEP+ only at 15 clients, α = 0.1 (1.7 per run against 7.7). Elsewhere more, growing with the number of clients: 14.7 against 4.3 at 30 clients (α = 0.5), 22.0 against 1.0 at 50 clients (α = 0.1) |
 | 2. Adaptive attackers not seen | **Fixed** (screen) | ALIE and Min-Max 9 of 9 caught against 0 of 9; stealth backdoor 0.2–0.5% against 56–75% |
-| 3. Backdoors that persist | **Fixed when caught early** (full model) | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); not at α = 0.1, at D2, or after a late catch |
+| 3. Backdoors that persist | **Fixed when caught early** (full model) | 0.3% over 100 rounds against 5–42% at 30 rounds (Acer); 2.5% against 13.9% over 100 rounds with its whole-update half (GPU); at D2 on two seeds of three (benchmark); not at α = 0.1 or after a late catch |
 
 "Screen" means FedHEP-Guard without the rewind (`r3wc`), which most runs so far used; "full model" means with it. The full model under every condition comes with the benchmark. The scorecard, with the model behind every number, is [chapter 6.8](06_results.md).
 

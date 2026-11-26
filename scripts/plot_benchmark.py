@@ -355,10 +355,12 @@ def report_block(tab: dict) -> str:
         data = tab.get(setting, {})
         total = sum(applies(k, c) for k in MODELS for c, _ in CONDITIONS)
         filled = sum(len(v) for v in data.values())
+        runs = sum(s["seeds"] for v in data.values() for s in v.values())
         name = (f"{label}: " if label in ("D1", "D2") else "") + f"{n} clients, α = {a:g}, {round(0.2 * n)} attackers" \
             + (" (the paper's setting)" if a == 0.05 else "")
         lines += [f"#### {name} (`{setting}`)", "",
-                  f"{filled} of {total} cells run.", "",
+                  f"{filled} of {total} cells run; {runs} of {len(SEEDS) * total} runs ({len(SEEDS)} seeds per cell"
+                  + ("" if runs == len(SEEDS) * total else "; a cell with fewer seeds is preliminary") + ").", "",
                   f"![Benchmark overview, {label}](../figures/bench/overview_{setting}.png)", ""]
         present = [(c, t) for c, t in CONDITIONS if (FIG / f"{setting}__{c}.png").exists()]
         if not present:

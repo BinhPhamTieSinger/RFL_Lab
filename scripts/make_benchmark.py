@@ -103,7 +103,15 @@ MODELS = {
     # 5 FedHEP-Guard: the union screen without and with the rewind
     "r3wc": (5, "FedHEP-Guard without rewind (union screen)", {**_R3, "plus.signal": "weights_critical"}),
     "guard": (5, "FedHEP-Guard", {**_R3, "plus.signal": "weights_critical", "plus.rewind": "trunk_root"}),
+    # the low-side gate at 6 and the high side at 20, chosen in the offline replay (report 8.2), not yet run live
+    "r3wc_g6h20": (5, "FedHEP-Guard without rewind, gate 6, high side 20",
+                   {**_R3, "plus.signal": "weights_critical", "plus.gap_gate": 6, "plus.high_gate": 20}),
+    "guard_g6h20": (5, "FedHEP-Guard, gate 6, high side 20",
+                    {**_R3, "plus.signal": "weights_critical", "plus.gap_gate": 6, "plus.high_gate": 20,
+                     "plus.rewind": "trunk_root"}),
 }
+# Models also written to a short GPU sweep that runs them in D1 and D2 first (same run names as the benchmark).
+FIRST = {"gpu_c8_gates.yaml": ("r3wc_g6h20", "guard_g6h20")}
 FEDAVG_FAMILY = ("fedavg", "multikrum")
 
 
@@ -165,6 +173,15 @@ def main() -> None:
             "backdoor). Written by scripts/make_benchmark.py.\n"
             f"# {len(SETTINGS)} settings x 5 conditions x 2 models x 3 seeds = {runs} runs. GPU server only.\n")
     (out / "bench_0_fedavg_family.yaml").write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
+    for fname, models in FIRST.items():
+        spec = {"seeds": [42, 123, 7], "common": COMMON,
+                "axes": [{f"{tag(n, a)}__{c}": {"data.num_clients": n, "data.alpha": a, **v}
+                          for n, a, _ in SETTINGS[:2] for c, v in conditions(n, False).items()},
+                         {k: MODELS[k][2] for k in models}]}
+        head = (f"# GPU server: {', '.join(models)} in D1 and D2 before the benchmark reaches them. Written by "
+                f"scripts/make_benchmark.py. Same run names as bench_1/bench_2, so whichever runs first is kept.\n"
+                f"# 2 settings x 8 conditions x {len(models)} models x 3 seeds = {48 * len(models)} runs.\n")
+        (out / fname).write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
     print(f"{len(SETTINGS)} settings, {len(MODELS)} models, {total} runs in total")
 
 
