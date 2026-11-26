@@ -121,7 +121,7 @@ The repository documentation is organized into the **research report** and **fou
 |---|---|
 | [`docs/RESEARCH_SUMMARY.md`](docs/RESEARCH_SUMMARY.md) | Earlier plain-language walkthrough (to Phase 6, 2026-11-15); superseded by the report. |
 | [`docs/PAPER_PLAN.md`](docs/PAPER_PLAN.md) | Paper claims (`C1`–`C9`) and their verification status, closest published work, section outline mapped to figures/runs, and submission checklist. |
-| [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Synthesis of 170 sources across robust aggregation, adaptive/backdoor attacks, personalized & hierarchical FL, and the seven open gaps. |
+| [`docs/LITERATURE_REVIEW.md`](docs/LITERATURE_REVIEW.md) | Synthesis of 170 sources across robust aggregation, adaptive/backdoor attacks, personalized & hierarchical FL, and the seven open gaps; Part 2 (2026-11-26): readmission, honest outliers at scale, attack strength, soft vs hard exclusion, recovery after late detection, the Alharbi line, and 13 prioritized experiments. |
 
 ### 2. Defense Design, Hypotheses & Decision Registry
 | Document | Purpose |
