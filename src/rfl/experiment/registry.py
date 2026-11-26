@@ -7,7 +7,7 @@ import torch
 
 from rfl.aggregation.fedavg import FedAvg
 from rfl.aggregation.multikrum import MultiKrum
-from rfl.attacks.adaptive import CoordinatedAttack, StealthBackdoorAttack
+from rfl.attacks.adaptive import CoordinatedAttack, HistoryAttack, StealthBackdoorAttack
 from rfl.attacks.backdoor import BackdoorAttack
 from rfl.attacks.byzantine import ByzantineAttack, select_attackers, select_attackers_fixed
 from rfl.client.ditto import DittoTrainer
@@ -75,7 +75,8 @@ def build_fedrep(cfg: ExperimentConfig, model: torch.nn.Module, clients: Sequenc
 
 def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, frozenset[int]]:
     a = cfg.attack
-    if a.kind in ("alie", "min_max", "ipm", "stealth_backdoor") and cfg.method not in (
+    if a.kind in ("alie", "min_max", "ipm", "min_sum", "fang_trim", "poisonedfl", "xfed",
+                  "stealth_backdoor") and cfg.method not in (
             "fedhep", "fedhep_defended", "fedhep_plus", "fedhep_robust"):
         raise ValueError("Coordinated attacks currently require a FedHEP server")
     if a.kind is None:
@@ -85,7 +86,9 @@ def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, fro
                       StealthBackdoorAttack(a.backdoor_target, a.backdoor_fraction, cfg.run.seed)
                       if a.kind == "stealth_backdoor" else
                       CoordinatedAttack(a.kind, a.ipm_epsilon if a.kind == "ipm" else a.alie_z, a.knowledge,
-                                        a.perturbation) if a.kind in ("alie", "min_max", "ipm") else
+                                        a.perturbation, cfg.run.seed)
+                      if a.kind in ("alie", "min_max", "ipm", "min_sum", "fang_trim") else
+                      HistoryAttack(a.kind, cfg.run.seed) if a.kind in ("poisonedfl", "xfed") else
                       ByzantineAttack(a.kind))
     attackers = (select_attackers_fixed(num_clients, a.count, cfg.run.seed) if a.count is not None
                  else select_attackers(num_clients, a.rate, cfg.run.seed))

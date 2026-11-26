@@ -38,8 +38,9 @@ class RunConfig:
 @dataclass(frozen=True)
 class AttackConfig:
     kind: str | None = None              # None, "label_flip", "sign_flip", "gradient_ascent", "random_noise",
-                                         # "backdoor", "alie", "min_max", "ipm", "stealth_backdoor" (FedHEP
-                                         # servers: backdoor blended toward the honest mean, rfl.attacks.adaptive)
+                                         # "backdoor", "alie", "min_max", "ipm", "min_sum", "fang_trim",
+                                         # "poisonedfl", "xfed", "stealth_backdoor" (FedHEP servers; the last is the
+                                         # backdoor blended toward the honest mean; rfl.attacks.adaptive)
     knowledge: str = "colluders"       # coordinated attacks: colluders | omniscient
     alie_z: float = 1.0
     perturbation: str = "std"            # Min-Max direction: "std" (inverse std), "unit" (inverse unit vector of

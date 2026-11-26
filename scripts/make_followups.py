@@ -8,6 +8,8 @@ damage-oriented settings from the literature: ALIE at z = 1, 1.5 (Baruch et al.'
 et al.) at epsilon 0.5, 2 and the number of clients; Min-Max along the inverse unit vector and the inverse sign.
 gpu_c10_assumed_f.yaml (experiment 2): the robust global step assumes 20% attackers even with no attack; here it
 assumes none, to split the no-attack cost between the global step, the screen and the rewind.
+gpu_c11_attack_suite.yaml (Part 3): Min-Sum, Fang's trimmed-mean attack, PoisonedFL, XFED and three attack schedules
+(2-round bursts, which never give the screen 3 bad rounds in a row, and a sleeper).
 
 Both use the benchmark's settings, models and run names (scripts/make_benchmark.py), GPU server only."""
 import importlib.util
@@ -37,6 +39,20 @@ def strength_conditions(n: int) -> dict:
     return out
 
 
+def suite_conditions(n: int) -> dict:
+    """Attacks added after the second literature round (Part 3) and the attack schedules."""
+    m = round(0.2 * n)
+    f = {"attack.count": m, "robust.assumed_attackers": m, "plus.global_f": m}
+    return {f"minsum{m}": {"attack.kind": "min_sum", "attack.knowledge": "omniscient", **f},
+            f"fang{m}_full": {"attack.kind": "fang_trim", "attack.knowledge": "omniscient", **f},
+            f"fang{m}_partial": {"attack.kind": "fang_trim", "attack.knowledge": "colluders", **f},
+            f"poisonedfl{m}": {"attack.kind": "poisonedfl", **f},
+            f"xfed{m}": {"attack.kind": "xfed", **f},
+            f"sign{m}_burst21": {"attack.kind": "sign_flip", "attack.on_rounds": 2, "attack.off_rounds": 1, **f},
+            f"sign{m}_sleeper10": {"attack.kind": "sign_flip", "attack.start_round": 10, **f},
+            f"backdoor{m}_burst21": {"attack.kind": "backdoor", "attack.on_rounds": 2, "attack.off_rounds": 1, **f}}
+
+
 # the global step's assumed attacker count set to 0, otherwise the benchmark models
 ASSUMED_F = {"l0_f0": {**mb.MODELS["l0"][2], "robust.assumed_attackers": 0},
              "r3wc_f0": {**mb.MODELS["r3wc"][2], "plus.global_f": 0},
@@ -60,6 +76,17 @@ def main() -> None:
             f"2 settings x 8 attacks x {len(STRENGTH_MODELS)} models x 3 seeds = {runs} runs. The benchmark holds "
             "the bounded versions (formula z, inverse std) and the no-attack runs.\n")
     (out / "gpu_c9_attack_strength.yaml").write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
+
+    spec = {"seeds": [42, 123, 7], "common": mb.COMMON,
+            "axes": [setting_axis(mb.SETTINGS[:2], suite_conditions),
+                     {k: mb.MODELS[k][2] for k in STRENGTH_MODELS}]}
+    runs = 3 * len(spec["axes"][0]) * len(STRENGTH_MODELS)
+    head = ("# GPU server: the rest of the attack suite and the attack schedules (literature review Part 3; "
+            "predictions P57-P61). D1 and D2; Min-Sum, Fang's trimmed-mean attack (full and partial knowledge), "
+            "PoisonedFL, XFED;\n# sign flip in 2-round bursts (2 on, 1 off) and from round 10 (sleeper); backdoor in "
+            f"2-round bursts. Written by scripts/make_followups.py. 2 settings x 8 conditions x {len(STRENGTH_MODELS)} "
+            f"models x 3 seeds = {runs} runs.\n")
+    (out / "gpu_c11_attack_suite.yaml").write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
 
     def f_conditions(n: int) -> dict:
         c = mb.conditions(n, False)

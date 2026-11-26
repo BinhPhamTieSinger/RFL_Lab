@@ -1638,3 +1638,28 @@ Last run (`x13_n50a01__clean__r3sc_s7`): 17 honest clients isolated, 49.68% over
 - GPU `gpu_c9_attack_strength.yaml` (384 runs): D1 and D2; ALIE z 1 / 1.5 / 3, IPM epsilon 0.5 / 2 / n, Min-Max unit and sign; FedHEP, Defended, FedHEP+, union screen, FedHEP-Guard, FLAME, Bulyan, Median.
 - GPU `gpu_c10_assumed_f.yaml` (81 runs): L0, union screen and FedHEP-Guard assuming no attackers; D1, D2, 30 clients; no attack, sign flip, backdoor.
 - Acer `acer_c16_readmission.yaml` (60 runs) and `acer_c16b_readmission_n50.yaml` (6 runs): permanent isolation, Phase 3b readmission, a 5-round sentence with normal or 1-round probation patience; no attack, plain, sleeper (from round 10), on-off (4 on, 6 off) and on-off (2 on, 1 off: never 3 bad rounds in a row, so the patience rule can never fire; found by reading the code, P56) backdoor; and 50 clients α 0.1 with no attack.
+
+## 2026-11-26 (night) · The rest of the attack suite; a presence test on smoothed scores fails offline; GPU queue estimate
+
+**New attacks** (`rfl.attacks.adaptive`, tests in `tests/test_attack_strength.py`), from the literature review Part 3:
+- `min_sum`: Min-Sum (NDSS21 official code's bound: the attacker's summed squared distance to the observed updates at most the smallest such sum among them), with the three perturbation directions.
+- `fang_trim`: Fang et al.'s trimmed-mean attack written for update deltas, per attacker and coordinate, opposite to the honest direction; full knowledge (`omniscient`: just past the honest extreme, b = 2) or partial (`colluders`: mu ± [3, 4] sigma of the colluders' updates).
+- `poisonedfl`: c |g| ⊙ s, g the last global update, s a random sign vector fixed for the run, c = 8. Simplifications, stated in the code: c is not lowered (the paper's test needs 50 rounds), and the attackers' own share of g is not removed.
+- `xfed`: each attacker moves its own update by mu against its direction, mu = median + 4 MAD of the norms of the last 8 global updates (XFED's uv variant).
+Round 1 has no history, so PoisonedFL and XFED attackers send clean updates then.
+
+**Offline replay: a GMM presence test on smoothed scores** (220 GPU union-screen runs; scratch analysis). Per signal, EMA (0.7) of each client's z, a 2-component Gaussian mixture, open if the means are at least min (or max) of the two standard deviations apart and the smaller component holds 2 or more clients.
+
+| Gate | Honest per run, no attack (15 / 20 / 30 / 50 clients) | Backdoor attackers caught | Poisoning attackers caught | Gate open in no-attack rounds |
+|---|---|---|---|---|
+| gap ratio ≥ 8 (now) | 3.0 / 3.7 / 10.8 / 23.6 | 68 / 54 / 81 / 57% | 100 / 93 / 100 / 100% | 33 / 31 / 56 / 69% |
+| GMM, ≥ min sd | 6.8 / 6.7 / 16.5 / 31.8 | 98 / 96 / 83 / 70% | 100 / 95 / 99 / 100% | 98 / 100 / 100 / 100% |
+| GMM, ≥ max sd | 6.7 / 6.7 / 16.2 / 30.4 | 98 / 96 / 74 / 63% | 100 / 95 / 99 / 100% | 98 / 100 / 100 / 100% |
+
+Smoothing turns the persistent honest offsets into a second mode, so the mixture sees two groups in almost every round. Not built live. Report 8.2.
+
+![Replayed rules](figures/replay_rules.png)
+
+**New sweep:** GPU `gpu_c11_attack_suite.yaml` (384 runs, D1 and D2, the 8 models of `gpu_c9`): Min-Sum, Fang full and partial, PoisonedFL, XFED, sign flip in 2-round bursts, sign flip from round 10, backdoor in 2-round bursts. Predictions P57–P61.
+
+**GPU queue** (OPERATIONS.md): 1,515 runs in the 24 hours to 2026-11-26 08:39; then 8,154 runs left in the running job (361 of the 50-client grid, 7,793 benchmark), about 7.5 days at that pace in client-runs, so done around 2026-12-03 or 04; then 1,281 more after the update (432 benchmark runs of the two new models, of which `gpu_c8` holds 96, and 849 in `gpu_c10`, `gpu_c9`, `gpu_c11`).

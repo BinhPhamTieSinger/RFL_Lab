@@ -22,7 +22,7 @@ import torch
 
 from rfl.aggregation.fedavg import FedAvg
 from rfl.aggregation.momentum import adaptive_momentum_beta
-from rfl.attacks.adaptive import CoordinatedAttack, StealthBackdoorAttack
+from rfl.attacks.adaptive import CoordinatedAttack, HistoryAttack, StealthBackdoorAttack
 from rfl.client.fedhep import FedHEPTrainer, HeadMemory, ensemble_logits, head_agreement_logits
 from rfl.core.interfaces import Attack
 from rfl.core.state import flatten, unflatten
@@ -101,7 +101,8 @@ class FedHEPServer:
             self.trained[cid] = flatten(self.model.state_dict())
             to_global[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
             to_parent[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
-        if isinstance(self.attack, (CoordinatedAttack, StealthBackdoorAttack)) and self.attacking(round_idx):
+        if isinstance(self.attack, (CoordinatedAttack, HistoryAttack, StealthBackdoorAttack)) and self.attacking(
+                round_idx):
             mask = ~flat_layout(self.template, {k for k, _ in self.model.named_parameters()}).buffer_mask
             to_global = self.attack.poison_batch(to_global, start, self.attackers, mask)
             to_parent = self.attack.poison_batch(to_parent, start, self.attackers, mask)

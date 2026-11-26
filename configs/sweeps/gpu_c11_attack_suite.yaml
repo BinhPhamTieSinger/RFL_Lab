@@ -1,0 +1,184 @@
+# GPU server: the rest of the attack suite and the attack schedules (literature review Part 3; predictions P57-P61). D1 and D2; Min-Sum, Fang's trimmed-mean attack (full and partial knowledge), PoisonedFL, XFED;
+# sign flip in 2-round bursts (2 on, 1 off) and from round 10 (sleeper); backdoor in 2-round bursts. Written by scripts/make_followups.py. 2 settings x 8 conditions x 8 models x 3 seeds = 384 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__minsum3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: min_sum
+    attack.knowledge: omniscient
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__fang3_full:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: fang_trim
+    attack.knowledge: omniscient
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__fang3_partial:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: fang_trim
+    attack.knowledge: colluders
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__poisonedfl3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: poisonedfl
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__xfed3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: xfed
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__sign3_burst21:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__sign3_sleeper10:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.start_round: 10
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__backdoor3_burst21:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__minsum4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: min_sum
+    attack.knowledge: omniscient
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__fang4_full:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: fang_trim
+    attack.knowledge: omniscient
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__fang4_partial:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: fang_trim
+    attack.knowledge: colluders
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__poisonedfl4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: poisonedfl
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__xfed4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: xfed
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__sign4_burst21:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: sign_flip
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__sign4_sleeper10:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: sign_flip
+    attack.start_round: 10
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__backdoor4_burst21:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+- fedhep:
+    config: configs/cifar100_fedhep.yaml
+  defended:
+    config: configs/cifar100_fedhep_defended.yaml
+  plus:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+  r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  guard:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+  flame:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame
+  bulyan:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: bulyan
+  median:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: median

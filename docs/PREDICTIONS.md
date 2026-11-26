@@ -134,6 +134,11 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P54 | (Same, `acer_c16b_readmission_n50`.) At 50 clients, α 0.1, no attack, a sentence raises accuracy by at least 1 point over the union screen (48.4%) | 0.4 | under 1 point for both variants |
 | P55 | (Same.) The sleeper backdoor (attacks from round 10) gets past the union screen with permanent isolation: 5% or more on at least one seed | 0.5 | under 5% on every seed |
 | P56 | (Same sweep, union screen with permanent isolation.) A backdoor attacking 2 rounds on, 1 off is never isolated, because the 3-round streak resets on every clean round; its success reaches 20% or more on at least 2 of 3 seeds | 0.6 | any attacker isolated, or under 20% on 2 seeds |
+| P57 | (Attack suite, GPU, `gpu_c11_attack_suite`, written 2026-11-26 before any run.) PoisonedFL takes undefended FedHEP at least 10 points below its no-attack accuracy at D1 and at D2, within 30 rounds | 0.5 | under 10 points at D1 or D2 |
+| P58 | (Same.) FedHEP-Guard isolates every PoisonedFL attacker by round 5 on every seed at D1 and D2 (the attackers send identical vectors) | 0.7 | any attacker kept past round 5 |
+| P59 | (Same.) Sign flip in 2-round bursts (2 on, 1 off) is never isolated by FedHEP-Guard at D1 or D2: 0 of 9 and 0 of 12 attackers | 0.7 | any attacker isolated |
+| P60 | (Same.) The backdoor in 2-round bursts reaches 20% or more against FedHEP-Guard on at least 2 of 3 seeds at D1 | 0.55 | under 20% on 2 seeds |
+| P61 | (Same.) Fang's full-knowledge trimmed-mean attack lowers FedHEP-Guard's accuracy by at least 3 points against no attack at D1 (its global step ends in a trimmed mean) | 0.4 | under 3 points |
 
 ## 3. The model we expect to publish
 

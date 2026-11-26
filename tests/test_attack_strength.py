@@ -54,3 +54,58 @@ def test_new_attacks_run_end_to_end_on_a_fedhep_server(tmp_path, over):
                                  **over})
     result = run_experiment(cfg)
     assert len(result["attackers"]) == 2 and result["history"]
+
+
+def test_min_sum_meets_its_bound_at_the_edge(observed):
+    out = crafted_update(observed, "min_sum")
+    sums = ((observed[:, None, :] - observed[None, :, :]) ** 2).sum(-1).sum(1)
+    mine = float(((out - observed) ** 2).sum())
+    assert mine <= float(sums.min()) * (1 + 1e-6)
+    assert mine >= float(sums.min()) * 0.99
+
+
+def test_fang_trim_pushes_the_trimmed_mean_against_the_honest_direction():
+    from rfl.attacks.adaptive import fang_trim
+    honest = torch.tensor([[1.0, -1.0], [2.0, -2.0], [3.0, -3.0], [1.5, -0.5]])
+    gen = torch.Generator().manual_seed(0)
+    bad = torch.stack([fang_trim(honest, True, gen) for _ in range(3)])
+    assert (bad[:, 0] <= honest[:, 0].min()).all() and (bad[:, 1] >= honest[:, 1].max()).all()
+    allv = torch.cat([honest, bad]).sort(0).values[1:-1]       # trim one from each end
+    assert allv.mean(0)[0] < honest.mean(0)[0] and allv.mean(0)[1] > honest.mean(0)[1]
+    partial = fang_trim(honest, False, gen)
+    mu, sd = honest.mean(0), honest.std(0, correction=0)
+    assert mu[0] - 4 * sd[0] <= partial[0] <= mu[0] - 3 * sd[0]
+
+
+def test_history_attacks_wait_a_round_then_use_the_global_history():
+    from rfl.attacks.adaptive import HistoryAttack
+    mask = torch.ones(4, dtype=torch.bool)
+    ups = {0: torch.tensor([1.0, 1.0, 1.0, 1.0]), 1: torch.tensor([2.0, 0.0, 1.0, 1.0])}
+    a = HistoryAttack("poisonedfl", seed=1)
+    s0 = torch.zeros(4)
+    assert torch.equal(a.poison_batch(ups, s0, frozenset({1}), mask)[1], ups[1])      # round 1: no history
+    s1 = torch.tensor([0.5, -0.25, 0.0, 1.0])
+    out = a.poison_batch({c: u + s1 for c, u in ups.items()}, s1, frozenset({1}), mask)
+    assert torch.allclose(out[1] - s1, 8.0 * s1.abs() * a.signs)
+    signs = a.signs.clone()
+    s2 = s1 * 2
+    a.poison_batch({c: u + s2 for c, u in ups.items()}, s2, frozenset({1}), mask)
+    assert torch.equal(a.signs, signs)                                                   # fixed for the run
+    x = HistoryAttack("xfed")
+    x.poison_batch(ups, s0, frozenset({1}), mask)
+    out = x.poison_batch({c: u + s1 for c, u in ups.items()}, s1, frozenset({1}), mask)
+    own = ups[1]
+    assert torch.allclose(torch.nn.functional.cosine_similarity(out[1] - s1, own, dim=0).abs(), torch.tensor(1.0))
+
+
+@pytest.mark.parametrize("kind", ["min_sum", "fang_trim", "poisonedfl", "xfed"])
+def test_suite_attacks_run_end_to_end(tmp_path, kind):
+    from rfl.experiment.config import load_config
+    from rfl.experiment.runner import run_experiment
+    cfg = load_config(overrides={"name": kind, "method": "fedhep_plus", "model": "resnet9_multihead",
+                                 "data.dataset": "synthetic", "data.num_clients": 6, "data.train_subset": 600,
+                                 "data.test_subset": 300, "data.alpha": 0.5, "train.local_epochs": 1,
+                                 "run.rounds": 3, "run.eval_every": 3, "run.device": "cpu", "run.seed": 3,
+                                 "run.output_dir": str(tmp_path), "attack.count": 2, "attack.kind": kind,
+                                 "attack.knowledge": "omniscient", "plus.reference": "median"})
+    assert run_experiment(cfg)["history"]
