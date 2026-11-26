@@ -120,7 +120,7 @@ No rule removes honest isolations without losing some backdoor catches: with the
 
 **Caveats.** The gate of 6 was picked from 24 replayed combinations (low-side gate 0, 4, 6 or 8; cut 1.5, 2.0 or 2.5; high side at 8 or 20) on the same runs it is scored on, so it may be tuned to them. D2 has only 3 runs per condition. ALIE catches at 15 clients fall to 87% (one seed's attackers are caught late or not at all in the replay). Both rules need the live test, which needs no new code: `plus.gap_gate: 6` with `plus.high_gate: 20`. It is queued as two benchmark models (with and without the rewind), run first in D1 and D2 by `gpu_c8_gates.yaml` (P37–P40).
 
-**The high-side gate, live (Acer, `acer_c14_high_gate.yaml`, 18 of 21 runs, 2026-11-26).** Against the union screen on the Acer, same seeds:
+**The high-side gate, live (Acer, `acer_c14_high_gate.yaml` and `acer_c14_control.yaml`, complete, 2026-11-26).** Against the union screen on the Acer, same seeds:
 
 | Condition (30 rounds) | Honest isolated per run: union screen / high-side gate | Attackers caught | Backdoor success, seeds 42 / 123 / 7 |
 |---|---|---|---|
@@ -129,13 +129,24 @@ No rule removes honest isolations without losing some backdoor catches: with the
 | 15 clients, ALIE | 4.7 / 5.3 | 9 of 9 / 9 of 9 | |
 | 15 clients, Min-Max | 2.0 / 3.3 | 9 of 9 / 9 of 9 (seed 7 in round 7) | |
 | 15 clients, backdoor | 3.2 / 4.3 | 18 of 18 / 9 of 9 | 0.2–0.5% / 0.4 / 0.5 / **1.7%** |
-| 15 clients, stealth backdoor | control running (`acer_c14_control.yaml`) | – / 8 of 9 | – / 0.4 / **71 / 57%** |
+| 15 clients, stealth backdoor | 4.7 / 5.0 | 9 of 9 / 8 of 9 | 0.5 / 0.7 / 1.0% / 0.4 / **71 / 57%** |
+| 50 clients, α 0.1, backdoor | 16.3 / 11.7 | 16 of 30 / 16 of 30 | 29 / 31 / 19% / 31 / 31 / 16% |
 
 - **It does what the replay predicted with no attack:** honest isolations fall by 45% at 50 clients and by 40% at 15 clients, and accuracy at 50 clients rises from 48.4% to 50.4%. Every ALIE and Min-Max attacker is still caught (P33, P34 and P36 held). Under attack it isolates about one more honest client per run than the union screen.
-- **The stealth backdoor got through on seeds 123 and 7**, with the attackers caught in rounds 13–23. **The high-side gate is not the cause:** the attackers sit on the low side (z mostly between −1.5 and −5.3 from round 2), and replaying the union screen's own rule on these runs' logs gives the same late isolations. The cause is the gap gate on the low side, as at D2 on the GPU: on both signals the gap ratio fell below 8 every second or third round (4–7.4), and each closed round resets the streak of 3 rounds the screen needs. Replaying the low-side gate of 6 on the same logs isolates all three attackers in rounds 3 (seed 123) and 6 (seed 7). These runs were not among those the gate of 6 was chosen on, so this is a first out-of-sample check, though still offline. The plain backdoor reached 1.7% on seed 7 (caught in round 6, not 4): P35 refuted, narrowly.
+- **The stealth backdoor got through on seeds 123 and 7 with the high-side gate, and on no seed without it** (the control isolated every attacker in rounds 3–6; backdoor 0.5–1.0%). **The rule itself is not what differs:** the attackers sit on the low side (z mostly between −1.5 and −5.3 from round 2); replaying the union screen's rule on the high-gate runs' logs gives the same late isolations, and replaying the high-gate rule on the control's logs gives the control's early ones. The two runs took different paths from round 2 on (the high-side gate changes which honest clients are left out each round, and so the model), and on one path the gap gate on the low side opened in time and on the other it did not. So the cause is the gap gate's fragility on the low side, as at D2 on the GPU, where the union screen itself let the stealth backdoor through on D1 seed 7 (81%). On the high-gate runs: on both signals the gap ratio fell below 8 every second or third round (4–7.4), and each closed round resets the streak of 3 rounds the screen needs. Replaying the low-side gate of 6 on the same logs isolates all three attackers in rounds 3 (seed 123) and 6 (seed 7). These runs were not among those the gate of 6 was chosen on, so this is a first out-of-sample check, though still offline. The plain backdoor reached 1.7% on seed 7 (caught in round 6, not 4): P35 refuted, narrowly.
+- **At 50 clients under the backdoor both fail alike:** 16 of 30 attackers caught, backdoor 16–31%, with 4.6 fewer honest clients isolated by the high-side gate.
 - **Next on the Acer:** the same sweep with the low-side gate at 6 (`acer_c15_low_gate.yaml`, 18 runs, P41–P43), paired seed by seed with c14.
 
 ![The high-side gate on the Acer](../figures/acer_c14_high_gate.png)
+
+**Why the same honest clients are isolated: persistent offsets, not multiple testing** (literature review Part 2, experiment 1; offline, 20 GPU union-screen runs with no attack, `scripts/diag_honest_null.py`).
+- An honest client's whole-update z barely changes from one round to the next: median lag-1 autocorrelation 0.80–0.87 in every setting (critical layers 0.27–0.45).
+- Replaying the screen's rule on the same logs with the scores dealt to the clients at random each round (same scores, same gap ratios) isolates 5–12 times fewer clients: 3.3 against 22.0 per run at 50 clients, α 0.1; 2.5 against 14.7 at 30 clients, α 0.5; 0.3 against 3.7 at D2. If honest isolations were bad luck spread over many tests, the shuffle would change nothing.
+- The isolated honest clients are not simply the most label-skewed or the smallest: their mean rank in label entropy is 0.35–0.66 and in data size 0.16–0.63 (0.5 = average). Something else about their data makes their updates stand apart, consistently. Karimireddy et al. (ICLR 2022) prove that no comparison among clients can tell such a client from an attacker.
+
+![Persistent offsets](../figures/honest_null.png)
+
+**Can the screen judge a client against its own past instead?** (offline replay, 220 GPU runs.) Subtracting each client's own median z so far (capped at 1–2) halves honest isolations with no attack (1.3–1.5 / 2.0–2.3 / 5.7–6.0 / 11.0–11.2 per run at 15 / 20 / 30 / 50 clients, against 3.0 / 3.7 / 10.8 / 23.6) and keeps every sign-flip, label-flip, noise, ALIE and Min-Max catch (92–100%). But it loses a third to a half of the backdoor catches (41 / 42 / 45 / 18% with the cap at 1, against 68 / 54 / 81 / 57%): backdoor attackers have stable offsets too, which is the literature's own caveat (FLTracer keeps a hard flag for large z). Self-reference alone is not the answer; as a second opinion that clears mild offsets only it may be. Not run live.
 
 The smoothed low-side score separates best of all (0.99 at D2), which points to the next signal to build: a per-client score accumulated over rounds before any gate is applied, as FLDetector and FLTracer do (`LITERATURE_REVIEW.md`).
 
@@ -164,8 +175,8 @@ The shared signal removed a third of the honest isolations (22.3 → 15.0), half
 
 ## 8.4 What comes next
 
-- **GPU server:** the benchmark (6.1) and the rest of the 50-client grid; at the next resubmission `gpu_c8_gates.yaml` first (the low-side gate of 6 with the high-side gate of 20, with and without the rewind, D1 and D2, P37–P40); then the stealth study at scale (`gpu_c7_stealth`).
-- **Acer:** the end of the high-side gate test (its 50-client backdoor runs, then `acer_c14_control.yaml`, the union-screen stealth control), then the low-side gate (`acer_c15_low_gate.yaml`, P41–P43).
+- **GPU server:** the benchmark (6.1) and the rest of the 50-client grid; at the next resubmission first `gpu_c8_gates.yaml` (the low-side gate of 6 with the high-side gate of 20, P37–P40), `gpu_c10_assumed_f.yaml` (the global step assuming no attackers, P48–P50) and `gpu_c9_attack_strength.yaml` (ALIE at z 1–3, IPM, Min-Max in two more directions, P44–P47); then the stealth study at scale (`gpu_c7_stealth`).
+- **Acer:** the low-side gate (`acer_c15_low_gate.yaml`, P41–P43), then readmission (`acer_c16_readmission.yaml` and `acer_c16b_readmission_n50.yaml`, P51–P56: a 5-round sentence against permanent isolation and Phase 3b's readmission, under no attack, plain, sleeper and two on-off backdoors, one of which, 2 rounds on and 1 off, never gives the screen 3 bad rounds in a row).
 - **A smoothed per-client score.** The replay's best separator is each client's low-side score averaged over rounds (8.2). A screen that gates on that score, rather than on the round's scores, is the next candidate; the replay can test it first. An observe-only mode (score and log every round, never exclude) would remove the replay's lower-bound limit.
 - **Cause 2 without dropping the heads.** The heads carry both the group signature and part of the backdoor signature (7.6). A rule that spares a group drifting only in its heads, by requiring the shared signal to agree at a lower bar, can be replayed once both signals are logged on the same updates.
 - **After that:** the open problems 3–6 above, in that order.

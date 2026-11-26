@@ -50,6 +50,9 @@ class ScreenOptions:
     evidence_decay: float = 0.7
     norm_bound: float = 3.0             # cap at k x the lower-quartile norm before scoring, as SCCF does
     readmit: bool = False
+    sentence: int = 0                  # > 0: isolated clients come back after this many rounds (EvidenceTracker)
+    max_strikes: int = 2
+    probation_patience: int = 0
     max_excluded: float = 1.0
     population: str = "kept"            # "kept" (clients not isolated) | "all" (every client not banned)
     drill_down: bool = False            # Phase 4: check parents, then their members more strictly
@@ -75,6 +78,10 @@ class ScreenOptions:
             raise ValueError("MAD floors must be nonnegative")
         if self.isolation_patience < 1 or self.exclusion_patience < 1:
             raise ValueError("Patience must be positive")
+        if self.sentence < 0 or self.max_strikes < 1 or self.probation_patience < 0:
+            raise ValueError("sentence and probation_patience must be nonnegative, max_strikes positive")
+        if self.sentence and self.readmit:
+            raise ValueError("sentence and readmit are two different readmission rules; use one")
         if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
                                "weights_critical", "shared", "shared_critical"):
             raise ValueError(f"Unknown screening signal {self.signal!r}")
@@ -322,18 +329,47 @@ def one_sided(z: Mapping[int, float], two_sided: bool) -> dict[int, float]:
 
 
 class EvidenceTracker:
-    def __init__(self, decay: float, cut: float, readmit: bool = False, patience: int = 1) -> None:
+    """EMA evidence per client; isolation after `patience` bad rounds in a row.
+
+    Readmission, two kinds: `readmit` scores isolated clients and lets them back once their evidence recovers
+    (Phase 3b). `sentence` > 0 instead lets an isolated client back after that many rounds whatever its scores,
+    with its evidence reset; the isolation that brings it to `max_strikes` is permanent, and `probation_patience`
+    (if set) replaces `patience` for clients that have come back."""
+
+    def __init__(self, decay: float, cut: float, readmit: bool = False, patience: int = 1, sentence: int = 0,
+                 max_strikes: int = 2, probation_patience: int = 0) -> None:
         self.decay, self.cut, self.readmit = decay, cut, readmit
         self.patience = patience
+        self.sentence, self.max_strikes, self.probation_patience = sentence, max_strikes, probation_patience
         self.streak: dict[int, int] = {}
         self.evidence: dict[int, float] = {}
         self.isolated: set[int] = set()
+        self.round = 0
+        self.since: dict[int, int] = {}      # round of the current isolation
+        self.strikes: dict[int, int] = {}    # isolations so far
+        self.returned: set[int] = set()      # clients that served a sentence and came back
+
+    def release(self) -> set[int]:
+        """Start of a round (before scoring): clients whose sentence is served come back. Returns them."""
+        self.round += 1
+        if not self.sentence:
+            return set()
+        back = {c for c in self.isolated if self.strikes.get(c, 0) < self.max_strikes
+                and self.round - self.since[c] >= self.sentence}
+        for c in back:
+            self.isolated.discard(c)
+            self.evidence[c], self.streak[c] = 0.0, 0
+        self.returned |= back
+        return back
 
     def update(self, z: Mapping[int, float]) -> None:
         for c, v in z.items():
             self.evidence[c] = self.decay * self.evidence.get(c, 0.0) + (1.0 - self.decay) * v
             self.streak[c] = self.streak.get(c, 0) + 1 if v < -self.cut else 0
-            if self.evidence[c] < -self.cut and (self.patience == 1 or self.streak[c] >= self.patience):
+            patience = self.probation_patience if self.probation_patience and c in self.returned else self.patience
+            if self.evidence[c] < -self.cut and (patience == 1 or self.streak[c] >= patience):
+                if self.sentence and c not in self.isolated:
+                    self.since[c], self.strikes[c] = self.round, self.strikes.get(c, 0) + 1
                 self.isolated.add(c)
             elif self.readmit and c in self.isolated and self.evidence[c] > -self.cut / 2:
                 self.isolated.discard(c)

@@ -38,13 +38,19 @@ class RunConfig:
 @dataclass(frozen=True)
 class AttackConfig:
     kind: str | None = None              # None, "label_flip", "sign_flip", "gradient_ascent", "random_noise",
-                                         # "backdoor", "alie", "min_max", "stealth_backdoor" (FedHEP servers:
-                                         # backdoor blended toward the honest mean, rfl.attacks.adaptive)
+                                         # "backdoor", "alie", "min_max", "ipm", "stealth_backdoor" (FedHEP
+                                         # servers: backdoor blended toward the honest mean, rfl.attacks.adaptive)
     knowledge: str = "colluders"       # coordinated attacks: colluders | omniscient
     alie_z: float = 1.0
+    perturbation: str = "std"            # Min-Max direction: "std" (inverse std), "unit" (inverse unit vector of
+                                         # the mean) or "sign" (inverse sign of the mean), Shejwalkar & Houmansadr
+    ipm_epsilon: float = 0.5             # IPM (Xie et al.): attackers send -epsilon x the observed mean update
     rate: float = 0.0                    # each client is an attacker with this probability (authors' rule)
     count: int | None = None             # exactly this many attackers instead (overrides rate)
     stop_round: int = 0                  # FedHEP family: attackers train honestly after this round (0 = never)
+    start_round: int = 0                 # FedHEP family: attackers train honestly before this round (sleeper)
+    on_rounds: int = 0                   # FedHEP family, from start_round: attack on_rounds rounds, then train
+    off_rounds: int = 0                  # honestly off_rounds rounds, and repeat (on-off attack; 0 = always on)
     placement: str = "random"            # grouped methods' initial groups: "random" (as drawn), "concentrated"
                                          # (all attackers in parent 0) or "spread" (attackers dealt round-robin)
     backdoor_target: int = 0
@@ -86,6 +92,10 @@ class PlusConfig:
     evidence_decay: float = 0.7
     regroup: bool = False                # regroup clients by weight-update similarity (else random groups)
     readmit: bool = False                # keep scoring isolated clients; readmit when evidence > -evidence_cut/2
+    sentence: int = 0                    # > 0: an isolated client comes back after this many rounds, evidence reset
+                                         # (literature review Part 2, experiment 4); not with readmit or rewind
+    max_strikes: int = 2                 # with sentence: the isolation that makes this many is permanent
+    probation_patience: int = 0          # with sentence: patience for a client that came back (0: isolation_patience)
     max_excluded: float = 1.0            # never leave out more than this fraction of clients in a round
     population: str = "kept"             # yardstick for z: "kept" clients or "all" not banned (isolated too)
     drill_down: bool = False             # Phase 4: flag parents whose mean update is out of line, then check

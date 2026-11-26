@@ -114,7 +114,7 @@ qbatch --gpus 4 --cpus 16 --mem 96G --time 3-00:00:00 scripts/gpu_sweep.py \
     configs/sweeps/bench_6_gg50_a01.yaml configs/sweeps/bench_7_gg50_a05.yaml configs/sweeps/bench_8_gg20_a05.yaml \
     configs/sweeps/bench_9_gg15_a005.yaml --procs 1 --set data.root=data
 ```
-Resubmit the same command each time the 3-day limit ends; finished runs are skipped. **From 2026-11-26** put `configs/sweeps/gpu_c8_gates.yaml` first in that command (after `runner_sync.sh pc --update`, between jobs): it runs the two newest models (gate 6, high side 20; report 8.2) in D1 and D2, 96 runs, under the benchmark's own run names, so the bench files skip them afterwards. Never run it in a second job at the same time as a job holding `bench_1` or `bench_2`. The sweep files are written by `scripts/make_benchmark.py` (models, settings, conditions); edit that script, not the YAML. On the Mac, `python scripts/plot_benchmark.py outputs` redraws every benchmark chart and the chart index of report 6.1, from whatever GPU runs exist. After the benchmark: `configs/sweeps/gpu_c7_stealth.yaml`.
+Resubmit the same command each time the 3-day limit ends; finished runs are skipped. **From 2026-11-26** put `configs/sweeps/gpu_c8_gates.yaml configs/sweeps/gpu_c10_assumed_f.yaml configs/sweeps/gpu_c9_attack_strength.yaml` first in that command, in this order (after `runner_sync.sh pc --update`, between jobs). `gpu_c8` runs the two newest models (gate 6, high side 20; report 8.2) in D1 and D2, 96 runs, under the benchmark's own run names, so the bench files skip them afterwards. `gpu_c10` (81 runs) and `gpu_c9` (384 runs) are the literature review's experiments 2 and 3 (P44–P50); `gpu_c9` needs the new attacks (IPM, Min-Max directions) of 2026-11-26. Never run it in a second job at the same time as a job holding `bench_1` or `bench_2`. The sweep files are written by `scripts/make_benchmark.py` (models, settings, conditions); edit that script, not the YAML. On the Mac, `python scripts/plot_benchmark.py outputs` redraws every benchmark chart and the chart index of report 6.1, from whatever GPU runs exist. After the benchmark: `configs/sweeps/gpu_c7_stealth.yaml`.
 
 **A sweep on all four GPUs:**
 ```bash
@@ -195,6 +195,12 @@ tmux new -s rfl15        # or: tmux attach -t rfl15
 cd ~/Documents/RFL_Lab && source ~/venvs/rfl/bin/activate
 bash scripts/runner_sync.sh acer --update   # only once c14 and its control have finished
 python scripts/sweep.py configs/sweeps/acer_c14_control.yaml && python scripts/sweep.py configs/sweeps/acer_c15_low_gate.yaml
+```
+
+After c15, readmission (`acer_c16_readmission.yaml`, 60 runs, about 20 hours, then `acer_c16b_readmission_n50.yaml`, 6 runs, about 5 hours; predictions P51–P56; new code since 2026-11-26, so update first).
+```bash
+bash scripts/runner_sync.sh acer --update   # only once c15 has finished
+python scripts/sweep.py configs/sweeps/acer_c16_readmission.yaml && python scripts/sweep.py configs/sweeps/acer_c16b_readmission_n50.yaml
 ```
 
 Detach with Ctrl-b then d; `tmux attach -t rfl11` brings it back. Check progress from anywhere: `ls ~/Documents/RFL_Lab/outputs | wc -l`. If `tmux ls` says "no server running", the Acer restarted (`uptime`); start the same sweep command again. Push results any time with `bash scripts/runner_sync.sh acer`.

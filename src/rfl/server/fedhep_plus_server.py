@@ -64,8 +64,12 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         if screen.signal in ("probe_logits", "head_gap") and probe is None:
             raise ValueError(f"signal {screen.signal!r} needs a probe set")
         self.similarity_mask = ~self.global_defense.layout.buffer_mask  # regrouping compares weights only
+        if screen.sentence and rewind != "none":
+            raise ValueError("sentence (readmission) is not combined with the rewind: a rewind after a second "
+                             "isolation would reach back past the client's return")
         self.evidence = EvidenceTracker(screen.evidence_decay, screen.evidence_cut, screen.readmit,
-                                        screen.isolation_patience)
+                                        screen.isolation_patience, screen.sentence, screen.max_strikes,
+                                        screen.probation_patience)
         self.exclusion_streak: dict[int, int] = {}
         self.banned: set[int] = set()  # non-finite uploads: out for good, even with readmission
 
@@ -112,6 +116,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         ids = list(range(len(self.clients)))
         to_global, to_parent = self._train_all(start, round_idx)
 
+        self.evidence.release()   # clients whose sentence is served are scored again from this round
         before = set(self.evidence.isolated)
         isolated = self.evidence.isolated
         for c in ids:  # sentinel, as in Defended FedHEP

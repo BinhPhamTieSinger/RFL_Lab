@@ -1,0 +1,31 @@
+# Acer (XPU), readmission (literature review Part 2, experiment 4; predictions P51-P55): can isolated honest clients
+# come back without letting attackers back in? FedHEP-Guard's screen (union screen, no rewind) with
+#   r3wc         permanent isolation (control)
+#   r3wc_ra      Phase 3b readmission: scored while isolated, back once evidence > -0.75 (negative control)
+#   r3wc_s5      sentence of 5 rounds, evidence reset, second isolation permanent, normal patience (3) on return
+#   r3wc_s5p1    the same, but a returned client is isolated again on its first bad round
+# 15 clients, alpha 0.5, 3 attackers: no attack; plain backdoor; sleeper backdoor (honest until round 10); and a
+# re-offender (on-off backdoor: 4 rounds on, 6 off, repeated), timed to come back after a 5-round sentence; and an
+# on-off backdoor of 2 rounds on, 1 off, which never gives the screen 3 bad rounds in a row (P56).
+# 5 conditions x 4 models x 3 seeds = 60 runs, about 20 hours; resumable. 50 clients: acer_c16b_readmission_n50.yaml.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - x16_a05__clean: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3}
+    x16_a05__backdoor3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                         attack.count: 3}
+    x16_a05__sleeper3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                        attack.count: 3, attack.start_round: 10}
+    x16_a05__onoff3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                      attack.count: 3, attack.on_rounds: 4, attack.off_rounds: 6}
+    x16_a05__onoff21: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                       attack.count: 3, attack.on_rounds: 2, attack.off_rounds: 1}
+  - r3wc: &r3wc {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                 plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                 plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical}
+    r3wc_ra: {<<: *r3wc, plus.readmit: true}
+    r3wc_s5: {<<: *r3wc, plus.sentence: 5, plus.max_strikes: 2}
+    r3wc_s5p1: {<<: *r3wc, plus.sentence: 5, plus.max_strikes: 2, plus.probation_patience: 1}

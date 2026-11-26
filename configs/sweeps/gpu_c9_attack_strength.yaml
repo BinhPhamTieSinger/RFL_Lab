@@ -1,0 +1,200 @@
+# GPU server: attack strength (literature review Part 2, experiment 3; predictions P44-P47). D1 and D2; ALIE z 1 / 1.5 / 3 (colluders), IPM epsilon 0.5 / 2 / n (omniscient), Min-Max along the inverse unit vector and the inverse sign (omniscient).
+# Written by scripts/make_followups.py. 2 settings x 8 attacks x 8 models x 3 seeds = 384 runs. The benchmark holds the bounded versions (formula z, inverse std) and the no-attack runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__alie3_z1:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 1
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__alie3_z1.5:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 1.5
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__alie3_z3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 3
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__ipm3_e0.5:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 0.5
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__ipm3_e2:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 2
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__ipm3_e15:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 15
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__minmax3_unit:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.perturbation: unit
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__minmax3_sign:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.perturbation: sign
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__alie4_z1:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 1
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__alie4_z1.5:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 1.5
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__alie4_z3:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: alie
+    attack.knowledge: colluders
+    attack.alie_z: 3
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__ipm4_e0.5:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 0.5
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__ipm4_e2:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 2
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__ipm4_e20:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: ipm
+    attack.knowledge: omniscient
+    attack.ipm_epsilon: 20
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__minmax4_unit:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.perturbation: unit
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__minmax4_sign:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.perturbation: sign
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+- fedhep:
+    config: configs/cifar100_fedhep.yaml
+  defended:
+    config: configs/cifar100_fedhep_defended.yaml
+  plus:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+  r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  guard:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+  flame:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame
+  bulyan:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: bulyan
+  median:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: median

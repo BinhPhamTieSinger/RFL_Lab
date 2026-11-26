@@ -64,15 +64,15 @@ def rounds(m: dict) -> list[dict]:
 
 
 def replay(m: dict, *, two_sided: bool = True, high_gate: float = GATE, cut: float = E_CUT,
-           signals: tuple[str, ...] = ("w", "c"), low_gate: float = GATE) -> dict[int, int]:
+           signals: tuple[str, ...] = ("w", "c"), low_gate: float = GATE, rows: list | None = None) -> dict[int, int]:
     """{client: isolation round} under a variant of the screen. The real rule: two_sided, high_gate = low_gate =
     GATE. two_sided False with high_gate G: the high side acts only when the gap ratio reaches G. low_gate L: the
-    low side acts when the gap ratio reaches L (0: always, as in FedHEP+)."""
+    low side acts when the gap ratio reaches L (0: always, as in FedHEP+). rows: precomputed (or altered) rounds()."""
     hi = GATE if two_sided and high_gate <= GATE else high_gate
     ev: dict[int, float] = {}
     streak: dict[int, int] = {}
     iso: dict[int, int] = {}
-    for r in rounds(m):
+    for r in rows if rows is not None else rounds(m):
         sig = {"w": (r["zw"], r["gw"]), "c": (r["zc"], r["gc"])}
         for c in r["zw"]:
             if c in iso:

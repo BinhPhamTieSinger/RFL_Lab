@@ -106,8 +106,8 @@ def fig(res: dict) -> None:
     ax.set_ylim(0, 100)
     ax.set_title("backdoor success (%), dots = seeds", fontsize=10)
     fig.suptitle("Acer c14: the high-side gate halves honest isolations at 50 clients and keeps every ALIE and "
-                 "Min-Max attacker out; the stealth backdoor got through on two seeds", fontsize=10.5, x=0.01,
-                 ha="left")
+                 "Min-Max attacker out; the stealth backdoor got through on 2 seeds of 3 (union screen: 0 of 3)",
+                 fontsize=10.5, x=0.01, ha="left")
     fig.tight_layout()
     pr.save(fig, "acer_c14_high_gate.png")
 

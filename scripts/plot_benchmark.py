@@ -91,8 +91,12 @@ def cell_key(cfg: dict) -> str:
     else:
         if a["kind"] != "alie":
             a.pop("alie_z", None)
-        if a["kind"] not in ("alie", "min_max"):
+        if a["kind"] not in ("alie", "min_max", "ipm"):
             a.pop("knowledge", None)
+        if a["kind"] != "min_max":
+            a.pop("perturbation", None)
+        if a["kind"] != "ipm":
+            a.pop("ipm_epsilon", None)
         if a["kind"] not in ("backdoor", "stealth_backdoor"):
             a.pop("backdoor_target", None)
             a.pop("backdoor_fraction", None)

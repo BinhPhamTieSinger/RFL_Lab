@@ -481,3 +481,407 @@ The first group below lists literature facts the research notes could not confir
 Taken together, the six questions converge on one design shift for FedHEP-Guard. Its verdicts are made on the wrong time scale. They are made per round and cross-sectionally where the literature's reliable detectors work per client over windows, and permanently where every published re-trust scheme stays reversible but forgives slowly. The team's two worst failures, persistent honest outliers isolated for good and attackers readmitted once late-training signals went quiet, are both failures of temporal reasoning, not of the z-score. The fix the literature points to is history-aware evidence that is informative-round-weighted, asymmetric and self-referenced. It should be paired with bounded influence for everyone and with recovery that subtracts rather than resets. No paper has assembled and tested that combination. Experiment #4 under sleeper and on-off attacks is the decisive test, because a readmission scheme that cannot survive them is worse than the current permanent ban.
 
 The less comfortable implication concerns evaluation. FedHEP's personalization already absorbs the bounded attacks the team has used, so most proposed screen improvements will be invisible in accuracy unless the attack suite includes large-ε IPM, sign flipping, PoisonedFL and strength-tuned ALIE reported as a worst case. The contribution most clearly open in the literature is also the cheapest: measuring honest false isolation as a function of client count, heterogeneity and training round, alongside per-client and per-class accuracy. No 2025–2026 defense, including the Alharbi line, reports it beyond 30 clients.
+
+---
+
+*Part 3 was compiled on 2026-11-26 from four focused searches (notes kept outside the repository) for the algorithms the experiments need: attacks, attacker schedules and trust rules, history-based detectors, and recovery methods. It builds on Part 2 and on the team's offline diagnostic of honest isolations (report 8.2).*
+
+## Part 3 (2026-11-26): Attack harder, detect change, recover by replay
+
+Build the damage-oriented attack suite first. Then replace FedHEP-Guard's cross-sectional verdict with two channels: a high, calibrated level flag for damaging attackers, and a self-referenced change detector for clients whose behaviour shifts. Then make recovery proportional to the flagged clients' measured counterfactual influence instead of rewinding blindly. The team's own logs decide the detector question. Honest z has lag-1 autocorrelation of 0.80–0.87, and a replay with scores dealt out at random isolates 3.3 honest clients per run instead of 22.0 (50 clients, α = 0.1). So about **85% of honest isolations come from persistent offsets**, and Benjamini-Hochberg (BH), Bonferroni or any other multiplicity correction can address at most the remaining ~15%. Label-histogram peer groups in the style of BoBa are also a weak bet, because isolated honest clients are not more label-skewed. The detectors that fit the evidence compare each client with its own past. FLTracer's candidate-then-confirm design and FLDetector's per-client prediction error are the published templates. Each has a blind spot: an attacker that is consistent from round 1, which is exactly what PoisonedFL (CVPR 2025) is. PoisonedFL drives every robust rule it was tested against to near-random error on CIFAR-10, so it has to be in the suite before any history-based redesign is trusted. Two findings in the team's own code reframe the readmission question. FedHEP-Guard's streak counter resets on any clean round, so **an attacker that bursts for 2 rounds and rests for 1 is never isolated, excluded or rewound**. And any reputation that counts flags cannot separate an honest client flagged in 13% of rounds from an attacker active in 10% of them. On recovery, no published method removes a client's contribution under a non-additive aggregator by subtraction. The only published path for median or trimmed mean is to re-run the aggregator, as a black box, on corrected updates (FedRecover, UnlearnGuard). Pure stale replay over a long horizon fails at about 0.90 test error. Short-window replay is untested.
+
+Throughout, "cited" marks what a source states, "team code" and "team data" mark facts from the RFL_main repository and the brief, and "inference" marks reasoning that only experiments can settle.
+
+### Six attacks make the suite damage-oriented, and three of them break FedHEP-Guard's assumptions
+
+The team has already coded IPM (−ε·mean) and Min-Max with std, unit and sign directions (`src/rfl/attacks/adaptive.py`, team code). The remaining gaps are Min-Sum, Fang's trimmed-mean attack, the line-searched Opt-IPM and Opt-ALIE, PoisonedFL and XFED. Three of these, PoisonedFL, XFED and Opt-*, matter structurally rather than just numerically. PoisonedFL is self-consistent across rounds, XFED is non-collusive, and Opt-* tunes against the defense itself. Each breaks one assumption FedHEP-Guard's screen leans on. Notation below: honest updates x₁…xₙ, honest mean μ, coordinate-wise standard deviation σ, f attackers, d parameters. "Update" means w_local − w_global, which points opposite the gradient.
+
+#### What the papers and official code specify
+
+**IPM.** All Byzantine vectors equal u = −ε·v̄, where v̄ is the mean of the correct updates. The attack succeeds when ⟨∇F, Aggr⟩ < 0. In the original CIFAR-10 experiments (25 workers), median with 12 Byzantine workers failed for every ε > 0 tried in {10, 0.1, 0, −10}. Krum with 11 Byzantine workers failed for small ε (0.1, 0.5, 1) and resisted ε = 10 ([Xie et al., ar5iv](https://ar5iv.arxiv.org/html/1903.03936)). Library defaults disagree: ByzFL uses τ = 2, FLPoison 0.1 and Blades 1.0 ([ByzFL](https://github.com/LPD-EPFL/byzfl); [FLPoison](https://github.com/vio1etus/FLPoison); [Blades](https://github.com/lishenghui/blades)). With ε equal to the number of participants, personalization alone fell to **10.95%** on CIFAR-10 in FedCAP's ablation ([FedCAP](https://arxiv.org/pdf/2410.13083)).
+
+**Min-Max and Min-Sum.** Both send μ − γ·p, where p is the inverse unit vector (μ/‖μ‖), the std (σ) or the sign (sign μ). The official notebooks implement them as follows ([NDSS21 code](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning)):
+
+```python
+# official search (our_attack_dist / our_attack_score); x = updates used for statistics, mu = x.mean(0)
+lam, step, lam_succ, tol = 10.0, 10.0, 0.0, 1e-5
+bound = max_ij ||x_i - x_j||^2                    # Min-Max
+#     = min_i sum_j ||x_i - x_j||^2               # Min-Sum (code); see the discrepancy below
+while abs(lam_succ - lam) > tol:
+    mal = mu - lam * p
+    ok = max_i ||x_i - mal||^2 <= bound           # Min-Max
+    #  = sum_i ||x_i - mal||^2 <= bound           # Min-Sum
+    if ok: lam_succ = lam; lam += step / 2
+    else:  lam -= step / 2
+    step /= 2
+return mu - lam_succ * p
+```
+
+The notebooks set `dev_type='std'` even though the function default is `'unit_vec'`. The defaults are 50 users, 10 attackers, FedSGD, batch 250 and 1,200 epochs. In the "unknown-benign" mode the attackers use only their own clean gradients ([NDSS21 code](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning)). The aggregator-tailored variants keep the same search with a simulated aggregator as the success test. Multi-Krum starts at γ = 3, and success means every attacker copy is selected. Trimmed mean starts at γ = 10, and success means the deviation of the trimmed mean from μ grew. No direction wins everywhere: inverse-std was strongest on CIFAR-10 for every aggregator except Krum, unit-vector for Krum and Purchase, and sign on MNIST ([NDSS 2021](https://par.nsf.gov/servlets/purl/10286354)). In PoisonedFL's CIFAR-10 table (test error, no attack → attack), Min-Max took FedAvg from 34.16% to 95.03%, median to 54.55%, trimmed mean to 49.04% and Multi-Krum to 44.76%, while FLTrust stayed at 34.25%. Min-Sum took FedAvg to 50.90% and median to 46.00% ([PoisonedFL](https://arxiv.org/html/2404.15611v3)). Blades found that ALIE and Min-Max "underperform under FedAvg" with 20 local steps, while sign flipping becomes "substantially damaging" ([Blades](https://arxiv.org/pdf/2206.05359)).
+
+**Fang (USENIX Security 2020).** There are two families ([Fang et al.](https://arxiv.org/pdf/1911.11815)):
+
+- **Against Krum:** w′₁ = w_Re − λ·s, where s_j is the sign of parameter j's change direction under no attack. λ is halved from an analytic upper bound until Krum selects w′₁, stopping below 10⁻⁵. The other c − 1 crafted models are sampled within ε = 0.01 of it.
+- **Against trimmed mean and median, full knowledge (b = 2):**
+  - if s_j = −1, sample from [w_max,j, b·w_max,j] when w_max,j > 0, otherwise from [w_max,j, w_max,j/b];
+  - if s_j = +1, sample from [w_min,j/b, w_min,j] when w_min,j > 0, otherwise from [b·w_min,j, w_min,j];
+  - each attacker draws independently.
+- **Partial knowledge:** sample from [μ_j + 3σ_j, μ_j + 4σ_j] or [μ_j − 4σ_j, μ_j − 3σ_j], using the colluders' own models.
+
+The setup was m = 100 and c = 20 on MNIST-family data, with no CIFAR. Test error (no attack / partial / full) on MNIST-DNN was Krum .11/.75/.77, trimmed mean .06/.14/.23 and median .06/.28/.32. On PoisonedFL's CIFAR-10 table, Fang reached 72.10% error on FedAvg, 52.01% on median, 50.03% on trimmed mean and 44.36% on Multi-Krum ([PoisonedFL](https://arxiv.org/html/2404.15611v3)).
+
+**PoisonedFL (CVPR 2025).** The venue is confirmed by CVF and by the repository README ([CVF](https://openaccess.thecvf.com/content/CVPR2025/html/Xie_Model_Poisoning_Attacks_to_Federated_Learning_via_Multi-Round_Consistency_CVPR_2025_paper.html); [repo](https://github.com/xyq7/PoisonedFL)). The algorithm ([arXiv v3](https://arxiv.org/html/2404.15611v3)):
+
+1. Draw a random sign vector s ∈ {±1}^d once and keep it fixed.
+2. Every fake client sends g^t = λ^t·v^t ⊙ s.
+3. v^t is the normalised absolute value of the previous global update, after removing the attacker's own previous contribution rescaled to that update's norm.
+4. λ^t = c^t·‖w^{t−1} − w^{t−2}‖, with c⁰ = 8.
+5. If the count of coordinates of w^{t−1} − w^{t−e} whose sign matches s is not significant under Bin(d, 0.5) at p = 0.01 (e = 50), set c ← 0.7c, with a floor of 0.5.
+
+It needs no honest updates and no knowledge of the aggregation rule. The official MXNet code runs the test only every 50 rounds, while the paper says every round, and the driver script `test_agr.py` is missing from the repository ([repo](https://github.com/xyq7/PoisonedFL)). On CIFAR-10 with 1,200 clients, 20% fake and 10,000 rounds, it took FedAvg, Multi-Krum, median and trimmed mean to about 90% error, FLTrust to 88.81%, FLAME to 80.12% and FLDetector to 90.00%. Its adaptive variant defeats its own GMM-Sign detector above a sign-flip fraction of about 0.08 and GMM-Magnitude above a noise scale of about 1.2 ([arXiv v3](https://arxiv.org/html/2404.15611v3)).
+
+**Opt-IPM and Opt-ALIE (ByzFL).** Each round, a one-dimensional line search over τ maximises ‖Agg(PreAgg(honest ∪ f × byz(τ))) − mean(honest)‖₂, using the server's actual aggregator and pre-aggregators. The defaults are 20 evaluations, start 0, δ = 10 and a contraction ratio of 0.8. IPM is −τ·mean and ALIE is mean + τ·std with ddof = 1 ([ByzFL code](https://github.com/LPD-EPFL/byzfl)):
+
+```text
+best_x = 0; best_y = eval(0); delta = 10; left = 19
+while left: y = eval(best_x+delta); left-=1      # expansion
+    if y > best_y: best_x, best_y = best_x+delta, y; delta *= 2
+    else: delta *= 0.8; break
+while left: y = eval(best_x+delta); left-=1      # contraction
+    if y > best_y: best_x, best_y = best_x+delta, y
+    delta *= 0.8
+```
+
+The ByzFL benchmark passes the real aggregator, pre-aggregators and f into the attack. Its default suite is {sign flipping, Opt-IPM, Opt-ALIE}, and it reports the minimum across attacks of each attack's maximum accuracy ([ByzFL](https://github.com/LPD-EPFL/byzfl)). The ARC paper uses the same min-over-attacks protocol ([Allouah et al.](https://arxiv.org/pdf/2405.14432)).
+
+**XFED (arXiv, April 2026, no venue).** Each attacker acts alone and sends φ_m = φ_b + μ·ψ ([XFED](https://arxiv.org/pdf/2604.09489); [code](https://github.com/pkse-searcher/xfed)):
+
+- φ_b is the attacker's own benign update.
+- ψ_uv = −φ_b/‖φ_b‖ (the stronger variant), or ψ_sgn = −sign(φ_b)/‖sign(φ_b)‖.
+- μ = ‖med(Δθ) + λ·MAD(Δθ)‖₂, taken coordinate-wise over the last Ω = 8 global deltas.
+- λ = 4 (reported stable over 2–10), and there is no line search.
+
+On MNIST, X_uv had 2.29–14.1× the impact of other attacks. Fang beat it under Multi-Krum and trimmed mean, and FLTrust consistently mitigated it ([XFED](https://arxiv.org/pdf/2604.09489)).
+
+| Attack | Needs honest updates | Needs the rule | Needs global history | Per-round cost | Code |
+|---|---|---|---|---|---|
+| IPM | mean (or colluders' estimate) | no | no | O(fd) | [ByzFL](https://github.com/LPD-EPFL/byzfl), [FLPoison](https://github.com/vio1etus/FLPoison) |
+| Min-Max / Min-Sum | yes, or colluders' own | no (yes if tailored) | no | O(n²d) bound + ~20 checks of O(nd) | [NDSS21](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning) |
+| Fang trim / Krum | full: honest; partial: own | yes | current global | O(nd); Krum search O(n²d log) | [NDSS21](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning), [FLPoison](https://github.com/vio1etus/FLPoison) (Krum only) |
+| Opt-IPM / Opt-ALIE | yes | yes, plus pre-aggregators and f | no | 20 aggregator calls | [ByzFL](https://github.com/LPD-EPFL/byzfl) |
+| PoisonedFL | no | no | yes | O(d) | [xyq7/PoisonedFL](https://github.com/xyq7/PoisonedFL) |
+| XFED | no (own update) | no | last 8 global deltas | O(8d) | [pkse-searcher/xfed](https://github.com/pkse-searcher/xfed) |
+
+*Knowledge requirements from the cited code and papers; cost column is inference.*
+
+#### Pitfalls found in the code and papers
+
+Several details change results silently.
+
+**Standard deviation convention.** Torch and ByzFL use ddof = 1. FLPoison and the team's `crafted_update` use ddof = 0 ([FLPoison](https://github.com/vio1etus/FLPoison); team code).
+
+**Min-Sum bound (unresolved).** The official code bounds Min-Sum by the *minimum* over honest clients of their summed squared distances ([NDSS21 code](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning)). An earlier reading of the paper described the *largest* such sum ([NDSS 2021](https://par.nsf.gov/servlets/purl/10286354)). The two give different attacks, so this needs checking against the paper's equation.
+
+**Fang trimmed-mean sign bug.** The NDSS21 re-implementation of Fang-trim combines its samples as `(deviation > 0)*max_rand + (deviation > 0)*min_rand`, with the same mask in both terms. That looks like a bug; the authors have not confirmed it ([NDSS21 code](https://github.com/vrt1shjwlkr/NDSS21-Model-Poisoning)).
+
+**Fang sign convention (inference).** Fang works in model space. With updates defined as w_local − w_global, the honest direction is s = sign(mean Δ), and the attack pushes below the minimum where s = +1 and above the maximum where s = −1. In gradient space the signs reverse.
+
+**Min-Max search ceiling (inference).** The official search can never exceed γ = 20: it starts at 10 and adds 5 + 2.5 + …. The team's search doubles γ up to 10⁶ and then bisects 40 times, so it finds the true supremum of the feasible set (team code). That is the right stress test. Reproducing published numbers needs the official search. Log γ·‖p‖ either way.
+
+**XFED's X_uv is a rescaled copy of the attacker's own update (inference).** φ_b − μ·φ_b/‖φ_b‖ = (1 − μ/‖φ_b‖)·φ_b. When μ > ‖φ_b‖ it is a scaled sign flip. When μ < ‖φ_b‖ it is a *shrunk honest update* and does no harm. Log μ/‖φ_b‖ per round, or a "weak XFED" result may only mean the regime never flipped.
+
+**PoisonedFL's horizon (inference).** The paper's results come from 10,000 rounds. At FedHEP's ~100 rounds with the code's 50-round test cadence, c changes at most once or twice, so c⁰ = 8 dominates. Use the paper's every-round test as a second variant, and replace the hard-coded `k_99` quantiles with `scipy.stats.binom.ppf(0.99, d, 0.5)`.
+
+#### What this implies for FedHEP-Guard (inference)
+
+Apply every attack per aggregation pool: the parent-head pool within each group, and the trunk and root head at Global. Use the mean, std and global history of that pool. This is what `parameter_mask` already does for the coded attacks (team code).
+
+Report the worst case over 3 directions × 2 bounds × 2 knowledge modes for Min-Max and Min-Sum, ε ∈ {0.1, 0.5, 1, 2, 10, N} for IPM, Opt-IPM and Opt-ALIE, Fang-trim (FedHEP-Guard's global step ends in trimmed mean), PoisonedFL and XFED. Add sign flipping (SF) and an oracle with the attackers removed.
+
+Three structural consequences follow:
+
+- **Opt-* must evaluate the whole FedHEP-Guard pipeline**: the screen, parent SCCF and ARC + NNM + trimmed mean. It must run on a *copy* of the evidence-tracker state, or it tunes against the wrong rule and mutates the defense. Its objective is one-round damage, so it will happily pick a τ that gets the attacker isolated three rounds later. A screen-aware variant that maximises damage subject to z ≥ −cut + margin is the threshold-hugging attacker of the next section.
+- **PoisonedFL's fake clients send identical, near-orthogonal vectors.** They should therefore show low cosine to the reference and a tight cluster that opens the gap gate. Vanilla PoisonedFL may well be caught quickly by FedHEP-Guard's *cross-sectional* screen. It is the natural adversary of any *self-referenced* replacement, because its behaviour never changes.
+- **XFED attackers are independent rather than clustered.** That makes XFED the clean test of the gate's known weakness against spread-out attackers.
+
+### A two-round burst never trips patience 3, and counting flags cannot separate rare attacks from honest noise
+
+#### What the papers specify about time-varying attackers
+
+No reachable FL paper gives a formal on-off schedule with period, duty cycle and start round, and none reports attack success rate (ASR) for on-off or sleeper attackers against a readmission policy. FLARE's "adaptive" attacker alternates "70% benign, 30% attack" with no period given. Under it, CIFAR-10 detection F1 at Dirichlet 0.3 falls to 0.787 from 0.855 with no attack, and removing reputation decay cuts CIFAR-10 accuracy from 87.0% to 80.2% ([FLARE v2](https://arxiv.org/html/2511.14715v2)). RepuNet attacks at intervals of 2–4 rounds, starting at round 7 of 20. Its reputation gives no benefit against intermittent poisoning (F1 Δ −0.0037 and +0.0054) against +0.319 against persistent poisoning ([RepuNet](https://arxiv.org/html/2506.19892v1)). SafeguardSGD tests a "delayed-onset" attacker that behaves honestly and then attacks, and a threshold-evading negative rescaled gradient. A factor of 0.6 avoids its safeguards and 0.7 occasionally triggers them ([Allen-Zhu et al.](https://arxiv.org/pdf/2012.14368)). The most precise on-off parameters come from wireless-sensor-network trust research: on-period probabilities of 0.6, 0.4 and 0.2, a trust threshold of 0.6, and a forget factor of 0.7 taken from Sun et al. ([Ishmanov et al., 2015](https://pmc.ncbi.nlm.nih.gov/articles/PMC4435207)). Chae, DiPippo and Sun state the core problem: redemption schemes "fail to discriminate between temporary errors and an On/off attack" ([Chae et al.](https://digitalcommons.uri.edu/cs_facpubs/38)).
+
+#### FedHEP-Guard's patience rule has a burst-length hole (team code, then inference)
+
+In `EvidenceTracker.update`, evidence is E ← 0.7·E + 0.3·z. The streak counter adds 1 when z < −1.5 and **resets to 0 otherwise**. Isolation needs E < −1.5 *and* a streak of at least 3. Per-round exclusion follows the same pattern: z < −2.5 for 3 consecutive rounds. A rewind fires only when a client is newly isolated (`src/rfl/defense/screening.py`, `src/rfl/server/fedhep_plus_server.py`, team code).
+
+The consequence follows from the arithmetic. An attacker that attacks for b ≤ 2 rounds and behaves honestly for 1 round, a 67% duty cycle, is never excluded, never isolated and never triggers a rewind, however large its attack. Its only limit is the ARC + NNM + trimmed-mean bound on per-round influence. The weakness belongs to "k consecutive" rules generally, and it should be the first schedule tested.
+
+#### Schedules to implement
+
+| Schedule | Definition of a_t (1 = attack in round t) | Parameters, with anchors |
+|---|---|---|
+| Persistent (control) | a_t = 1 for t ≥ t₀ | t₀ = 0 |
+| Sleeper / late start | a_t = 1[t ≥ K] | K ∈ {10%, 30%, 50%} of T; delayed onset ([SafeguardSGD](https://arxiv.org/pdf/2012.14368)), start at 35% ([RepuNet](https://arxiv.org/html/2506.19892v1)) |
+| On-off, deterministic | a_t = 1[(t − t₀) mod P < b] | (b, P) ∈ {(1,2), (2,3), (2,4), (2,6), (4,8)}; P = 2–4 from [RepuNet](https://arxiv.org/html/2506.19892v1) |
+| Burst under patience | b = patience − 1, rest 1 | (2, 3) against patience 3 (team code hole) |
+| Intermittent, Bernoulli | a_t ~ Bern(q) | q ∈ {0.2, 0.25, 0.3, 0.4, 0.6} ([FLARE](https://arxiv.org/html/2511.14715v2), [Ishmanov](https://pmc.ncbi.nlm.nih.gov/articles/PMC4435207)); q = 0.25 is FLARE's break-even (below) |
+| Threshold-hugging | attack every round, scaled so the screen's z ≥ −cut + m | m ∈ {0.1, 0.3}; precedent: factors 0.6/0.7 ([SafeguardSGD](https://arxiv.org/pdf/2012.14368)) |
+| Evidence-aware on-off | attack while own E > −cut + m, rest otherwise | needs the attacker to read its own E (omniscient) |
+| Re-offender | honest while isolated or on probation; attack L rounds after full weight returns | L ∈ {0, 3, 10}; untested in the literature |
+
+*Schedules and names are ours (inference), anchored to the cited parameter values.*
+
+```python
+class Schedule:  # one instance per attacker; rng = Generator(PCG64(hash((seed, attacker_id, "schedule"))))
+    def active(self, t, state):           # state: own z, E, isolated/probation flags (adaptive kinds only)
+        k = self.kind
+        if k == "persistent":  return t >= self.t0
+        if k == "sleeper":     return t >= self.K
+        if k == "onoff":       return (t - self.t0) % self.P < self.b
+        if k == "bernoulli":   return self.draws[t]            # pre-drawn for all T rounds
+        if k == "evidence":    return state.E > -self.cut + self.m
+        if k == "reoffender":  return state.full_weight and state.rounds_since_return >= self.L
+def hug(phi_b, phi_mal, z_of, cut, m, iters=20):   # largest s in [0,1] keeping z(s) >= -cut + m
+    lo, hi = 0.0, 1.0
+    for _ in range(iters):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if z_of(phi_b + mid * (phi_mal - phi_b)) >= -cut + m else (lo, mid)
+    return phi_b + lo * (phi_mal - phi_b)
+```
+
+Pre-drawing the Bernoulli rounds from a dedicated random-number stream keeps the attack rounds identical across defense arms with the same seed, which makes the comparisons paired. The adaptive kinds cannot be paired that way because they react to the defense; log their realised a_t. For the two-sided screen, `z_of` must fold z to −|z| as `one_sided` does, and for the union screen it must take the minimum over both signals (team code).
+
+#### Trust-update rules that exist, with their exact forms
+
+**FLARE** ([v2](https://arxiv.org/html/2511.14715v2)):
+
+- Update: R ← min(R + 0.05, 1) after a benign round, and R ← max(R − 0.15, 0) after a suspicious one. R⁰ = 0.5.
+- Threshold: Θᵗ = 0.5 + 0.4·conv(wᵗ) − 0.5·anomaly_rateᵗ.
+- Tiers: weight 1 at R ≥ Θ, weight R/Θ for Θ/2 ≤ R < Θ, excluded below Θ/2.
+- Algorithm 2 contradicts the text in two ways. It trusts everyone at or above Θ/2 at full weight, and it credits clients by reputation *level* rather than by the round's behaviour. Any implementation must say which version it follows.
+
+**Beta reputation** ([Jøsang & Ismail](https://mn.uio.no/ifi/english/people/aca/josang/publications/ji2002-bled.pdf)): expectation E = (r + 1)/(r + s + 2), with forgetting r ← λr + r_new and s ← λs + s_new. **Subjective-logic reputation** ([Kang et al.](https://ar5iv.labs.arxiv.org/html/1910.06837)): b = (1 − u)·α/(α + β), reputation T = b + γu, starting at 0.5.
+
+**SafeguardSGD** ([Allen-Zhu et al.](https://arxiv.org/pdf/2012.14368)):
+
+- Each worker keeps a long-window sum A_i and a short-window sum B_i of its gradients.
+- It stays good only if ‖A_i − A_med‖ ≤ 2𝔗₁ and ‖B_i − B_med‖ ≤ 2𝔗₀.
+- In the experiments the threshold is 1.5·max{S, 5}, where S is the ⌈m/2 + 1⌉-th smallest distance.
+- The good set is reset every T₁ steps.
+
+**Sun et al.'s state-dependent forgetting** ("forget good fast, remember bad long") was not verifiable here; only a 2004 technical report with a single β = 0.999 was read ([Sun et al. TR](https://www.ele.uri.edu/muri/reports/TR_10172004_21.pdf)).
+
+#### What the arithmetic says about readmission (inference)
+
+Under FLARE's rule, an attacker active in a fraction q of rounds drifts by (1 − q)·0.05 − q·0.15 per round. That is non-negative whenever **q ≤ 0.25**, so a one-in-four attacker never loses reputation.
+
+Asymmetric Beta forgetting does better but hits a deeper limit. Take λ_good = 0.8 and λ_bad = 0.98, which gives effective memories of 5 and 50 rounds. The steady-state counts are r = (1 − q)/0.2 and s = q/0.02. Then:
+
+- an attacker with q = 0.1 scores E = 5.5/11.5 = 0.48;
+- an attacker with q = 0.25 scores E = 0.26;
+- an honest client flagged in 5% of rounds scores 0.62;
+- an honest client flagged in 13.4% of rounds scores 0.41, below the q = 0.1 attacker. The 13.4% is the per-round rate of |z| > 1.5 under a Gaussian null.
+
+The 13.4% rate is the *exchangeable* rate. The team's honest outliers are flagged far more often than that, because their offsets persist. So **any reputation built by counting the screen's own flags will rank persistent honest outliers below low-duty attackers**. Readmission cannot rescue them until the score itself stops flagging them.
+
+Two remedies follow:
+
+- **Weight evidence by magnitude rather than by count**, for example s_new = max(0, |z̃| − k), where z̃ is the self-referenced score of the next section. Damaging attack rounds produce large deviations; honest noise produces moderate ones.
+- **Cap influence during probation.** FLARE's R/Θ band, or a fixed weight such as 0.5 combined with the ARC clip, limits what a re-offender gains.
+
+The team already has `sentence`, `max_strikes = 2` and `probation_patience` in `EvidenceTracker`. The server refuses to combine `sentence` with the rewind because a later rewind could reach back past a client's return (team code), so the readmission tests and the recovery redesign below must be built together.
+
+### Honest offsets persist, so compare each client with its own history
+
+#### The team data narrows the detector search (team data, then inference)
+
+The facts are a lag-1 autocorrelation of 0.80–0.87, 3.3 against 22.0 honest isolations under random reassignment, and label-entropy ranks of 0.35–0.66 for isolated honest clients. Together they have four consequences:
+
+- **Multiplicity control** (BH, Bonferroni, extreme-value cuts) acts on the exchangeable component. That is at most ~15% of isolations.
+- **Label-skew peer groups** are a weak lever, because isolated clients are not more skewed. The team's Jaccard-on-class-mask `peer_sets` already exists, and earlier work found FedHEP's parents to be poor peer groups (team code, earlier report).
+- **The fix must remove a per-client offset.** Whether a frozen per-client baseline suffices or a tracking one is needed depends on the offset's structure. If the autocorrelation function plateaus at long lags, the offset is fixed and a frozen per-client baseline removes it. If it decays like 0.85^k, the baseline needs a memory of about 1/(1 − 0.85) ≈ 7 rounds, and some isolations will remain. The intraclass correlation of z and its autocorrelation at lags 1–20, computed on existing logs, answer this before any code is written.
+- **The cause of the offsets is still unknown.** Regressing each client's mean z on sample count, parent assignment, class-set Jaccard to the population and update norm would identify it.
+
+One more design detail matters. The union screen takes the lower of the two signals' z (team code). Two imperfectly correlated signals therefore raise each honest client's per-round flag probability by up to 2×.
+
+#### Published history and peer detectors, specified
+
+**FLTracer** (IEEE TIFS 2024; [arXiv](https://arxiv.org/abs/2310.13424); [code](https://github.com/Eyr3/FLTracer)) is the closest template. Each feature (sign vector, rank vector, classifier weights) is reduced by PCA to one component and scored with a MAD z, b = 1.4826. A client with z > 2.5 (the repository suggests 2.5–3.0) becomes a *candidate*. A per-client Kalman filter then predicts the client's layer-wise domain distance, with parameters fitted over 3 rounds and only the data term updated afterwards. A candidate is confirmed only if its residual slope is positive and MAD-abnormal, or a layer residual is abnormal, or the mean residual is positive. Hard flags (task-detection similarity ≤ τ ≈ −1; −0.9 in the repository) bypass confirmation. The paper says heterogeneous honest candidates are cleared because "their domain residuals stay stable". It reports untargeted non-IID TPR 95.24% at FPR 2.95%, and backdoor TPR 99.13% at FPR 2.29% ([arXiv](https://arxiv.org/abs/2310.13424)). At one class per client it reports TPR 94.00% at FPR 7.67%, against 89%/27.78% for DnC ([FLTracer v1](https://arxiv.org/html/2310.13424v1)).
+
+**FLDetector** ([arXiv](https://arxiv.org/pdf/2207.09209)) predicts each update as ĝ_iᵗ = g_iᵗ⁻¹ + Ĥᵗ(wᵗ − wᵗ⁻¹), with one compact-L-BFGS Hessian built from the last N global differences. It scores d_iᵗ = ‖ĝ_iᵗ − g_iᵗ‖, L1-normalises across clients, averages over N = 10 rounds, and starts at iteration 50. A gap statistic (K = 10, B = 20 uniform references, k̂ = smallest k with Gap(k) − Gap(k+1) + √((1+B)/B)·sd(k+1) ≥ 0) decides whether an attack is present. Only if k̂ > 1 does it run 2-means and flag the higher cluster. On FEMNIST (DACC/FPR/FNR) it scores 1.00/0.00/0.00 for untargeted attacks but 0.85/0.20/0.00 for scaling under FedAvg ([arXiv](https://arxiv.org/pdf/2207.09209)). An independent CIFAR-10 test measured FPR 0.02 ([SafeFL](https://arxiv.org/pdf/2505.09110)). PoisonedFL's consistency defeats it at 90% error ([PoisonedFL](https://arxiv.org/html/2404.15611v3)). The venue (KDD 2022) and the code location were not confirmed.
+
+**BoBa** ([arXiv](https://arxiv.org/abs/2407.09658)) infers class presence from last-layer gradients, I_s = −Σ_t ∇W_{s,t}. It builds overlapping per-class clusters greedily, with caps n_th = min cluster size and m_th = mean memberships. Each client in a cluster counts as a cosine nearest neighbour K_i times, and trust is T_i = e^{K_i}/Σ e^{K_j}. ASR is 0–0.009 across six attacks, with 50 clients, 10 per round and 60 rounds. It reports no per-client FPR, no confirmed venue and no code. An earlier reading of v1 found an EMA with γ = 0.1 on the trust; the v2 reading did not ([BoBa v1](https://arxiv.org/html/2407.09658v1)).
+
+**FedSurrogate** ([arXiv](https://arxiv.org/pdf/2605.11122)):
+
+- **Coarse split:** run HDBSCAN on the top 5 critical layers and trust a majority cluster of at least 0.5N + 1.
+- **Score:** keep a running mean of the min-max-normalised cos(w_j − w*, g*) on fixed mid-to-deep layers.
+- **Demotion:** demote scores above Q3 + 1.5·IQR.
+- **Rescue:** rescue suspects with s ≤ ε = min(ζ, median of suspect scores), with ζ = 0.4.
+- **Weights:** 1.0 for trusted clients, 0.7 for rescued ones, 0.3 for clients whose critical layers are replaced by a surrogate.
+
+It reports FPR of 2.3–9.1% on the CIFAR family at N = 20 and α = 0.5. The paper contradicts itself on which direction of the score means "benign".
+
+**SafeFL** (ASIA CCS 2025; [arXiv](https://arxiv.org/html/2505.09110v2)) distils 100 synthetic samples from the server's first 25 global models (5,000 iterations, Δ = 15). SafeFL-ML drops clients above the median loss and weights the rest by 1/loss. SafeFL-CL keeps the largest mean-shift cluster of losses. It scores CIFAR-10 DACC 1.00 (CL) under the Trim attack, with no cross-round memory.
+
+**Multi-metrics** (ICCV 2023; [arXiv](https://arxiv.org/abs/2303.06601)) forms (L1, L2, cosine) to the global model per client and converts each metric to Σ_{j≠i}|x_i − x_j|. It whitens the result with the round covariance, δ_i = √(x′ᵀΣ⁻¹x′), and keeps the fraction p ≈ 0.3 with the lowest δ. It reports CIFAR-10 edge-case backdoor accuracy of 3.06%.
+
+#### Attack-presence tests that could replace the 8× gap gate
+
+| Gate | Rule | Parameters | Reported behaviour |
+|---|---|---|---|
+| FLDetector gap statistic | open iff k̂ > 1 on min-max-scaled smoothed scores | K = 10, B = 20 | DACC falls past a non-IID threshold ([FLDetector](https://arxiv.org/pdf/2207.09209)) |
+| PoisonedFL GMM | 2-component GMM on an accumulated feature; flag nobody if the distance between means is below *both* component stds | window N = 20 (Magnitude) | defeated adaptively at α > 0.08 / γ > 1.2 ([PoisonedFL](https://arxiv.org/abs/2404.15611)) |
+| FLAME | HDBSCAN on cosine distances, min_cluster_size = n/2 + 1 | clip at median norm; noise λ·S_t | filtering TPR 22–60% ([FLAME](https://arxiv.org/pdf/2101.02281v5)); benign FPR 26–32% in [FLTracer](https://arxiv.org/html/2310.13424v1) |
+| CrowdGuard | t, Levene and KS tests above vs below the median, at 0.01; prune the smaller agglomerative cluster; stop after ⌊(n−1)/2⌋ | α = 0.01 | TPR = TNR = 100% self-reported, TNR 0% at round 0 ([CrowdGuard](https://arxiv.org/abs/2210.07714); [code](https://github.com/TRUST-TUDa/crowdguard)) |
+| FedRR CUSUM | S_t = max(0, S_{t−1} + Z_t − d/2), alarm when max_k S > H | H by permutation for ARL₀ = 30 | K = 5 clients on MNIST; authors call homogeneity their main limitation ([FedRR](https://arxiv.org/html/2310.01537v1)) |
+
+No FL paper applies BH, Bonferroni or extreme-value thresholds to per-client scores. SD-CSFL's percentile band [Q_{δ/2}, Q_{1−δ/2}] with δ = 0.60 is the closest. It claims FPR ≤ δ under exchangeability and reports 17–20% false positives at 30 clients ([SD-CSFL](https://openaccess.thecvf.com/content/WACV2026/papers/Alharbi_SD-CSFL_A_Synthetic_Data-Driven_Conformity_Scoring_Framework_for_Robust_Federated_WACV_2026_paper.pdf)). Karimireddy et al. prove that a cross-section alone cannot tell an unrepresentative honest client from an attacker ([ICLR 2022](https://arxiv.org/abs/2006.09365v5)). That theorem is why every low-FPR detector above adds history or behaviour.
+
+#### A two-channel screen built from these parts (inference)
+
+Gates and BH both act per round. Persistent honest offsets are per client. In attack runs the gate is open, so honest outliers keep accumulating evidence no matter which gate is used, and no gate replacement alone can fix honest false isolations. The FLTracer pattern can, if it is made explicit:
+
+```python
+# per round t, per scored client i; z_i = current robust z (per signal, two signals)
+# Channel A (level): hard flag for damaging attackers, calibrated on no-attack runs
+zw_i = whiten((z1_i, z2_i), robust_cov=MCD(z1, z2))      # Multi-metrics idea, robust covariance
+if EMA_i(zw) > c_hard: isolate(i)                          # c_hard = 99.5th pct of honest EMA |zw| on no-attack logs
+# Channel B (change): self-referenced, for sleepers, on-off and ramps
+e_i = z_i - base_i                                         # innovation against the client's own baseline
+ez_i = robust_z(e over clients)                            # removes round-wide shifts
+S_i = max(0, S_i + (-ez_i) - k)                            # one-sided CUSUM per side; k = 0.5 * shift to detect
+if S_i > h: isolate(i)                                     # h from no-attack logs for a target honest alarm rate
+if abs(ez_i) < k and not suspected(i):                     # baseline learns only from unremarkable rounds
+    base_i += clamp(0.1 * (z_i - base_i), -dmax, dmax)     # slow, rate-limited: defeats slow ramps
+# warm-up: base_i = median of client i's first W = 5 rounds; no Channel B decisions before that
+```
+
+Channel A catches round-1 attackers with large offsets, such as IPM, sign flipping and vanilla PoisonedFL. Channel B catches clients whose behaviour changes: sleepers, re-offenders and on-off attackers. Its CUSUM has no reset-on-clean-round hole, because bursts accumulate in S. The deliberate gap is a client with a moderate, constant offset from round 1, honest or malicious. Karimireddy's result says no screen can separate those two, so the design leaves them to ARC + NNM + trimmed mean. FedHEP's personalization already absorbs bounded attacks such as ALIE and Min-Max, so that is a defensible place to put the residual risk (earlier report).
+
+The magnitude-weighted CUSUM is also the evidence form the readmission arithmetic asked for. A conformal p-value from the client's own history, p_i = (1 + #{past |e| ≥ |e_now|})/(|Cal_i| + 1), is the same idea written for BH. Its resolution is 1/(|Cal_i| + 1), so 20 past rounds give a minimum p of 0.048.
+
+For the gate, test the PoisonedFL separation rule on EMA-smoothed scores. Open it if |μ₁ − μ₂| ≥ min(σ₁, σ₂), as in the paper, or ≥ max(σ₁, σ₂) as a stricter variant, and require at least 2 clients in the minority component so one honest outlier cannot open it. Test the gap statistic as well. Both can be replayed offline on existing logs before any GPU time is spent.
+
+### Replay through the aggregator; subtraction is proven only for FedAvg
+
+#### What FedHEP-Guard's rewind actually does (team code)
+
+When a client is newly isolated, the server restores the trunk and root-head coordinates of Global and of every parent. It restores them to the Global model stored at the start of that client's evidence trail: the earliest consecutive round with z < −2.5, at most 10 rounds back. It then skips that round's global aggregation. Nothing is replayed (`_first_suspicious`, `_rewind_to`). Depth is therefore already gated by the trail rather than fixed at 10 rounds, but honest progress inside the rewound span is discarded.
+
+#### Recovery methods, specified
+
+**FedRecover** ([arXiv](https://arxiv.org/pdf/2210.10936)):
+
+- **Stored state:** every global model and every client update. Storage is O(nMT).
+- **Estimate:** each remaining client's update is ĝ_iᵗ = ḡ_iᵗ + H̃_iᵗ(ŵ_t − w̄_t), using compact L-BFGS with s = 2. With A = ΔWᵀΔG, D = diag A, L = strictly lower tril A and σ = Δgᵀ_{s−1}Δw_{s−1}/Δwᵀ_{s−1}Δw_{s−1}, the product is H̃v = σv − [ΔG, σΔW]·M⁻¹[ΔGᵀv; σΔWᵀv], where M = [[−D, Lᵀ], [L, σΔWᵀΔW]].
+- **Aggregation:** the estimates go through **the same aggregator used in training**. The paper tested FedAvg, median and trimmed mean.
+- **Exact client updates:** requested in the first T_w = 20 rounds, every T_c = 10 rounds, whenever a coordinate exceeds τ (α = 10⁻⁶), and in the last T_f = 5 rounds.
+
+Clients save about 88% of their computation. On MNIST under trimmed mean it reaches Trim-attack TER 7% and backdoor ASR 1%. Ablations: without periodic correction, MNIST TER rises to 37%; without abnormality fixing, to 26%. Historical-only replay is "nearly random guessing", which an independent study puts at about 0.90 error ([Wang et al.](https://arxiv.org/html/2501.17396v1)). No code is linked.
+
+**FAUN** (arXiv, May 2026; [arXiv](https://arxiv.org/pdf/2605.02110)) continues from the poisoned model:
+
+- **Window:** keep the flagged clients' last R_m = 10 updates and average them as ḡⁱ.
+- **PGD perturbation:** for each flagged client, δ* = argmax_{‖δ‖₂ ≤ 1} L(ŵ − ḡⁱ − δ; D_proxy), found with 30 PGD steps of size 0.05.
+- **Removal:** ŵ ← ŵ − η·A(retained) − mean_i(ḡⁱ + δⁱ*) for T_a = 10 rounds, then normal training.
+
+On CIFAR-10 it took backdoor ASR from 88.2% to 1.3% (retraining: 0.2%) and Trim-attack accuracy from 31.3% to 82.2%. On MNIST it ran in 124 s, against 790 s for FedRecover. All experiments use FedAvg, and the proxy-set size is not given.
+
+**Crab** (IEEE TIFS 2025; [arXiv](https://arxiv.org/html/2401.08216v2); [code](https://github.com/shenjiyuan123/Adaptive_Recovery)):
+
+- **Selective storage:** within loss-defined windows (α = 10%), store the top λ = 60% of rounds by KL divergence between consecutive global models, and the top δ = 70% of clients by cosine to the aggregate.
+- **Rollback point:** roll back to the latest stored model whose cumulative sensitivity S(C_u, j) = Σ‖𝓘(C) − 𝓘(C \ C_u)‖ stays at or below β = 0.3 of the accumulated benign influence.
+- **Calibrated replay:** fresh local training supplies the direction, and the stored update supplies the norm.
+
+It recovered MNIST accuracy to 88.11% after a 50% backdoor (retraining: 93.28%), with ASR of about 10%.
+
+**FedEraser** ([arXiv](https://arxiv.org/pdf/2012.13891v3)) stores updates every Δt = 2 rounds. At each replayed round it runs calibration training at r = 0.5 of the local epochs and forms Ũ = ‖U_old‖·U_new/‖U_new‖. That gives 3.4–4.8× speed-ups at 0.61 points average accuracy loss. Its venue (IWQoS 2021) is unconfirmed.
+
+**DPUL** ([arXiv](https://arxiv.org/pdf/2512.13381); [code](https://github.com/00taotao/DPUL)) freezes parameter i from round t onward when |ΔU_iᵗ|/6 > |ΔM^u_iᵗ|. It then runs a β-VAE (β = 0.5) and a projected gradient step. It has only been tested as single-client unlearning on LoRA ViTs with 10 clients under FedAvg.
+
+**FLForensics** (NeurIPS 2025; [arXiv](https://arxiv.org/pdf/2407.07221v2)):
+
+- **Scores:** s_i = −Σ_t α_t·∇ℓ(x, y; w_t)ᵀ ĝ_iᵗ over unit-normalised stored updates for a misclassified target input x, and s′_i for a noise input with the same label.
+- **Clustering:** HDBSCAN (min_cluster_size 7) on the span-scaled (s, s′).
+- **Decision:** flag clusters whose s′/s ratio is at or below the population threshold.
+
+Its worst FPR is 0.038, with checkpoints every 10 rounds (10–22 GB). Its FPR with *no* attack is unreported.
+
+#### Handling non-additive robust aggregation
+
+No paper derives an exact subtraction for median, trimmed mean, Krum or NNM. DPUL's ΔM^u = (ΔM − p_uΔU)/(1 − p_u) is exact only for FedAvg ([DPUL](https://arxiv.org/pdf/2512.13381)), and FAUN, Crab and FedEraser were all evaluated under FedAvg. The published route for robust rules is to re-run the rule on corrected per-client updates. UnlearnGuard adds a check on each estimate (distance or direction against stored updates) before the unchanged robust aggregator. Under the BadUnlearn attack it cut median test error from 0.39 (FedRecover) to 0.09, and trimmed-mean error from 0.23 to 0.06 ([Wang et al.](https://arxiv.org/html/2501.17396v1)).
+
+For FedHEP-Guard this suggests three operations (inference). Each re-runs the real hierarchy, parent SCCF then Global ARC + NNM + trimmed mean, as a black box over a buffer of every client's uploads:
+
+```python
+# buffer: for t in window, U[t] = {client: (to_global, to_parent)}, W[t] = Global at start of t
+def agg_round(t, excluded):         # parents (SCCF) then Global (ARC+NNM+TM), flagged set removed
+    return hierarchical_step(W[t], {c: U[t][c] for c in U[t] if c not in excluded})
+c = {t: agg_round(t, isolated_before_t) - agg_round(t, isolated_before_t | F) for t in window}
+#   counterfactual influence of F in round t; nonzero even if F was trimmed (order statistics shift)
+H = {t: norm(agg_round(t, isolated_before_t | F)) for t in window}
+# Crab-style depth: rewind only to the earliest round where F's influence starts to matter
+cum_c = cum_h = 0; j_star = now
+for t in sorted(window):            # forward from the window start, as Crab accumulates
+    cum_c += norm(c[t]); cum_h += H[t]
+    if cum_c > beta * cum_h: j_star = t; break          # beta in {0.1, 0.3}
+# replay j_star..now-1 without F: stale buffered updates (R3) or FedEraser-calibrated fresh directions (R4)
+w = W[j_star]
+for t in range(j_star, now):
+    u = U[t] if mode == "stale" else {c: rescale(local_train(w, c, epochs=0.5*E), norm(U[t][c])) for c in honest}
+    w = hierarchical_step(w, {c: u[c] for c in u if c not in F | isolated_before_t})
+```
+
+For a falsely isolated honest client, c_t should be small, j* stays at "now" and nothing is undone. That directly targets the 0.8–1.8-point cost of each false rewind in the team logs. The replay must also reproduce regrouping events and the personalised heads' dependence on parents. Freeze the grouping during replay, and restore only the trunk, root and parent coordinates, as the current rewind does.
+
+Memory is the binding cost. The team's MultiHeadResNet9 has **1,720,652 parameters** at `base_channels = 32` (counted from `rfl.models.resnet9`). Ten rounds of both uploads for 50 clients is 50 × 10 × 2 × 1.72M × 4 B ≈ **6.9 GB in fp32**, or 2.1 GB at 15 clients. fp16 halves that. It fits on the GPU server and needs CPU-side or fp16 storage on the 16 GB Acer. A rewind-plus-replay needs no extra client computation in stale mode, and 0.5 local epochs per replayed round per honest client in calibrated mode. The counterfactual needs two extra hierarchical aggregations per buffered round, which costs little next to training.
+
+FAUN remains the only listed option that acts on backdoors planted *before* the window: the late catches at rounds 13–23. It needs proxy data, which the team's probe set or root data could supply. It pushes the model away from the flagged direction for 10 rounds, so on a false isolation it does active harm. It should run only behind a confirmation step, either FLForensics-style influence on a newly misclassified input or a proxy-loss check (inference).
+
+### Build attacks first, diagnose offline, then change one decision at a time
+
+All arms of a comparison run on one runner: all on the lab GPU server or all on the Acer, with seeds 42, 123 and 7 plus two more for any headline claim. Seed, partition and attacker IDs stay identical across arms. A result counts as **confirmed** only if the paired difference has the same sign on every seed and a paired bootstrap 95% interval excludes zero. Offline replays on existing logs can use many more seeds at no GPU cost, and they come first wherever the decision is the screen's (inference; protocol carried over from the earlier report).
+
+| # | Build | Unit tests | Experiment | Success criterion (fixed in advance) |
+|---|---|---|---|---|
+| 1 | Offset diagnostics on existing logs: ICC of z, ACF at lags 1–20, regression of per-client mean z on sample count, parent, class-set Jaccard and norm; also count rounds where the union screen's min(z) comes from each signal | none (analysis) | offline, all 15/30/50-client logs | Decides frozen vs tracking baseline in #5: plateauing ACF → frozen baseline; geometric decay → memory ≈ 7 rounds |
+| 2 | Attack suite: Min-Sum (both bound readings), official-search option for Min-Max, Fang-trim (full and partial), Opt-IPM/Opt-ALIE evaluating the full FedHEP-Guard pipeline on a deep copy of the tracker, PoisonedFL (paper cadence and code cadence), XFED (uv, sgn) | Min-Max output meets its bound and γ + tol is infeasible; Min-Sum likewise; 1-D Fang toy moves trimmed mean opposite to s; PoisonedFL keeps s fixed, decays c only on a failed test, quantile equals `binom.ppf`; Opt-IPM matches ByzFL output on identical inputs to 1e-6; X_uv output is parallel to φ_b; Opt-* leaves the tracker unchanged | undefended FedHEP, FedHEP-Guard and oracle at 15 and 50 clients, α = 0.1, 100 rounds | Worst case over the suite is reported; FedHEP-Guard's worst case ≥ undefended on every seed; the oracle–undefended gap identifies which attacks are worth defending against |
+| 3 | Schedules (table above) and the threshold-hugging wrapper | the (2,3) burst never isolates under the current tracker, a regression test that documents the hole; a Bernoulli stream is identical across arms for a fixed seed; hug returns z ≥ −cut + m | persistent, sleeper, on-off, burst, Bernoulli, hug × {IPM ε = 10, SF, backdoor} on current FedHEP-Guard | Measures exposure: time to isolation, attack rounds at full weight, ASR, accuracy |
+| 4 | Gate replacements: GMM separation, gap statistic | synthetic scores (one honest mode, plus 4 spread attackers) open the gate; honest-only heavy-tailed scores keep it shut at ≥ 95% of rounds | offline replay first, then online at 50 clients with the spread-backdoor setting | Gate opens for spread attackers; no-attack gate-open rate no higher than the 8× gate |
+| 5 | Two-channel screen: whitened level flag plus self-referenced CUSUM | AR(1) honest z with ρ = 0.85 and fixed offsets gives a no-attack alarm rate at target; a step change of 2 MAD is detected within 3 rounds; a 0.05 MAD/round ramp is caught by Channel A or by the baseline clamp; a burst schedule accumulates S | offline replay on logs, then online at 15/30/50 clients, α ∈ {0.1, 0.5}, with #2 suite and #3 schedules | Honest isolations at 50 clients, α = 0.1, fall from 22.0 to ≤ 5 per run (the exchangeable floor is 3.3); attacker recall for persistent damaging attacks unchanged; median time to isolation +≤ 2 rounds; worst-case accuracy not lower on any seed |
+| 6 | Recovery: buffer, counterfactual influence, R1 no rewind, R2 Crab-gated depth, R3 stale replay, R4 calibrated replay | for FedAvg the counterfactual equals the weighted-mean removal; removing a client that trimmed mean discarded gives a small but nonzero c_t; with F empty, replay reproduces the original trajectory exactly | no-attack (false-fire cost), early-catch and late-catch backdoor seeds, IPM/SF | No-attack accuracy within seed spread of rewind-off; early-catch ASR ≤ current rewind; late-catch ASR reported separately as the open problem |
+| 7 | Readmission on top of #5: magnitude-weighted asymmetric evidence, probation weight cap, `max_strikes` | a q = 0.25 Bernoulli attacker never regains full weight; an honest transient flag returns within the set number of rounds | all #3 schedules plus re-offender, against permanent isolation | Honest readmissions rise; attacker rounds at full weight and ASR ≤ permanent arm on every seed and schedule |
+| 8 | Extra signals: FLDetector prediction error on shared parameters; SafeFL-style distilled probe on trunk and root head (the team has `probe.py`) | the L-BFGS product matches autograd's Hessian-vector product on a small quadratic | as a third input to Channel B | Adds detection of a schedule or attack the cosine signals miss, at equal honest isolations |
+| 9 | FAUN behind a confirmation step | PGD perturbation stays within ε | late-catch backdoor seeds only | Late-catch ASR falls below the current rewind with no-attack cost unchanged (the confirmation must block it) |
+
+The order is deliberate. Detectors evaluated against the current attack set will look good because FedHEP already absorbs bounded attacks, so #2 and #3 come before any screen change. #1, #4 and #5 can be decided mostly offline on existing logs, which is cheap. Readmission (#7) is pointless until the score stops flagging persistent honest outliers, and it is blocked in code by the rewind interaction until #6 exists.
+
+### Claims that remain unverified
+
+| Item | Status | How to settle |
+|---|---|---|
+| Min-Sum bound: min (official code) or max (paper reading) of honest summed squared distances | sources disagree | read NDSS 2021 Eq. for Min-Sum; implement both |
+| NDSS21 Fang-trim `(deviation > 0)` duplicated mask | our reading of code | 1-D unit test against the paper's rule |
+| PoisonedFL `history`/`last_grad` definitions; test cadence (every round vs every 50) | driver script missing; paper and code differ | run both cadences |
+| XFED repository behaviour; venue | repo not cloned; arXiv only | clone and diff against the formula |
+| Allouah et al.'s exact 5 attacks and whether Opt-* were used | appendix truncated | read Appendix D.3 |
+| Fang's b sweep beyond b = 2 | not seen | full PDF |
+| FLDetector venue (KDD 2022) and code URL; BoBa venue and EMA γ; FedEraser venue (IWQoS 2021); FedRecover year | secondhand or conflicting | DBLP |
+| FedSurrogate score direction; Multi-metrics high-vs-low δ direction | papers contradict themselves | inspect code |
+| FLARE text vs Algorithm 2 cutoffs | internal inconsistency | state which version is implemented |
+| Sun et al. adaptive forgetting form and β values; Chae et al. redemption formulas; Kang et al. freshness weights | not read | full texts |
+| arXiv 2611.33168 (intermittent participation) and IACR ePrint 2025/510 (adaptive adversaries) | unreachable | fetch manually |
+| FAUN proxy-set size and whether η scales the subtraction; Crab's p(M) for the KL score | missing from extracted text | full PDFs and Crab code |
+| FLTracer's Kalman matrix forms and the residual threshold | not inspected | `detection/` in the repo |
+| Inference: vanilla PoisonedFL and XFED-uv are caught fast by FedHEP-Guard's cosine screen | untested | experiment #2 |
+| Inference: the (2,3) burst evades isolation in practice and does measurable damage under ARC + NNM + trimmed mean | code analysis only | experiment #3 |
+| Inference: the two-channel screen brings honest isolations near the 3.3 floor without losing damaging attackers | untested | experiment #5 |
+| Inference: Crab-style gated depth plus short replay removes false-rewind cost under a hierarchical robust aggregator | untested; literature is FedAvg or flat | experiment #6 |
+| Inference: magnitude-weighted asymmetric evidence makes readmission safe against on-off and re-offender attackers | no FL evidence either way | experiment #7 |
+
+### Conclusion
+
+The literature and the team's logs point to the same restructuring. FedHEP-Guard currently answers one question per round: is this client unusual compared with everyone else? Persistent honest offsets make that question unanswerable at 50 clients, and it is also the wrong question. The useful questions are whether a client's deviation is large enough to do damage, and whether the client has changed. Moderate, constant deviations, honest or not, are what the robust aggregator and personalization already absorb. That framing turns Karimireddy's impossibility result from a limit into a design rule. It also explains why the burst hole, the flag-counting readmission trap and the blind rewind are one problem seen three times: decisions made on counts and streaks rather than on magnitudes and influence.
+
+The evaluation implication is uncomfortable but cheap to act on. Most of the published detectors here were validated against attacks FedHEP absorbs anyway, and the published attack strongest against robust rules, PoisonedFL, specifically defeats the history-based detectors FedHEP-Guard needs. Building the attack suite and schedules first means each later improvement to the screen is tested against attacks it could plausibly miss. The novel results open to the team are honest false isolation as a function of client count, ASR under on-off and re-offender schedules with readmission, and recovery cost after false isolations. None of the 2025–2026 papers reviewed here reports any of them.

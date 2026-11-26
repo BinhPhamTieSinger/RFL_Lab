@@ -75,7 +75,7 @@ def build_fedrep(cfg: ExperimentConfig, model: torch.nn.Module, clients: Sequenc
 
 def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, frozenset[int]]:
     a = cfg.attack
-    if a.kind in ("alie", "min_max", "stealth_backdoor") and cfg.method not in (
+    if a.kind in ("alie", "min_max", "ipm", "stealth_backdoor") and cfg.method not in (
             "fedhep", "fedhep_defended", "fedhep_plus", "fedhep_robust"):
         raise ValueError("Coordinated attacks currently require a FedHEP server")
     if a.kind is None:
@@ -84,7 +84,8 @@ def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, fro
                       if a.kind == "backdoor" else
                       StealthBackdoorAttack(a.backdoor_target, a.backdoor_fraction, cfg.run.seed)
                       if a.kind == "stealth_backdoor" else
-                      CoordinatedAttack(a.kind, a.alie_z, a.knowledge) if a.kind in ("alie", "min_max") else
+                      CoordinatedAttack(a.kind, a.ipm_epsilon if a.kind == "ipm" else a.alie_z, a.knowledge,
+                                        a.perturbation) if a.kind in ("alie", "min_max", "ipm") else
                       ByzantineAttack(a.kind))
     attackers = (select_attackers_fixed(num_clients, a.count, cfg.run.seed) if a.count is not None
                  else select_attackers(num_clients, a.rate, cfg.run.seed))
@@ -135,7 +136,8 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
                            exclusion_patience=p.exclusion_patience, two_sided=p.two_sided, gap_gate=p.gap_gate,
                            critical_k=p.critical_k, sign_topk=p.sign_topk,
                            peer_share=p.peer_share, shadow_reference=p.shadow_reference,
-                           high_gate=p.high_gate)
+                           high_gate=p.high_gate, sentence=p.sentence, max_strikes=p.max_strikes,
+                           probation_patience=p.probation_patience)
     probe = None
     if p.signal in ("probe_logits", "head_gap"):
         probe = _probe_set(cfg, clients, p.probe_size)

@@ -121,6 +121,19 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P41 | (Low-side gate 6 with high-side gate 20, Acer, `acer_c15_low_gate`, written 2026-11-26 before any run.) At 15 clients, α 0.5, the stealth backdoor stays under 5% on every seed (high-side gate alone, c14: 0.4 / 71 / 57%, seeds 42 / 123 / 7; the replay of this rule on those runs catches every attacker by round 6) | 0.55 | any seed at 5% or more |
 | P42 | (Same.) With no attack, at most 3.8 honest clients isolated per run at 15 clients and at most 16 at 50 clients, α 0.1 (union screen: 3.8 and 22.3; high-side gate alone: 2.3 and 12.3) | 0.5 | more than 3.8 or more than 16 |
 | P43 | (Same.) At 15 clients every ALIE and Min-Max attacker is isolated (9 of 9 each), as with the high-side gate alone | 0.7 | any attacker missed |
+| P44 | (Attack strength, GPU, `gpu_c9_attack_strength`, written 2026-11-26 before any run.) Undefended FedHEP loses at least 5 points against its no-attack accuracy under IPM with epsilon = n at both D1 and D2 (FedCAP: personalization fails against large IPM) | 0.7 | less than 5 points at D1 or D2 |
+| P45 | (Same.) Under ALIE at z = 1.5 and z = 3, FedHEP-Guard is at least 3 points more accurate than undefended FedHEP at D1 | 0.5 | under 3 points at either z |
+| P46 | (Same.) In each of D1 and D2, at least one of the 8 attacks leaves Defended FedHEP (never removes anyone) 5 or more points below FedHEP-Guard | 0.6 | no such attack in D1 or in D2 |
+| P47 | (Same.) FedHEP-Guard's worst accuracy over the 8 attacks is the highest of the 8 models at D2 | 0.4 | another model has a higher worst case |
+| P48 | (Assumed attacker count, GPU, `gpu_c10_assumed_f`.) With no attack, L0 assuming no attackers is at least 0.5 points more accurate than L0 assuming 20% (benchmark) at both D1 and D2 | 0.5 | under 0.5 points at D1 or D2 |
+| P49 | (Same.) With no attack at D2, the union screen assuming no attackers is within 0.5 points of FedHEP (54.5%) | 0.4 | more than 0.5 points below |
+| P50 | (Same.) Under sign flip, the union screen assuming no attackers is within 1 point of the union screen assuming 20%, in all three settings (it isolates the flippers by round 3) | 0.6 | more than 1 point lower in any setting |
+| P51 | (Readmission, Acer, `acer_c16_readmission`.) Phase 3b readmission on the union screen (`r3wc_ra`) lets the plain backdoor reach 5% or more on at least one seed (negative control) | 0.6 | under 5% on every seed |
+| P52 | (Same.) A 5-round sentence with probation patience 1 (`r3wc_s5p1`) keeps the backdoor at or below 2% on every seed under the plain, sleeper and on-off backdoor | 0.4 | any seed above 2% |
+| P53 | (Same.) With no attack at 15 clients, both sentence variants end with at most 2.0 honest clients isolated per run (union screen: 3.8) | 0.6 | more than 2.0 for either |
+| P54 | (Same, `acer_c16b_readmission_n50`.) At 50 clients, α 0.1, no attack, a sentence raises accuracy by at least 1 point over the union screen (48.4%) | 0.4 | under 1 point for both variants |
+| P55 | (Same.) The sleeper backdoor (attacks from round 10) gets past the union screen with permanent isolation: 5% or more on at least one seed | 0.5 | under 5% on every seed |
+| P56 | (Same sweep, union screen with permanent isolation.) A backdoor attacking 2 rounds on, 1 off is never isolated, because the 3-round streak resets on every clean round; its success reaches 20% or more on at least 2 of 3 seeds | 0.6 | any attacker isolated, or under 20% on 2 seeds |
 
 ## 3. The model we expect to publish
 

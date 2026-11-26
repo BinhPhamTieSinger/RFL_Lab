@@ -45,6 +45,8 @@ class FedHEPServer:
         self.attack = attack
         self.attackers = attackers if attack is not None else frozenset()
         self.attack_stop = 0  # attackers train honestly after this round (0 = never); set by the runner
+        self.attack_start = 0  # ... before this round (sleeper)
+        self.attack_on = self.attack_off = 0  # on-off cycle from attack_start (0 = always on)
         self.unscored = self.attackers  # attackers are not evaluated, as in the authors' evaluate_ensemble
         self.template = {k: v.detach().clone() for k, v in model.state_dict().items()}
         self.global_vec = flatten(self.template)
@@ -71,6 +73,13 @@ class FedHEPServer:
         self._load(self.parents[group])
         return {k: v.clone() for k, v in self.model.fc2_parent.state_dict().items()}
 
+    def attacking(self, round_idx: int) -> bool:
+        """Whether the attackers attack in this round (stop_round, start_round and the on-off cycle)."""
+        if (self.attack_stop and round_idx > self.attack_stop) or round_idx < self.attack_start:
+            return False
+        cycle = self.attack_on + self.attack_off
+        return not (self.attack_on and self.attack_off) or (round_idx - self.attack_start) % cycle < self.attack_on
+
     def _train_all(self, start: torch.Tensor, round_idx: int
                    ) -> tuple[dict[int, torch.Tensor], dict[int, torch.Tensor]]:
         """Every client trains from `start` plus its group's parent head and its own local head. Returns the
@@ -84,7 +93,7 @@ class FedHEPServer:
             self.model.fc2_parent.load_state_dict(parent_heads[self.grouping.assignment[cid]])
             if mem.local_head is not None:
                 self.model.fc2_local.load_state_dict(mem.local_head)
-            attacking = self.attack_stop == 0 or round_idx <= self.attack_stop
+            attacking = self.attacking(round_idx)
             bad = self.attack if cid in self.attackers and attacking else None
             data = bad.poison_data(cid, data) if bad else data
             targets = bad.poison_labels(data.y_train, self.trainer.num_classes) if bad else None
@@ -92,8 +101,7 @@ class FedHEPServer:
             self.trained[cid] = flatten(self.model.state_dict())
             to_global[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
             to_parent[cid] = bad.poison_upload(self.trained[cid], start) if bad else self.trained[cid]
-        if isinstance(self.attack, (CoordinatedAttack, StealthBackdoorAttack)) and (
-                self.attack_stop == 0 or round_idx <= self.attack_stop):
+        if isinstance(self.attack, (CoordinatedAttack, StealthBackdoorAttack)) and self.attacking(round_idx):
             mask = ~flat_layout(self.template, {k for k, _ in self.model.named_parameters()}).buffer_mask
             to_global = self.attack.poison_batch(to_global, start, self.attackers, mask)
             to_parent = self.attack.poison_batch(to_parent, start, self.attackers, mask)

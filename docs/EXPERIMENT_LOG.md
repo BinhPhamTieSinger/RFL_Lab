@@ -1611,3 +1611,30 @@ Last run (`x13_n50a01__clean__r3sc_s7`): 17 honest clients isolated, 49.68% over
 **Benchmark charts.** Each overview chart ends with a Best row naming the best model of each column (accuracy and F1 highest; backdoor success and honest isolations lowest, the latter among models that isolate at least half of the attackers), with the best cells outlined. A ranking chart closes report 6.1 (`docs/figures/bench/ranking.png`): every model complete in a setting is scored by how many percentage points it is behind that setting's best model on worst accuracy under attack, highest backdoor success and honest clients left out per round with no attack, averaged with equal weights over the three metrics and the settings (D1, D2, 30 clients α 0.5 so far; a setting counts once half of the models are complete). Top so far: FedHEP+ with the whole update and no regrouping 11.7, R3 head gap 12.7, shared union screen 13.3, union screen 14.1, FedHEP-Guard with shared signal 14.4, FedHEP-Guard 15.1, FLAME 15.6. The order of the top seven is within 4 points and not settled.
 
 ![Benchmark ranking](figures/bench/ranking.png)
+
+## 2026-11-26 (evening) · Acer c14 complete: the union screen caught the stealth backdoor on every seed; honest isolations are persistent offsets; new attacks, readmission and four new sweeps
+
+**Acer c14 complete** (`acer_c14_high_gate.yaml` 21 runs, `acer_c14_control.yaml` 6 runs; XPU, 30 rounds, seeds 42 / 123 / 7).
+- Stealth backdoor, 15 clients: union screen (control) 0.5 / 0.7 / 1.0%, every attacker isolated in rounds 4 / 3 / 6; high-side gate 0.4 / 71.1 / 57.4%. **Correction to this afternoon's entry:** the high-side gate's rule is not what differs. Replaying the union screen's rule on the high-gate logs gives the same late isolations (rounds 13–23), and replaying the high-gate rule on the control's logs gives the control's (rounds 3–6). The runs diverge from round 2 because the high-side gate changes which honest clients are left out each round; on one path the low-side gap gate (8) opens in time, on the other it does not. The cause is the gate's fragility, as on the GPU (union screen, D1 stealth seed 7: 81%).
+- 50 clients, α 0.1, backdoor: union screen 28.7 / 30.8 / 19.3%, high-side gate 30.6 / 30.8 / 15.8%; 16 of 30 attackers caught by both; honest isolated 16.3 against 11.7 per run.
+
+![Acer c14](figures/acer_c14_high_gate.png)
+
+**Experiment 1 of the literature review (offline, `scripts/diag_honest_null.py`, 20 GPU union-screen runs with no attack):**
+- Lag-1 autocorrelation of an honest client's whole-update z: median 0.80–0.87 in every setting (critical layers 0.27–0.45).
+- The screen's rule replayed with each round's scores dealt to the clients at random (20 shuffles) isolates 0.3–4.3 per run against 1.7–26.0 on the real logs (50 clients α 0.1: 3.3 against 22.0). Honest isolations come from persistent offsets, not multiple testing.
+- Isolated honest clients' mean rank within their run: label entropy 0.35–0.66, data size 0.16–0.63 (0.5 = average): not the most skewed or the smallest.
+
+![Persistent offsets](figures/honest_null.png)
+
+**Self-referenced z (offline replay, 220 GPU runs; scratch analysis, not a script):** each client's z minus its own median so far, capped at 1 / 1.5 / 2. No attack, honest per run at 15 / 20 / 30 / 50 clients: 1.5 / 2.3 / 5.7 / 11.2 (cap 1) against 3.0 / 3.7 / 10.8 / 23.6. Backdoor attackers caught: 41 / 42 / 45 / 18% (cap 1) against 68 / 54 / 81 / 57% (lower bounds). Poisoning attackers caught: 92–100%, unchanged. Combined with the gate of 6 / 20: honest 1.3 / 1.3 / 6.5 / 11.8, backdoor 53 / 58 / 44 / 15%. Report 8.2.
+
+**New code** (tests: `tests/test_attack_strength.py`, `tests/test_readmission.py`):
+- Attacks: `attack.kind: ipm` with `attack.ipm_epsilon` (Xie et al.: −epsilon × the observed mean); Min-Max `attack.perturbation: std | unit | sign` (Shejwalkar & Houmansadr; default std, as before).
+- Attack schedules for the FedHEP family: `attack.start_round` (sleeper) and `attack.on_rounds` / `attack.off_rounds` (on-off), beside the existing `stop_round`.
+- Readmission by sentence: `plus.sentence` (rounds an isolated client stays out; evidence reset on return), `plus.max_strikes` (the isolation that reaches it is permanent), `plus.probation_patience` (patience for returned clients). Refused together with `plus.readmit` or a rewind.
+
+**New sweeps** (predictions P44–P56):
+- GPU `gpu_c9_attack_strength.yaml` (384 runs): D1 and D2; ALIE z 1 / 1.5 / 3, IPM epsilon 0.5 / 2 / n, Min-Max unit and sign; FedHEP, Defended, FedHEP+, union screen, FedHEP-Guard, FLAME, Bulyan, Median.
+- GPU `gpu_c10_assumed_f.yaml` (81 runs): L0, union screen and FedHEP-Guard assuming no attackers; D1, D2, 30 clients; no attack, sign flip, backdoor.
+- Acer `acer_c16_readmission.yaml` (60 runs) and `acer_c16b_readmission_n50.yaml` (6 runs): permanent isolation, Phase 3b readmission, a 5-round sentence with normal or 1-round probation patience; no attack, plain, sleeper (from round 10), on-off (4 on, 6 off) and on-off (2 on, 1 off: never 3 bad rounds in a row, so the patience rule can never fire; found by reading the code, P56) backdoor; and 50 clients α 0.1 with no attack.

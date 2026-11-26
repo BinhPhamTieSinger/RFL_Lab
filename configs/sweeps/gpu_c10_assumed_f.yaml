@@ -1,0 +1,99 @@
+# GPU server: the global step's assumed attacker count set to 0 (literature review Part 2, experiment 2; predictions P48-P50). D1, D2 and 30 clients alpha 0.5; no attack, sign flip, backdoor;
+# L0, the union screen and FedHEP-Guard. The benchmark holds the same models with the true count assumed. Written by scripts/make_followups.py. 3 settings x 3 conditions x 3 models x 3 seeds = 81 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__clean:
+    data.num_clients: 15
+    data.alpha: 0.5
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__sign3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__backdoor3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__clean:
+    data.num_clients: 20
+    data.alpha: 0.2
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__sign4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: sign_flip
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__backdoor4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg30_a05__clean:
+    data.num_clients: 30
+    data.alpha: 0.5
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__sign6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__backdoor6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+- l0_f0:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: arc_nnm_tm
+    robust.assumed_attackers: 0
+  r3wc_f0:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.global_f: 0
+  guard_f0:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+    plus.global_f: 0

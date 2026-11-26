@@ -1,0 +1,15 @@
+# Acer (XPU), readmission at 50 clients, alpha 0.1, no attack (P54): where honest isolations are worst (union screen:
+# 22.3 per run, x13_n50a01__clean__r3wc), does a sentence give honest clients back and recover accuracy?
+# Run after acer_c16_readmission.yaml. 2 models x 3 seeds = 6 runs, about 5 hours; resumable.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - x16_n50a01__clean: {data.num_clients: 50, data.alpha: 0.1, plus.global_f: 10}
+  - r3wc_s5: &s5 {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                  plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3, plus.exclusion_patience: 3,
+                  plus.global_rule: arc_nnm_tm, plus.gap_gate: 8, plus.signal: weights_critical, plus.sentence: 5,
+                  plus.max_strikes: 2}
+    r3wc_s5p1: {<<: *s5, plus.probation_patience: 1}
