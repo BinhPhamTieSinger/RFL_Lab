@@ -1,0 +1,1861 @@
+{
+  "name": "gg15_a01__clean__flame_upd",
+  "method": "fedhep_robust",
+  "seed": 7,
+  "alpha": 0.1,
+  "final": {
+    "pooled": 53.03333333333333,
+    "mean_client": 53.70895126117071,
+    "bottom10": 41.80250557596067,
+    "per_client": {
+      "0": 35.242290748898675,
+      "1": 48.36272040302267,
+      "2": 54.794520547945204,
+      "3": 49.13294797687861,
+      "4": 60.1123595505618,
+      "5": 54.74860335195531,
+      "6": 55.76923076923077,
+      "7": 63.492063492063494,
+      "8": 50.279329608938546,
+      "9": 50.427350427350426,
+      "10": 50.0,
+      "11": 54.42176870748299,
+      "12": 58.71559633027523,
+      "13": 64.4578313253012,
+      "14": 55.67765567765568
+    }
+  },
+  "history": [
+    {
+      "round": 5,
+      "pooled_acc": 39.1,
+      "mean_client_acc": 39.98325228957604,
+      "bottom10": 24.42659150678547,
+      "elapsed_s": 21.774004459381104,
+      "head_agreement": {
+        "pooled_acc": 39.03333333333333,
+        "bottom10": 24.42659150678547,
+        "overrule_rate": 0.006
+      },
+      "guarded": {
+        "pooled_acc": 41.166666666666664,
+        "bottom10": 26.787913758474907,
+        "clean_flag_rate": 0.06833333333333333
+      }
+    },
+    {
+      "round": 10,
+      "pooled_acc": 48.8,
+      "mean_client_acc": 50.44269979183783,
+      "bottom10": 31.761337786704246,
+      "elapsed_s": 45.72313404083252,
+      "head_agreement": {
+        "pooled_acc": 48.8,
+        "bottom10": 31.667018053906503,
+        "overrule_rate": 0.004
+      },
+      "guarded": {
+        "pooled_acc": 49.833333333333336,
+        "bottom10": 33.36699253209645,
+        "clean_flag_rate": 0.049
+      }
+    },
+    {
+      "round": 15,
+      "pooled_acc": 52.43333333333333,
+      "mean_client_acc": 53.67767542365802,
+      "bottom10": 38.52178169358786,
+      "elapsed_s": 75.19436025619507,
+      "head_agreement": {
+        "pooled_acc": 52.43333333333333,
+        "bottom10": 38.38860056725605,
+        "overrule_rate": 0.003
+      },
+      "guarded": {
+        "pooled_acc": 52.4,
+        "bottom10": 38.52178169358786,
+        "clean_flag_rate": 0.03266666666666666
+      }
+    },
+    {
+      "round": 20,
+      "pooled_acc": 55.233333333333334,
+      "mean_client_acc": 56.07252416623179,
+      "bottom10": 41.08629777698556,
+      "elapsed_s": 99.47738718986511,
+      "head_agreement": {
+        "pooled_acc": 55.13333333333333,
+        "bottom10": 41.08629777698556,
+        "overrule_rate": 0.002
+      },
+      "guarded": {
+        "pooled_acc": 55.06666666666667,
+        "bottom10": 41.08629777698556,
+        "clean_flag_rate": 0.01633333333333333
+      }
+    },
+    {
+      "round": 25,
+      "pooled_acc": 54.96666666666667,
+      "mean_client_acc": 55.57688617768564,
+      "bottom10": 43.081441319326785,
+      "elapsed_s": 124.75270104408264,
+      "head_agreement": {
+        "pooled_acc": 54.9,
+        "bottom10": 43.081441319326785,
+        "overrule_rate": 0.004
+      },
+      "guarded": {
+        "pooled_acc": 54.86666666666667,
+        "bottom10": 42.65409089197635,
+        "clean_flag_rate": 0.009333333333333334
+      }
+    },
+    {
+      "round": 30,
+      "pooled_acc": 53.03333333333333,
+      "mean_client_acc": 53.70895126117071,
+      "bottom10": 41.80250557596067,
+      "elapsed_s": 149.00543093681335,
+      "head_agreement": {
+        "pooled_acc": 53.06666666666667,
+        "bottom10": 41.80250557596067,
+        "overrule_rate": 0.0026666666666666666
+      },
+      "guarded": {
+        "pooled_acc": 53.1,
+        "bottom10": 41.6765609915778,
+        "clean_flag_rate": 0.015333333333333332
+      }
+    }
+  ],
+  "device": "cuda",
+  "evaluation_scope": "all honest clients with test data, including isolated clients",
+  "client_label_stats": [
+    {
+      "client": 0,
+      "classes": 100,
+      "label_entropy": 3.316183567047119
+    },
+    {
+      "client": 1,
+      "classes": 99,
+      "label_entropy": 3.5066089630126953
+    },
+    {
+      "client": 2,
+      "classes": 85,
+      "label_entropy": 3.496826171875
+    },
+    {
+      "client": 3,
+      "classes": 55,
+      "label_entropy": 3.2053372859954834
+    },
+    {
+      "client": 4,
+      "classes": 41,
+      "label_entropy": 2.8220813274383545
+    },
+    {
+      "client": 5,
+      "classes": 33,
+      "label_entropy": 3.0184764862060547
+    },
+    {
+      "client": 6,
+      "classes": 32,
+      "label_entropy": 2.8959665298461914
+    },
+    {
+      "client": 7,
+      "classes": 28,
+      "label_entropy": 2.6564955711364746
+    },
+    {
+      "client": 8,
+      "classes": 32,
+      "label_entropy": 2.91556453704834
+    },
+    {
+      "client": 9,
+      "classes": 30,
+      "label_entropy": 2.8332765102386475
+    },
+    {
+      "client": 10,
+      "classes": 34,
+      "label_entropy": 3.0191783905029297
+    },
+    {
+      "client": 11,
+      "classes": 30,
+      "label_entropy": 2.713996410369873
+    },
+    {
+      "client": 12,
+      "classes": 33,
+      "label_entropy": 3.0101423263549805
+    },
+    {
+      "client": 13,
+      "classes": 32,
+      "label_entropy": 2.7661936283111572
+    },
+    {
+      "client": 14,
+      "classes": 37,
+      "label_entropy": 2.9740281105041504
+    }
+  ],
+  "client_train_sizes": [
+    582,
+    1163,
+    896,
+    586,
+    624,
+    668,
+    519,
+    469,
+    620,
+    461,
+    571,
+    525,
+    764,
+    540,
+    1012
+  ],
+  "attackers": [],
+  "detection": [
+    {
+      "round": 1,
+      "flagged": [
+        4,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 2,
+      "flagged": [
+        0,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 3,
+      "flagged": [
+        1,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 4,
+      "flagged": [
+        0,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 5,
+      "flagged": [
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 6,
+      "flagged": [
+        0,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 7,
+      "flagged": [
+        1,
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 8,
+      "flagged": [
+        0,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 9,
+      "flagged": [
+        1,
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 10,
+      "flagged": [
+        0,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 11,
+      "flagged": [
+        1,
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 12,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 13,
+      "flagged": [
+        1,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 14,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 15,
+      "flagged": [
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 16,
+      "flagged": [
+        1,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 17,
+      "flagged": [
+        0,
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 18,
+      "flagged": [
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 5,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.3333333333333333,
+      "malicious_groups": []
+    },
+    {
+      "round": 19,
+      "flagged": [
+        1,
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 20,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 21,
+      "flagged": [
+        1,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 22,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 23,
+      "flagged": [
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 24,
+      "flagged": [
+        1,
+        3,
+        4,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 25,
+      "flagged": [
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 26,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 27,
+      "flagged": [
+        1,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    },
+    {
+      "round": 28,
+      "flagged": [
+        0,
+        3,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 29,
+      "flagged": [
+        2,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 6,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4,
+      "malicious_groups": []
+    },
+    {
+      "round": 30,
+      "flagged": [
+        1,
+        3,
+        4,
+        6,
+        11,
+        13,
+        14
+      ],
+      "precision": 0.0,
+      "recall": null,
+      "f1": null,
+      "auroc": null,
+      "false_positives": 7,
+      "true_positives": 0,
+      "false_exclusion_rate": 0.4666666666666667,
+      "malicious_groups": []
+    }
+  ],
+  "model_floats": 1722900,
+  "resources": {
+    "seconds_total": 151.3806858062744,
+    "seconds_per_round": [
+      4.601665019989014,
+      4.12546706199646,
+      4.214345455169678,
+      4.44585108757019,
+      4.326123952865601,
+      4.026063919067383,
+      4.41299033164978,
+      4.329828262329102,
+      4.637210130691528,
+      4.125897645950317,
+      4.462027072906494,
+      5.354177951812744,
+      5.479123830795288,
+      5.938271999359131,
+      5.784139394760132,
+      4.017178773880005,
+      4.62326979637146,
+      4.265368461608887,
+      4.405048608779907,
+      4.664875268936157,
+      4.816638946533203,
+      4.959432601928711,
+      4.53989577293396,
+      4.33518385887146,
+      4.477158546447754,
+      4.545721054077148,
+      4.753890514373779,
+      4.099050283432007,
+      4.592416048049927,
+      3.931152820587158
+    ],
+    "peak_process_mb": 2785.0703125,
+    "peak_device_mb": 1834.5986328125
+  },
+  "diagnostics": [
+    {
+      "round": 1,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        13
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 1.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 0.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 2,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 3,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 4,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 5,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 6,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 7,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 8,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 9,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 10,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 11,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 12,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 13,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 14,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 15,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 16,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        3,
+        5,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 0.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 17,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 18,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 19,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 20,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 21,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 22,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 23,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 24,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 25,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 26,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 27,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 28,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 0.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    },
+    {
+      "round": 29,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        11,
+        13,
+        14
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 0.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 0.0,
+        "6": 1.0,
+        "7": 1.0,
+        "8": 0.0,
+        "9": 0.0,
+        "10": 0.0,
+        "11": 1.0,
+        "12": 0.0,
+        "13": 1.0,
+        "14": 1.0
+      },
+      "banned": []
+    },
+    {
+      "round": 30,
+      "attackers": [],
+      "rule": "flame",
+      "accepted": [
+        0,
+        2,
+        5,
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "scores": {
+        "0": 1.0,
+        "1": 0.0,
+        "2": 1.0,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 1.0,
+        "6": 0.0,
+        "7": 1.0,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0,
+        "11": 0.0,
+        "12": 1.0,
+        "13": 0.0,
+        "14": 0.0
+      },
+      "banned": []
+    }
+  ]
+}
