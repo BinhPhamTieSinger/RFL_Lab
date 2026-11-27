@@ -1663,3 +1663,32 @@ Smoothing turns the persistent honest offsets into a second mode, so the mixture
 **New sweep:** GPU `gpu_c11_attack_suite.yaml` (384 runs, D1 and D2, the 8 models of `gpu_c9`): Min-Sum, Fang full and partial, PoisonedFL, XFED, sign flip in 2-round bursts, sign flip from round 10, backdoor in 2-round bursts. Predictions P57–P61.
 
 **GPU queue** (OPERATIONS.md): 1,515 runs in the 24 hours to 2026-11-26 08:39; then 8,154 runs left in the running job (361 of the 50-client grid, 7,793 benchmark), about 7.5 days at that pace in client-runs, so done around 2026-12-03 or 04; then 1,281 more after the update (432 benchmark runs of the two new models, of which `gpu_c8` holds 96, and 849 in `gpu_c10`, `gpu_c9`, `gpu_c11`).
+
+## 2026-11-27 · Acer c15 (low-side gate 6): the stealth backdoor is held on every seed, honest isolations are not reduced (P41, P43 held, P42 refuted); GPU benchmark at 5,106 runs, 30 clients α 0.5 complete
+
+**Acer c15** (`acer_c15_low_gate.yaml`, 18 runs, XPU, 30 rounds, seeds 42 / 123 / 7): union screen with `plus.gap_gate: 6`, `plus.high_gate: 20` (`x15_*__r3wc_g6h20`), paired with c14 and the union-screen controls.
+
+| Condition | Honest isolated per run: union screen / high-side gate (c14) / gate 6 + high side 20 (c15) | Backdoor success, seeds 42 / 123 / 7 (c15) | Attackers caught (c15) |
+|---|---|---|---|
+| 15 clients, no attack | 3.8 / 2.3 / **5.3** (5, 6, 5) | | |
+| 15 clients, ALIE | 4.7 / 5.3 / 5.3 | | 9 of 9, round 3 |
+| 15 clients, Min-Max | 2.0 / 3.3 / 2.0 | | 9 of 9, rounds 3, 3, 7 |
+| 15 clients, backdoor | 3.2 / 4.3 / **0.3** | 0.4 / 0.5 / 0.5% | 9 of 9, rounds 3–6 |
+| 15 clients, stealth backdoor | 4.7 / 5.0 / 3.3 | **0.4 / 0.5 / 0.3%** (c14: 0.4 / 71 / 57%) | 9 of 9, rounds 3–4 |
+| 50 clients, α 0.1, no attack | 22.3 / 12.3 / **21.3** (21, 23, 20) | | |
+
+P41 held, P43 held, P42 refuted (the replay on GPU logs had predicted 3.2 and 15.4 honest isolations). Accuracy within a point of the union screen. The low gate fixes the stealth escape; it does not reduce honest isolations, because the persistent honest offsets act in the extra rounds it opens. Report 8.2.
+
+![Acer gates](figures/acer_gates.png)
+
+**GPU benchmark: 5,106 of 11,502 runs** (GPU pushes of 2026-11-27 15:25; 1,827 new GPU runs). 30 clients α 0.5 complete (410 cells, 3 seeds); 15 clients α 0.1 every cell (156 with 3 seeds, 254 with 1); 30 clients α 0.1 211 cells; 50 clients 202 cells.
+- 30 clients α 0.5: union screen backdoor 1 / 1 / 2%, stealth 1 / 1 / 1%; FedHEP-Guard 1 / 0 / 1%, 1 / 1 / 0%; both isolate every attacker of every attack. FLAME and Bulyan hold the backdoor (≤ 2%) at 38.3% and 41.0% with no attack. FedHEP+ whole update: stealth 43 / 53 / 1%. FedHEP+ and R3: 45–67%.
+- The rewind with no attack at 30 clients: FedHEP-Guard 39.1% against 43.3% for its screen (3 seeds; replaces the one-seed −6.5); 1.9–5.1 points under every attack. Honest isolations 15.7 against 14.7.
+- 15 clients α 0.1 (preliminary): FedHEP-Guard and its screen 60.1–60.2% with no attack (FedHEP 61.1%), 1.7 honest isolations per run, backdoor 35% (one seed); FedHEP+ whole update 0% (one seed); FLAME 0–2% at 49.8%.
+- Ranking over D1, D2, 30 clients α 0.5 and 15 clients α 0.1: FedHEP+ whole update, no regroup 7.7; R3 head gap 13.8; FedHEP-Guard 13.8; union screen 13.9; peer reference 14.1; FLAME 16.2.
+
+![Benchmark overview, 30 clients α 0.5](figures/bench/overview_gg30_a05.png)
+
+![Benchmark ranking](figures/bench/ranking.png)
+
+The offline replay was redrawn with 231 runs (the 15-client α 0.1 benchmark runs added; 227 reproduced exactly); no number in report 8.2 moves by more than 3 points.

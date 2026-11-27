@@ -1,11 +1,13 @@
-"""Acer c14: the high-side gate (`plus.high_gate: 20`) against FedHEP-Guard's union screen (report 8.2, P33-P36).
+"""Acer c14 and c15: the high-side gate (`plus.high_gate: 20`, c14) and the low-side gate of 6 with it
+(`plus.gap_gate: 6`, c15) against FedHEP-Guard's union screen (report 8.2, P33-P36, P41-P43).
 
   python scripts/plot_c14.py outputs
 
-Runs: acer_c14_high_gate.yaml (x14_*__r3wc_hg20). Controls, all on the Acer: x8_f3__*__r3wc, x10_a05__*__r3wc_shp,
+Runs: acer_c14_high_gate.yaml (x14_*__r3wc_hg20), acer_c15_low_gate.yaml (x15_*__r3wc_g6h20). Controls, all on the Acer: x8_f3__*__r3wc, x10_a05__*__r3wc_shp,
 x11_a05__minmax3__r3wc, x13_n50a01__clean__r3wc, and acer_c14_control.yaml (x14_*__r3wc) once run. For each run
 the low-gate rule of report 8.2 (gap gate 6 on the low side, 20 on the high side) is also replayed on its logs.
-Writes docs/figures/acer_c14_high_gate.png and docs/results/acer_c14.json."""
+Writes docs/figures/acer_gates.png and docs/results/acer_c14.json (acer_c14_high_gate.png, the c14-only version of
+2026-11-26, is kept as it was)."""
 from __future__ import annotations
 
 import importlib.util
@@ -69,18 +71,20 @@ def cell(outputs: Path, names: list[str]) -> list[dict]:
 def fig(res: dict) -> None:
     labels = list(res)
     arms = (("control", "union screen (FedHEP-Guard's screen)", pr.SLOT[0]),
-            ("high_gate", "union screen, high side only at gap ratio ≥ 20", pr.SLOT[1]))
+            ("high_gate", "high side only at gap ratio ≥ 20 (c14)", pr.SLOT[1]),
+            ("low_gate", "and low side at gap ratio ≥ 6 (c15)", pr.SLOT[2]))
+    w = 0.8 / len(arms)
     fig, axes = plt.subplots(1, 2, figsize=(16, 4.6), gridspec_kw={"width_ratios": [2, 1]})
     ax = axes[0]
     for j, (arm, name, color) in enumerate(arms):
-        xs = [i + (j - 0.5) * 0.38 for i in range(len(labels))]
+        xs = [i + (j - 1) * w for i in range(len(labels))]
         for x, lab in zip(xs, labels, strict=True):
             rs_ = res[lab][arm]
             if not rs_:
-                ax.text(x, 0.2, "not run\nyet", ha="center", fontsize=6.5, color=pr.INK2)
+                ax.text(x, 0.2, "not run", ha="center", fontsize=6.5, color=pr.INK2)
                 continue
             h = statistics.fmean(r["honest"] for r in rs_)
-            ax.bar(x, h, 0.36, color=color, label=name if lab == labels[0] else None)
+            ax.bar(x, h, w * 0.95, color=color, label=name if lab == labels[0] else None)
             ax.text(x, h + 0.2, f"{h:.1f}", ha="center", fontsize=7.5)
             ax.text(x, -1.1, f"n={len(rs_)}", ha="center", fontsize=6, color=pr.INK2)
     ax.set_xticks(range(len(labels)), labels, fontsize=8)
@@ -90,13 +94,13 @@ def fig(res: dict) -> None:
     ax = axes[1]
     bd = [lab for lab in labels if "backdoor" in lab]
     for j, (arm, _name, color) in enumerate(arms):
-        xs = [i + (j - 0.5) * 0.38 for i in range(len(bd))]
+        xs = [i + (j - 1) * w for i in range(len(bd))]
         for x, lab in zip(xs, bd, strict=True):
             rs_ = res[lab][arm]
             if not rs_:
-                ax.text(x, 2, "not run\nyet", ha="center", fontsize=6.5, color=pr.INK2)
+                ax.text(x, 2, "not run", ha="center", fontsize=6.5, color=pr.INK2)
                 continue
-            ax.bar(x, statistics.fmean(r["asr"] for r in rs_), 0.36, color=color, alpha=0.85)
+            ax.bar(x, statistics.fmean(r["asr"] for r in rs_), w * 0.95, color=color, alpha=0.85)
             for r in rs_:
                 ax.scatter(x, r["asr"], color=pr.INK, s=12, zorder=3)
                 if r["asr"] > 5:
@@ -105,17 +109,19 @@ def fig(res: dict) -> None:
     ax.set_xticks(range(len(bd)), bd, fontsize=8)
     ax.set_ylim(0, 100)
     ax.set_title("backdoor success (%), dots = seeds", fontsize=10)
-    fig.suptitle("Acer c14: the high-side gate halves honest isolations at 50 clients and keeps every ALIE and "
-                 "Min-Max attacker out; the stealth backdoor got through on 2 seeds of 3 (union screen: 0 of 3)",
-                 fontsize=10.5, x=0.01, ha="left")
+    fig.suptitle("Acer c14 and c15: the high-side gate alone halves honest isolations at 50 clients but let the "
+                 "stealth backdoor through on 2 seeds; adding the low-side gate of 6 catches it on every seed, but "
+                 "honest isolations come back", fontsize=10, x=0.01, ha="left")
     fig.tight_layout()
-    pr.save(fig, "acer_c14_high_gate.png")
+    pr.save(fig, "acer_gates.png")
 
 
 def main() -> None:
     pr.style()
     outputs = Path(sys.argv[1] if len(sys.argv) > 1 else "outputs")
-    res = {lab: {"high_gate": cell(outputs, hg), "control": cell(outputs, ctrl)} for lab, hg, ctrl in CONDITIONS}
+    res = {lab: {"control": cell(outputs, ctrl), "high_gate": cell(outputs, hg),
+                 "low_gate": cell(outputs, [n.replace("x14_", "x15_").replace("_hg20", "_g6h20") for n in hg])}
+           for lab, hg, ctrl in CONDITIONS}
     (ROOT / "docs" / "results" / "acer_c14.json").write_text(json.dumps(res, indent=1))
     fig(res)
     for lab, arms in res.items():

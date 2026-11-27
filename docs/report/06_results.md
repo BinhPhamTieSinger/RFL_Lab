@@ -83,7 +83,7 @@ FedAvg and Multi-Krum have no FedHEP server, so they cannot run ALIE, Min-Max or
 
 #### 30 clients, α = 0.5, 6 attackers (`gg30_a05`)
 
-410 of 426 cells run; 542 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
+410 of 426 cells run; 1230 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
 
 ![Benchmark overview, 30 clients, α 0.5](../figures/bench/overview_gg30_a05.png)
 
@@ -91,15 +91,15 @@ Detail charts: [No attack](../figures/bench/gg30_a05__clean.png) · [Sign flip](
 
 #### 15 clients, α = 0.1, 3 attackers (`gg15_a01`)
 
-51 of 426 cells run; 151 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
+410 of 426 cells run; 722 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
 
 ![Benchmark overview, 15 clients, α 0.1](../figures/bench/overview_gg15_a01.png)
 
-Detail charts: [No attack](../figures/bench/gg15_a01__clean.png) · [Sign flip](../figures/bench/gg15_a01__sign.png) · [Label flip](../figures/bench/gg15_a01__label.png) · [Random noise](../figures/bench/gg15_a01__noise.png) · [ALIE](../figures/bench/gg15_a01__alie.png) · [Min-Max](../figures/bench/gg15_a01__minmax.png) · [Backdoor](../figures/bench/gg15_a01__backdoor.png)
+Detail charts: [No attack](../figures/bench/gg15_a01__clean.png) · [Sign flip](../figures/bench/gg15_a01__sign.png) · [Label flip](../figures/bench/gg15_a01__label.png) · [Random noise](../figures/bench/gg15_a01__noise.png) · [ALIE](../figures/bench/gg15_a01__alie.png) · [Min-Max](../figures/bench/gg15_a01__minmax.png) · [Backdoor](../figures/bench/gg15_a01__backdoor.png) · [Stealth backdoor](../figures/bench/gg15_a01__stealth.png)
 
 #### 30 clients, α = 0.1, 6 attackers (`gg30_a01`)
 
-50 of 426 cells run; 150 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
+211 of 426 cells run; 523 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
 
 ![Benchmark overview, 30 clients, α 0.1](../figures/bench/overview_gg30_a01.png)
 
@@ -107,7 +107,7 @@ Detail charts: [No attack](../figures/bench/gg30_a01__clean.png) · [Sign flip](
 
 #### 50 clients, α = 0.1, 10 attackers (`gg50_a01`)
 
-50 of 426 cells run; 118 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
+156 of 426 cells run; 270 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
 
 ![Benchmark overview, 50 clients, α 0.1](../figures/bench/overview_gg50_a01.png)
 
@@ -115,7 +115,7 @@ Detail charts: [No attack](../figures/bench/gg50_a01__clean.png) · [Sign flip](
 
 #### 50 clients, α = 0.5, 10 attackers (`gg50_a05`)
 
-18 of 426 cells run; 46 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
+46 of 426 cells run; 81 of 1278 runs (3 seeds per cell; a cell with fewer seeds is preliminary).
 
 ![Benchmark overview, 50 clients, α 0.5](../figures/bench/overview_gg50_a05.png)
 
@@ -139,13 +139,25 @@ Detail charts: [No attack](../figures/bench/gg15_a005__clean.png) · [Sign flip]
 
 #### Ranking across every setting
 
-Every model that has run every condition of a setting is ranked there on three metrics: worst accuracy under attack, highest backdoor success, and the share of honest clients left out per round with no attack. The score is how many percentage points a model is behind the best model of the setting, averaged over the three metrics and the settings, with equal weights (a choice, not a finding). Settings ranked: D1 (52 models, some cells 2 seeds), D2 (52 models), 30 clients, α 0.5 (52 models, some cells 1 seed).
+Every model that has run every condition of a setting is ranked there on three metrics: worst accuracy under attack, highest backdoor success, and the share of honest clients left out per round with no attack. The score is how many percentage points a model is behind the best model of the setting, averaged over the three metrics and the settings, with equal weights (a choice, not a finding). Settings ranked: D1 (52 models, some cells 2 seeds), D2 (52 models), 30 clients, α 0.5 (52 models), 15 clients, α 0.1 (52 models, some cells 1 seed).
 
-Top five so far: 1. FedHEP+, whole update, no regroup (11.7 points); 2. R3, head gap (12.7 points); 3. Union screen, shared signal (Phase 8) (13.3 points); 4. FedHEP-Guard without rewind (union screen) (14.1 points); 5. FedHEP-Guard, shared signal (Phase 8) (14.4 points).
+Top five so far: 1. FedHEP+, whole update, no regroup (7.7 points); 2. R3, head gap (13.8 points); 3. FedHEP-Guard (13.8 points); 4. FedHEP-Guard without rewind (union screen) (13.9 points); 5. Union screen, peer reference (Phase 7) (14.1 points).
 
 ![Benchmark ranking](../figures/bench/ranking.png)
 
 [//]: # (BENCH:index END)
+
+**Update (2026-11-27: 5,106 of 11,502 runs).** **30 clients, α 0.5, is now complete** (410 cells, 3 seeds), and 15 clients, α 0.1, has every cell (156 with 3 seeds, 254 with 1). GPU server.
+
+*30 clients, α 0.5 (complete):*
+- **Only the screens with both signals hold the backdoor here without FLAME's cost.** The union screen: plain 1 / 1 / 2%, stealth 1 / 1 / 1% (seeds 42 / 123 / 7); FedHEP-Guard 1 / 0 / 1% and 1 / 1 / 0%. Both isolate every attacker of every attack. FLAME and Bulyan hold it too (at most 2%), at 38.3% and 41.0% accuracy with no attack. FedHEP+ with the whole update, first in the ranking, lets the stealth backdoor through on two seeds (43 / 53 / 1%), and so does the union screen with the rewind on its whole-update half (61 / 2 / 1%). FedHEP+ and R3: 45–67%; the shared signal: 66 / 0 / 72%.
+- **The rewind costs 4.2 points with no attack** (FedHEP-Guard 39.1% against 43.3% for its screen and 45.2% for FedHEP; on 3 seeds, so this replaces the one-seed figure of 6.5) and 2–5 points under every attack. Honest isolations are about the same (15.7 against 14.7 per run): each one triggers a rewind.
+- **Honest isolations with no attack:** union screen 14.7, FedHEP-Guard 15.7, FedHEP+ 4.3, FedHEP+ with the whole update 8.3, R3 0.7.
+- Without a defense, label flip and random noise collapse FedHEP (14.8% and 5.2%); sign flip takes it to 28.0%.
+
+*15 clients, α 0.1 (1–3 seeds per cell, preliminary):* FedHEP-Guard and its screen are as accurate as FedHEP with no attack (60.1–60.2% against 61.1%) and isolate few honest clients (1.7 per run), but the backdoor gets through (35%, one seed), as the grid showed at α = 0.1 (chapter 8.1). FedHEP+ with the whole update holds it (0%, one seed); FLAME too (0–2%), at 49.8%.
+
+*Ranking (D1, D2, 30 clients α 0.5, 15 clients α 0.1; chart at the end of this section):* FedHEP+ with the whole update and no regrouping is first by a wide margin (7.7 points behind the best on average), then R3 with the head gap, FedHEP-Guard and its screen (13.8–13.9), the peer reference (14.1) and FLAME (16.2). FedHEP+ with the whole update leads because it keeps accuracy and holds the backdoor in three of the four settings; its 30-client stealth failure and its blindness to Min-Max (39.5% at 30 clients) are its cost. FedHEP-Guard is held back by the rewind's accuracy cost and the α = 0.1 backdoor.
 
 **Results so far (2026-11-26: 3,287 of 11,502 runs).** **D2 is complete for the 52 models queued first** (410 cells, 3 seeds each). D1 has 990 of their 1,230 runs (every cell, 170 with 3 seeds). 30 clients, α 0.5, has every cell but mostly one seed: its numbers below are marked preliminary. The other settings hold the large grid's runs and FedAvg and Multi-Krum. The two models added on 2026-11-26 (gate 6, high side 20; chapter 8.2) have no runs yet. All numbers are from the GPU server.
 
@@ -161,13 +173,15 @@ Top five so far: 1. FedHEP+, whole update, no regroup (11.7 points); 2. R3, head
 - FedHEP-Guard catches every ALIE and Min-Max attacker; FedHEP+ with the whole update catches none. At D1 this costs little (ALIE does almost no harm). At 30 clients (preliminary) Min-Max takes FedHEP+ with the whole update to 35.1%, against 41.9% for the union screen.
 - **Correction to the 2026-11-25 note.** It said the rewind did not fire in the D1 no-attack runs. It fired 0, 4 and 2 times (seeds 7, 42, 123); accuracy was 47.1% against 47.4% for the screen.
 
-**Across D1, D2 and 30 clients (the ranking chart at the end of this section).** Each model is scored by how many percentage points it is behind the best model on three metrics: worst accuracy under attack, highest backdoor success, and honest clients left out per round with no attack. Averaged over the three settings, with equal weights:
+**Across D1, D2 and 30 clients, as of 2026-11-26 (superseded by the update above; the chart shows the current ranking).** Each model is scored by how many percentage points it is behind the best model on three metrics: worst accuracy under attack, highest backdoor success, and honest clients left out per round with no attack. Averaged over the three settings, with equal weights:
 - **First: FedHEP+ with the whole-update signal and no regrouping** (11.7 points), because it holds the backdoor at D1 and D2 (mean success at most 7%; one seed of three at 18–19% at D2) and leaves few honest clients out at D2. Its weak point is the largest setting: at 30 clients (one seed) Min-Max takes it to 35.1% and the stealth backdoor reaches 53%, because it is blind to the high side.
 - Then R3 with the head-gap signal (12.7), the shared union screen of Phase 8 (13.3), FedHEP-Guard without the rewind (14.1), FedHEP-Guard with the shared signal (14.4), **FedHEP-Guard (15.1)** and FLAME (15.6). The rewind costs FedHEP-Guard about one point here: it lowers the worst accuracy (honest isolations trigger it) and leaves more honest clients out at 30 clients.
 - **The order among the top seven is not settled.** They are within 4 points of each other; D1 and 30 clients are not complete (2 and 1 seeds in some cells), and the weights are a choice. The ranking will be redrawn as the benchmark fills.
 - **Every overview chart now ends with a Best row** naming the best model of each column; the best cells are outlined.
 
 ![Benchmark overview, D2](../figures/bench/overview_gg20_a02.png)
+
+![Benchmark overview, 30 clients, α 0.5](../figures/bench/overview_gg30_a05.png)
 
 **What the benchmark will decide.** Set before the results, so the results can refute them (in the style of `PREDICTIONS.md`):
 1. **FedHEP-Guard against FedHEP+.** FedHEP-Guard wins under ALIE, Min-Max and both backdoors at D1. At D2 it loses less than 1 point with no attack, where FedHEP+ loses 2.
