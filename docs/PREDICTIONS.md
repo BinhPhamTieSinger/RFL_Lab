@@ -139,6 +139,8 @@ The per-head numbers suggest a zero-cost defense: when the root head's predictio
 | P59 | (Same.) Sign flip in 2-round bursts (2 on, 1 off) is never isolated by FedHEP-Guard at D1 or D2: 0 of 9 and 0 of 12 attackers | 0.7 | any attacker isolated |
 | P60 | (Same.) The backdoor in 2-round bursts reaches 20% or more against FedHEP-Guard on at least 2 of 3 seeds at D1 | 0.55 | under 20% on 2 seeds |
 | P61 | (Same.) Fang's full-knowledge trimmed-mean attack lowers FedHEP-Guard's accuracy by at least 3 points against no attack at D1 (its global step ends in a trimmed mean) | 0.4 | under 3 points |
+| P62 | (Assumed attacker count held fixed, GPU, `gpu_c12_fixed_f`, written 2026-11-27 before any run.) At 50 clients, α 0.1, the union screen with `plus.global_f_fixed: true` keeps the plain backdoor under 5% on every seed (with the shrinking count: 28 / 19%, two seeds) | 0.35 | any seed at 5% or more |
+| P63 | (Same.) With no attack at 50 clients, α 0.1, holding the count fixed costs at most 1 point against the shrinking count (union screen 49.1%) | 0.6 | more than 1 point lower |
 
 ## 3. The model we expect to publish
 

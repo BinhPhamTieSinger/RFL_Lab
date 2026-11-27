@@ -8,6 +8,7 @@ damage-oriented settings from the literature: ALIE at z = 1, 1.5 (Baruch et al.'
 et al.) at epsilon 0.5, 2 and the number of clients; Min-Max along the inverse unit vector and the inverse sign.
 gpu_c10_assumed_f.yaml (experiment 2): the robust global step assumes 20% attackers even with no attack; here it
 assumes none, to split the no-attack cost between the global step, the screen and the rewind.
+gpu_c12_fixed_f.yaml (Part 4): the global step keeps assuming 20% attackers as clients are isolated, at 50 clients.
 gpu_c11_attack_suite.yaml (Part 3): Min-Sum, Fang's trimmed-mean attack, PoisonedFL, XFED and three attack schedules
 (2-round bursts, which never give the screen 3 bad rounds in a row, and a sleeper).
 
@@ -53,6 +54,13 @@ def suite_conditions(n: int) -> dict:
             f"backdoor{m}_burst21": {"attack.kind": "backdoor", "attack.on_rounds": 2, "attack.off_rounds": 1, **f}}
 
 
+# the global step's assumed attacker count kept at 20% of the clients however many are isolated (plus.global_f_fixed):
+# by default f = global_f - |isolated|, which reaches 0 (a plain mean) at 50 clients by rounds 6-12 with 4-8 of the 10
+# backdoor attackers still in (team logs, 2026-11-27)
+FIXED_F = {"r3wc_ffixed": {**mb.MODELS["r3wc"][2], "plus.global_f_fixed": True},
+           "guard_ffixed": {**mb.MODELS["guard"][2], "plus.global_f_fixed": True}}
+
+
 # the global step's assumed attacker count set to 0, otherwise the benchmark models
 ASSUMED_F = {"l0_f0": {**mb.MODELS["l0"][2], "robust.assumed_attackers": 0},
              "r3wc_f0": {**mb.MODELS["r3wc"][2], "plus.global_f": 0},
@@ -87,6 +95,20 @@ def main() -> None:
             f"2-round bursts. Written by scripts/make_followups.py. 2 settings x 8 conditions x {len(STRENGTH_MODELS)} "
             f"models x 3 seeds = {runs} runs.\n")
     (out / "gpu_c11_attack_suite.yaml").write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
+
+    def fixed_conditions(n: int) -> dict:
+        c = mb.conditions(n, False)
+        m = round(0.2 * n)
+        return {k: c[k] for k in ("clean", f"backdoor{m}", f"stealth{m}")}
+
+    spec = {"seeds": [42, 123, 7], "common": mb.COMMON,
+            "axes": [setting_axis([s for s in mb.SETTINGS if s[0] == 50], fixed_conditions), FIXED_F]}
+    runs = 3 * len(spec["axes"][0]) * len(FIXED_F)
+    head = ("# GPU server: the global step's assumed attacker count held at 20% of the clients however many are isolated "
+            "(plus.global_f_fixed; literature review Part 4; predictions P62-P63). 50 clients, alpha 0.1 and 0.5;\n# no "
+            "attack, backdoor, stealth backdoor; union screen and FedHEP-Guard. The benchmark holds the same models with "
+            f"the shrinking count. Written by scripts/make_followups.py. {runs} runs.\n")
+    (out / "gpu_c12_fixed_f.yaml").write_text(head + yaml.safe_dump(spec, sort_keys=False, allow_unicode=True))
 
     def f_conditions(n: int) -> dict:
         c = mb.conditions(n, False)

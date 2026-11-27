@@ -885,3 +885,365 @@ The order is deliberate. Detectors evaluated against the current attack set will
 The literature and the team's logs point to the same restructuring. FedHEP-Guard currently answers one question per round: is this client unusual compared with everyone else? Persistent honest offsets make that question unanswerable at 50 clients, and it is also the wrong question. The useful questions are whether a client's deviation is large enough to do damage, and whether the client has changed. Moderate, constant deviations, honest or not, are what the robust aggregator and personalization already absorb. That framing turns Karimireddy's impossibility result from a limit into a design rule. It also explains why the burst hole, the flag-counting readmission trap and the blind rewind are one problem seen three times: decisions made on counts and streaks rather than on magnitudes and influence.
 
 The evaluation implication is uncomfortable but cheap to act on. Most of the published detectors here were validated against attacks FedHEP absorbs anyway, and the published attack strongest against robust rules, PoisonedFL, specifically defeats the history-based detectors FedHEP-Guard needs. Building the attack suite and schedules first means each later improvement to the screen is tested against attacks it could plausibly miss. The novel results open to the team are honest false isolation as a function of client count, ASR under on-off and re-offender schedules with readmission, and recovery cost after false isolations. None of the 2025–2026 papers reviewed here reports any of them.
+
+---
+
+*Part 4 was compiled on 2026-11-27 from four focused searches (notes kept outside the repository): group-level flags passed to clients, several attack types at once and defense-aware attacks, judging clients by the effect of their update, and personalization as a defense. It builds on Parts 2 and 3 and the team's diagnostics (report 6.1, 8.2).*
+
+## Part 4 (2026-11-27): Randomize groups, score effects, personalize trust
+
+The literature gives no support for pushing a fixed parent's flag down to its members, and the team's two drill-down failures are what group-testing theory predicts. A parent is a single, non-overlapping test, so it carries no information about which member is guilty. FedHEP's parents also share a trained parent head, which makes honest members look coordinated. The only principled group-to-client methods (FedGT, bucketing, SHARE) use groups that overlap or are re-drawn every round, and even FedGT flags too many clients under real non-IID data. The team's own diagnostics show a deeper limit: every geometric knob in FedHEP-Guard (gate height, gate side, self-referencing, smoothing) trades honest isolations against backdoor catches along one curve. The reason is that persistence is both the backdoor attackers' signature and the honest outliers' failure mode. Moving that curve needs information that update geometry does not contain. Three sources exist: (1) the effect of an update on held-out data, judged per class and against the client's own history; (2) coordination across randomly mixed clients; and (3) personalization that makes a false positive cheap rather than rare. Each has a documented blind spot. Effect scores miss backdoors that preserve clean accuracy. Coordination scores miss lone and non-colluding attackers. Personalization does not stop backdoors, because pFL-aware backdoors live in the shared layers and survive every client-side defense tested against them. On evaluation, no major benchmark mixes backdoor and untargeted attackers in one run. The papers that do find that defenses tuned to one threat leave the other open, and third-party adaptive attacks break defenses that the authors' own adaptive attacks did not. Reading FedHEP-Guard's code surfaces two openings no paper covers. Every exclusion lowers the global step's assumed f, so at 50 clients the honest isolations alone can reduce ARC + NNM + trimmed mean to a plain mean. And every new isolation fires a rewind, so staggered decoys could buy a rewind each. The plan below therefore tests the current model against mixed, decoy and adaptive attacks first, then an f floor, then a per-class effect veto, then a cross-parent collusion test, and a personalization arm last.
+
+Throughout, "cited" marks what a source states, "team data" marks numbers from the team's runs and logs, "team code" marks what the RFL_main code does as read for this report, and "inference" marks reasoning that only experiments can settle.
+
+### Every geometric knob slides FedHEP-Guard along one trade-off curve
+
+The team data reads as a single result seen from many angles. Honest clients' whole-update z has a **lag-1 autocorrelation of 0.80–0.87**. Shuffling scores across clients each round cuts honest isolations 5–12× (**22.0 → 3.3 at 50 clients**), but it also cuts attacker catches to 1–5%. So the attackers are found *because* their offsets persist, by the same property that gets honest outliers isolated. Every other knob confirms it:
+
+- **Self-referenced z** (each client's own median subtracted) halves honest isolations offline but loses a third to a half of backdoor catches.
+- **A GMM presence test on smoothed scores** opens in 98–100% of no-attack rounds, because smoothing turns persistent honest offsets into a second mode.
+- **The low-side gate of 6** holds the stealth backdoor on every Acer seed (0.3–0.5% success) but leaves honest isolations at 5.3 (15 clients) and 21.3 (50 clients).
+- **The high-side gate** halves honest isolations at 50 clients (12.3) but let the stealth backdoor through on 2 of 3 seeds.
+
+The team's offline replay of 24 rules on 220 runs found that "every rule tried trades honest isolations against backdoor catches". Per-round AUROC of backdoor attackers against honest clients falls from 0.82 to 0.65 between 15 and 50 clients on the two-sided whole-update score (team data).
+
+This is what theory predicts. Karimireddy, He and Jaggi show that an honest worker with unrepresentative data can look exactly like an attacker, and that robust rules "fixate on the most representative worker" ([Bucketing, ICLR 2022](https://ar5iv.labs.arxiv.org/html/2006.09365)). Their mimic attack makes the point from the other side. Byzantine workers that copy one honest worker cut Krum to **37.33%** and coordinate-wise median to **64.27%** on non-IID MNIST, against 92.73% for plain averaging. Similarity to honest clients is therefore no proof of honesty ([ar5iv](https://ar5iv.labs.arxiv.org/html/2006.09365)).
+
+The inference that organizes the rest of this report is that tuning the geometric screen further will not pay. There are only three ways off the curve:
+
+- **New information:** what an update does to data, rather than where it points.
+- **Less noise:** averaging over random groups, which turns *other* clients' persistent offsets into exchangeable noise.
+- **Cheaper errors:** personalization, under which a wrongly distrusted honest client collaborates less instead of being removed.
+
+The four sections that follow test each against the literature. The benchmark adds a caution about complexity. Its top-ranked model, FedHEP+ with the whole-update signal, no gate and no regrouping, sits 7.7 points behind the best on average against 13.8 for FedHEP-Guard, yet it fails the stealth backdoor at 30 clients (43 / 53 / 1% success) (team data). Extra machinery pays only on the stealth case, so every proposal below must keep that case held while it cuts honest isolations.
+
+### A fixed parent is one test that cannot name its members
+
+#### Published hierarchical defenses detect at the bottom and never propagate down
+
+Every hierarchical defense the notes could verify scores clients *within* each group and aggregates group outputs above. None pushes an upper-level group flag down to individual clients. None reports detection precision, recall or false-positive rate. None compares attackers spread across groups with attackers concentrated in one.
+
+**FoggyTrust** (arXiv, June 2026) runs FLTrust at each fog node over 10 clients, using that node's root data, while the global server does plain FedAvg, FedAdam or SCAFFOLD ([arXiv 2606.27622](https://arxiv.org/pdf/2606.27622)). It beats flat FLTrust under the Krum attack on CIFAR-10 (**0.4957 vs 0.3213**) but loses under label flipping (0.5143 vs 0.5281). The authors attribute the loss to each fog node having "only about 10 clients to score". Splitting the root data so each fog node gets 10 points instead of 100 dropped no-attack MNIST accuracy from 0.9627 to 0.7882 ([arXiv 2606.27622](https://arxiv.org/pdf/2606.27622)).
+
+The other hierarchical studies are thinner still:
+
+- **Alqattan et al.** use FedAvg at every level with no filtering. They find the 4-level hierarchy the most vulnerable to targeted label-flip backdoors, and they tested attackers only when concentrated in one area ([arXiv 2408.10752](https://arxiv.org/html/2408.10752v1)).
+- **DF-HFL** (SAGE 2025) filters by kernel density and distance at two layers. Its abstract gives no false-positive figures ([DOAJ record](https://library.kab.ac.ug/Record/doaj-art-ffada7bda1b949d0a701a26971b768ec/Description)).
+- **RHFL** (J. Supercomputing 2025) scores each client by JS divergence to its edge server over a fixed topology, and its false-positive behaviour is unreported ([Springer](https://link.springer.com/article/10.1007/s11227-025-07616-w)).
+
+The group designs with theory behind them are not hierarchical at all. **Bucketing** shuffles updates into random buckets of size s every round and applies a robust rule to the bucket means. Averaging cuts heterogeneity by a factor of s, but each Byzantine vector can contaminate up to s times its share of buckets. In the paper's words, the method "trades off increasing influence of Byzantine inputs against having more homogeneous vectors" ([ar5iv](https://ar5iv.labs.arxiv.org/html/2006.09365)).
+
+**SHARE** re-assigns clients to clusters of size m, R times per round, runs a robust rule over the cluster means and averages the R results ([arXiv 2110.02940](https://arxiv.org/pdf/2110.02940)):
+
+- Its tolerance bound is **q₀/m adversaries** in the worst case, where each attacker sits in a different cluster. q₀ is the base rule's own tolerance.
+- Trimmed mean and Krum diverge as the cluster size grows.
+- The authors warn that "benign updates paired with malicious clients might be filtered". Random re-clustering is what spreads that collateral loss across clients.
+
+#### Group testing names members only with overlapping tests and noise-aware decoding
+
+**FedGT** is the only verified method that turns group-level outcomes into per-client decisions in a principled way ([arXiv 2305.05506](https://arxiv.org/pdf/2305.05506)):
+
+- **Groups.** Clients go into overlapping groups defined by the parity-check matrix of an error-correcting code: 8 groups of 4 for 15 clients, 12 groups of 6 for 30.
+- **Test.** Each group aggregate is scored on a 100-sample server validation set. The measured test noise on targeted attacks was **9.16% on CIFAR-10 and 19.53% on ISIC2019**.
+- **Decoding.** A trellis (BCJR) decoder computes per-client log-likelihood ratios (LLRs). FedGT-Δ flags clients past a Neyman-Pearson threshold; FedGT-n̂m flags the n̂m lowest, with n̂m estimated by maximum likelihood.
+- **Design limit.** At most 5 of 15 or 8 of 30 attackers, and testing runs once, not every round.
+
+On CIFAR-10 with 5 of 15 targeted attackers, FedGT-Δ cut attack accuracy to **5.32%**, against 38.40% undefended, 25.16% for RFA and 3.74% for an oracle. On non-IID ISIC2019, however, the threshold decoder "flags too many clients", and the budgeted decoder did better ([arXiv 2305.05506](https://arxiv.org/pdf/2305.05506)).
+
+The cluster-then-client designs turn group evidence into soft trust rather than hard flags. **BoBa** infers each client's classes from last-layer gradient signs and forms one overlapping cluster per class. Inside each cluster, each client votes for its ⌊n_th/2⌋ nearest neighbours, and the votes accumulate into a softmax trust. It reports CIFAR-10 backdoor success of 0.002–0.009 but no false-positive rate, and it states that clustering errors propagate into later detection ([arXiv 2407.09658](https://arxiv.org/html/2407.09658v1)). **FLAME** admits only the HDBSCAN majority cluster, so membership of the majority decides each client ([arXiv 2101.02281](https://arxiv.org/pdf/2101.02281)).
+
+#### Collusion scores fire on honest clients who share data
+
+Similarity-based collusion detectors share one assumption: honest clients are more diverse than colluders. **FoolsGold** documents where that breaks ([RAID 2020 PDF](https://www.cs.ubc.ca/~bestchai/papers/foolsgold-raid2020.pdf)):
+
+- **Honest look-alikes.** Honest clients that hold the targeted class look like sybils. Without the "pardoning" step (cs_ij ← cs_ij·v_i/v_j when v_j > v_i), honest clients on KDDCup were penalized.
+- **Single attacker.** A lone attacker is invisible, so the authors pair FoolsGold with Multi-Krum.
+- **Adaptive bypasses.** Sybils that poison only while their mutual similarity stays under the threshold, or that add offsetting noise, can subvert it. The noise attack is countered only by restricting to a small set of indicative features, and restricting too far causes false positives.
+
+BoBa avoids label-skew false positives by comparing clients only within clusters that hold the same class ([arXiv 2407.09658](https://arxiv.org/html/2407.09658v1)). Neither paper quantifies false positives under Dirichlet skew.
+
+#### Why drill-down v1 and v2 behaved as they did
+
+The Phase 4 runs (team data) used 15 clients in 3 random parents. In the concentrated case, all 3 attackers sat in one parent with 2 honest members, which makes that parent 60% malicious. That is close to the most favourable case a parent test can get. The parent permutation test found the attacker parent (group z −2.3 to −7.3, **precision 0.85**, recall 0.37).
+
+**v1 failed for two reasons.**
+
+1. **The stricter cut had no extra information to work with.** It cut on the same per-client statistic, and inside the flagged parent attackers and honest members both sat at individual z of about −0.5 to −1.5. In group-testing terms, a positive result on one non-overlapping group says nothing about which member is positive. The stricter cut was decoding with no information.
+2. **The one-round exclusion slowed the evidence.** It moved the attackers' mean z toward normal (−1.09 / −1.44 / −1.16 → −0.83 / −0.95 / −0.86), which delayed isolation; on seed 42 one attacker was never isolated. Backdoor success rose from **21.5% to 39.7%** (team data).
+
+The research notes attribute the second effect to median/MAD being recomputed on a population with honest clients removed. The code does not support that reading. Clients left out for one round stay in the reference set, because `in_ref` excludes only isolated clients (team code). The team's own hypothesis fits better: when the backdoor is in the global model, honest training on clean data partly undoes it, so honest updates point against the attackers. Keeping the backdoor out removes that contrast. It remains untested.
+
+The current code adds a third mechanism that any future exclusion-style propagation would inherit. The global step's assumed f is `global_f − |excluded|` (team code). Every member excluded by a drill-down therefore weakens the trimmed mean against the attackers that remain.
+
+**v2 found the right signal but used an invalid null.** Its member-alignment score separated attackers in attacked runs (median alignment z 3.1 against 0.5 for honest members), and attackers were isolated in rounds 2–3 instead of 7–13. That held the concentrated backdoor at **1.9%**. The null, however, was clients *outside* the parent, and a permutation test is valid only if the null cases are exchangeable with the tested ones.
+
+They are not. With no attack, honest members' alignment z had median 1.0, and 2.8 in falsely flagged parents, overlapping the attackers' 3.0–3.6. Honest isolations doubled (10 → 19 over three seeds) (team data). The team traced this to members training through the same parent head. The same component explains why, at α = 0.5, about half of the union screen's honest isolations arrive as a whole parent group isolated in one round (51% at 15 clients, 56% at 30) (team data). It is the FoolsGold false-positive mechanism with the parent head playing the role of the shared target class.
+
+**v2's failure at 20–30 clients follows from placement.** The benchmark draws attacker placement at random, with no concentration control (team code). With 20% attackers spread at random, each parent's mean carries roughly the population's attacker share, not 60%. Bucketing's s-fold amplification and SHARE's q₀/m bound both say that dilution shrinks a parent mean's deviation as parents grow (inference). The team can check this directly by logging each parent's attacker fraction next to its permutation-test z.
+
+#### What a retry would have to change, and what it still could not do
+
+The literature points to one specific redesign (inference, untested):
+
+1. **Decouple detection groups from parents.** Each round, draw random pseudo-groups across parents, stratified so that each group takes at most one member per parent. This removes the shared-parent-head component from within-group alignment.
+2. **Make the groups overlap** in a code-designed pattern, FedGT-style, so the decoder can localize.
+3. **Feed per-client LLR-style evidence into the existing EMA as a soft term**, not as an exclusion or a stricter cut.
+4. **Use the budgeted decoder rather than a threshold,** given FedGT's ISIC result.
+5. **Draw the alignment null from same-round random groups,** not from clients outside a parent.
+
+Random re-grouping does not remove a client's *own* persistent offset. It removes only the parent-correlated part and averages the rest. This is therefore a collusion detector, not a fix for honest outliers.
+
+Several gaps would remain:
+
+- It is blind to a single attacker, to non-colluding attackers such as XFED, and to mimic attacks.
+- Honest clients with overlapping label sets would still align across parents, so BoBa-style comparison within inferred class sets, or FoolsGold-style pardoning, would still be needed.
+- No paper tests FedGT-style decoding repeated every round under Dirichlet skew. Nor does any compare spread and concentrated placement for a group detector with per-client propagation. Both are open, and a positive result would be novel.
+
+### Mixed attacker populations expose coverage gaps that single-attack runs hide
+
+#### The few mixed-population studies find a coverage failure
+
+**Meta-Stackelberg** (arXiv 2410.17431) splits attackers into backdoor and untargeted model-poisoning groups: 10 untargeted plus 5 backdoor among 100 devices, on non-IID CIFAR-10 with ResNet-18. Under IPM combined with a backdoor (main accuracy / backdoor accuracy):
+
+| Defense | Main accuracy | Backdoor accuracy |
+|---|---|---|
+| FedAvg | 0.3104 | 0.8222 |
+| Trimmed mean | 0.6415 | 1.0 |
+| FLTrust | 0.6911 | 1.0 |
+| FLTrust + NeuroClip | 0.6817 | 0.0267 |
+
+Under LMP combined with DBA, NeuroClip no longer helps: FLTrust + NeuroClip reaches backdoor accuracy 0.8422 ([arXiv 2410.17431](https://arxiv.org/pdf/2410.17431)). Aggregators that are robust to untargeted attacks keep accuracy but let the backdoor through. The results come from single configurations with no variance reported.
+
+**Fed-ADR** (arXiv 2609.27124) lets an orchestrator tune untargeted gradients using information from the targeted attackers. It samples perturbations at μ ± 3–4σ and keeps the candidate least likely to be flagged. It cut MUD-HoG on MNIST from **92.62% to 9.22%**, and above 30% malicious "all baseline defenses fail". The abstract claims at least 20× lower overhead, while its own table shows about 3.8× ([arXiv 2609.27124](https://arxiv.org/html/2609.27124)).
+
+Splitting attackers across several backdoors has been tested and survived:
+
+- **FLAME** split 40 of 100 attackers across 1, 2, 4 or 8 backdoors and kept backdoor accuracy at 0% ([arXiv 2101.02281](https://arxiv.org/pdf/2101.02281)).
+- **CrowdGuard** reported TPR = TNR = 100% with two triggers, either every attacker injecting both or half the attackers on each ([arXiv 2210.07714](https://arxiv.org/pdf/2210.07714)).
+- **Eight non-cooperating attackers** with their own triggers still averaged **76.75%** success on CIFAR-10. Norm clipping barely changed that (79.14%), and DP lowered it only by cutting clean accuracy to 41.66% ([arXiv 2407.07917](https://arxiv.org/html/2407.07917v1)).
+
+The FLAME result most relevant to FedHEP-Guard is its heterogeneous-intensity test. With each of 80 attackers drawing its own poisoning rate between 5% and 20%, model filtering alone caught **0%** of them. Only clipping plus noise kept backdoor accuracy at 0% ([arXiv 2101.02281](https://arxiv.org/pdf/2101.02281)).
+
+The standard benchmarks run one attack type per run. FLPoison's "hybrid" category means a single attack that combines data and model poisoning ([arXiv 2502.03801](https://arxiv.org/pdf/2502.03801)), and BackFed varies only whether attackers share data ([arXiv 2507.04903](https://arxiv.org/pdf/2507.04903)). Mixed-population results for FedHEP-Guard would therefore fill a real gap.
+
+#### Adaptive attacks that read the defense's score beat those that only penalize distance
+
+Adaptive attacks come in two strengths:
+
+- **Weak form:** add α times the distance to the global model to the attacker's loss. CrowdGuard and FLAME test this form and survive, with CrowdGuard's TPR/TNR at 100% for α from 0.1 to 0.9 ([arXiv 2210.07714](https://arxiv.org/pdf/2210.07714)).
+- **Strong form:** optimize directly against the detector's own acceptance rule.
+
+*Decoding FL Defenses* builds the strong form against FLDetector. It adds a perturbation scaled to the average gap between the updates the server predicts and the ones it receives. The result is **FNR = 1 at every malicious fraction from 5% to 20%** on MNIST and FashionMNIST ([arXiv 2502.05211](https://arxiv.org/pdf/2502.05211)). Its survey of 50 defense papers found about 40% using only naive attacks and 4% reporting personalized evaluation ([arXiv 2502.05211](https://arxiv.org/pdf/2502.05211)).
+
+Third-party attacks are consistently stronger than self-evaluated ones:
+
+- **MIGO** mingles a backdoor with clean training and projects it into a radius set by recent global-update magnitudes. It keeps maximum backdoor accuracy of **71.6–100%** against FLAME, DeepSight, CrowdGuard, FreqFed, FLShield and mKrum on CIFAR-10 ([arXiv 2501.01913](https://arxiv.org/pdf/2501.01913)).
+- **BackFed's dynamic-trigger attacks** reach 60–100% ASR30 against anomaly detectors ([arXiv 2507.04903](https://arxiv.org/pdf/2507.04903)).
+- **FLTracer** reports that FLAME cannot stop a feature-replacement attack on the extractor layers "even if only two clients remain" ([arXiv 2310.13424](https://arxiv.org/html/2310.13424v1)).
+
+The best-documented decoy design, **3DFed**, plants decoy-model parameters, indicators and noise masks to fool clustering and anomaly detectors. Its repository targets FLAME, FoolsGold, DeepSight, FLDetector and RFLBAT, but its quantitative results were not read ([GitHub](https://github.com/haoyangliASTAPLE/3DFed)). **No verified paper sacrifices decoys to shift a median/MAD z-score screen.** At 20% attackers that tactic should barely move a statistic with a 50% breakdown point (inference). The more plausible decoy effects work through the defense's bookkeeping, and FedHEP-Guard has two such channels.
+
+#### Four openings specific to FedHEP-Guard's code
+
+These come from reading the code plus team data. Each is an inference until tested.
+
+**The patience rule has a hole.** The streak counter resets on any round with z ≥ −1.5, so an attacker that attacks for 2 rounds and rests for 1 is never isolated (team code). The queued Acer readmission sweep and the GPU attack suite already include this 2-on/1-off schedule.
+
+**The gate's response to obvious attackers is ambiguous.** The gap-ratio gate opens in **93–100% of model-poisoning rounds** and about as often in backdoor rounds as in attack-free ones (team data). In a mixed run, active sign flippers therefore hold the gate open. That could *help* catch a stealth subgroup while they are active and hurt honest clients at the same time. Because sign flippers are isolated around round 3 (team data), simultaneous decoys mask little. Staggered decoys are the case worth testing.
+
+**Every exclusion lowers the assumed f.** With f = 0, ARC clips nothing, NNM averages everyone and the trimmed mean trims nothing, so the global step becomes a plain mean (team code: `arc_clip`, `nnm`, `trimmed_mean_rule`). The 50-client benchmark assumes f = 10. In the Acer 50-client backdoor runs, the union screen isolated roughly 12–16 honest clients and about 5 of 10 attackers per run, with backdoor success of 19–31% (team data). If the timing confirms it, the global step was a plain mean while about half the attackers were still active.
+
+The team's earlier ALIE study found that holding f fixed after isolations cost 1.1 points, because the trimmed mean then discards honest clients (team data). So "f falls" is not simply wrong. But decoys that get isolated, and honest false isolations, both disarm the step that is supposed to bound undetected attackers. No paper models this interaction.
+
+**Every isolation fires a rewind.** The rewind fires on every new isolation, honest or not. That happened 1–4 times per run with no attack at 20 clients and 8 times on one 30-client seed. At 30 clients with no attack it cost **4.2 points** (team data). Attackers who sacrifice decoys one at a time, each isolated at a different round, could therefore force up to one rewind of up to 10 rounds per decoy. That would be a denial-of-service on learning, and no recovery paper tests it.
+
+#### The evaluation protocol to adopt
+
+The protocol below combines the cited elements with the openings above. The mixes, the rewind-baiting suite and the "worst case as headline" rule are inferences. The other components are anchored in the cited sources.
+
+| Component | Specification | Basis |
+|---|---|---|
+| Settings | D2 (20 clients, α 0.2, 4 attackers), 30 clients α 0.5 (6), 50 clients α 0.1 (10). Even attacker counts allow half-and-half mixes | team benchmark settings |
+| M1 masking | half stealth backdoor + half sign flip or IPM ε = N, same start round | [Meta-Stackelberg](https://arxiv.org/pdf/2410.17431) |
+| M2 bounded cover | half Min-Max (unit direction) or ALIE z = 1.5 + half stealth backdoor | [Meta-Stackelberg](https://arxiv.org/pdf/2410.17431), [Fed-ADR](https://arxiv.org/html/2609.27124) |
+| M3 staggered decoys | 1 decoy (D2) or 2 decoys (30 and 50 clients), sign flip, decoy k starting at round 3 + 5k; the rest stealth backdoor from round 1 | inference (f and rewind channels) |
+| M4 two backdoors | different triggers and targets, half the attackers each; report ASR per trigger | [FLAME](https://arxiv.org/pdf/2101.02281), [CrowdGuard](https://arxiv.org/pdf/2210.07714) |
+| M5 mixed intensity | each attacker draws its poisoning rate in [5%, 20%] and its blend factor at random | [FLAME](https://arxiv.org/pdf/2101.02281) |
+| M6 non-cooperative | XFED (independent) + backdoor | [arXiv 2407.07917](https://arxiv.org/html/2407.07917v1) |
+| Placement | random (default), concentrated in one parent, one per parent; regrouping off for placement arms; log realized placement | Phase 4 design; [Alqattan et al.](https://arxiv.org/html/2408.10752v1) tested only concentration |
+| A1 threshold-hugging | binary-search the blend between benign and backdoor update so the screen's z ≥ −cut + m, m ∈ {0.1, 0.3}, median/MAD estimated from colluders | [Decoding FL](https://arxiv.org/pdf/2502.05211), [Fed-ADR](https://arxiv.org/html/2609.27124) |
+| A2 duty cycle | 2 on / 1 off, plus a variant that attacks while its own EMA evidence is above −cut + m | team code (patience hole) |
+| A3 pFL-aware backdoor | poison the trunk only with a noise-perturbed head | [BapFL](https://ar5iv.labs.arxiv.org/html/2307.15971) |
+| A4 effect-matching | only once an effect channel exists: keep own-class probe loss gain inside the honest band | inference |
+| Reporting | detection precision, recall and F1 per attacker subgroup; clean accuracy as mean, 10th percentile and minimum over honest clients; ASR final, maximum and mean of the last 5 rounds; lifespan after the attack stops; rewinds fired; effective f per round; attacker rounds at full weight; time per round | [BackFed](https://arxiv.org/pdf/2507.04903), [Decoding FL](https://arxiv.org/pdf/2502.05211), [arXiv 2603.20615](https://arxiv.org/pdf/2603.20615) |
+| Headline | worst case over the suite next to the mean | inference; consistent with the ByzFL/ARC min-over-attacks practice |
+
+### Effect scores spare honest outliers only when they are per-class and history-relative
+
+#### Aggregate validation loss punishes clients for holding few classes
+
+Most server-side effect scores reduce to one question: did the update lower loss on a probe set?
+
+- **Zeno++** accepts an update if γ⟨∇f_s(x), g⟩ − ρ‖g‖² ≥ −γε on a small validation batch that must differ from every worker's data. The paper does not discuss non-IID clients ([ar5iv](https://ar5iv.labs.arxiv.org/html/1903.07020)).
+- **Fang et al.'s LFR** rejects updates with a large negative effect on validation loss, and it was "not effective" against their Krum attack ([ar5iv](https://ar5iv.arxiv.org/html/1911.11815)). FedVal's authors report that it removes a fixed 40% of clients per round in their setup ([FedVal](https://arxiv.org/pdf/2306.04040)).
+- **SafeFL-ML** drops every client above the median loss on a 100-sample synthetic set distilled from early global models, so it removes about half by construction. Its clustering variant, SafeFL-CL, reaches CIFAR-10 detection accuracy of 0.95–1.00 across non-IID degrees, with FPR 0.03 under an adaptive attack ([arXiv 2505.09110](https://arxiv.org/html/2505.09110v2)).
+- **SD-CSFL** keeps clients whose mean softmax entropy on synthetic images lies inside a quantile band. At the default band (δ = 0.60) it flags **17% of honest clients at α = 0.9 and 20% at α = 0.5**, at full true-positive rate. The rise as α falls is direct evidence that skewed honest clients drift out of the band ([WACV 2026](https://openaccess.thecvf.com/content/WACV2026/papers/Alharbi_SD-CSFL_A_Synthetic_Data-Driven_Conformity_Scoring_Framework_for_Robust_Federated_WACV_2026_paper.pdf)).
+
+FLTrust is often grouped with these, but it is geometry. It takes the cosine to an update computed on root data, and SafeFL measured it at FPR 0.37 under an adaptive attack ([arXiv 2505.09110](https://arxiv.org/html/2505.09110v2)).
+
+The inference for CIFAR-100 is mechanical. On a class-balanced probe, an honest client holding 5–10 classes can lower loss on at most 5–10% of the probe, and its head drift raises loss elsewhere. Its aggregate score is therefore near zero or negative, and aggregate effect scores would reproduce the honest-outlier isolations the team already sees. Shapley and influence scores inherit the same bias, because their utility is also accuracy on a probe set. FedSV evaluates only MNIST sign flipping with no false-positive figures ([arXiv 2502.17526](https://arxiv.org/pdf/2502.17526)). FedIF's normalized inner product with a validation gradient is a Zeno++-type score ([arXiv 2509.25560](https://arxiv.org/html/2509.25560v1)).
+
+#### Per-class and peer designs are the only ones built to keep "different good" clients
+
+**FedVal** is the server-side design aimed most directly at the team's problem ([arXiv 2306.04040](https://arxiv.org/pdf/2306.04040)):
+
+- **Score.** S(θ_d) = Σ_k [max(1, (L̄_k/L̄_avg)^{s2}) · s1 · div_{k,d}/MAD_k + C·s1]. Here div_{k,d} is client d's improvement in loss on class k relative to the mean across clients, and the max(1, ·) factor up-weights classes the population handles badly.
+- **Design intent.** A client holding information the majority lacks scores well even when its overall loss is worse.
+- **Probe size.** It needs about 7.5 images per class against a CIFAR-10 backdoor and recommends about 10.
+- **Evidence.** The "different good" claim rests on a 4-client toy example. No benign-acceptance rate is reported and no attack targets the score.
+
+Client-side validation solves probe coverage, because the clients' data together cover every class:
+
+- **FLShield** has random validators report per-class loss impact for cluster representatives. Classes with fewer than 10 samples are reported as missing, and representatives are scored by their minimum over classes. It reports **TPR 100%, TNR 86.67%** across IID, one-class-expert and Dirichlet splits, and its own adaptive attack cut DBA TPR/TNR only to 90/90% ([arXiv 2308.05832](https://arxiv.org/pdf/2308.05832)).
+- **BaFFLe** has validators compare per-class source and target error changes against the history of recently accepted models, using a Local Outlier Factor. A quorum slack ρ allows for honest validators who misjudge "due to non-uniform data". It reports up to 100% detection at FP below 5%, but it rejects whole rounds rather than clients ([ar5iv](https://ar5iv.labs.arxiv.org/html/2011.02167)).
+- **CrowdGuard** analyzes hidden-layer outputs on validators' local data inside SGX. It reports no false rejections even when 40% of clients share a main label, at 12.8–29.5 s for 20 models ([arXiv 2210.07714](https://arxiv.org/pdf/2210.07714)). These are self-reported numbers on 10-class tasks.
+
+**FLForensics** supplies the contrast idea the team needs. Benign clients rich in the target label push a target input the same way attackers do. Contrasting that influence with influence on a non-target input of the same label separates them, with FPR 0.000 at non-IID degrees 0.1–0.7 ([arXiv 2407.07221](https://arxiv.org/html/2407.07221v1)).
+
+#### Effect scores are blind where FedHEP-Guard most needs help
+
+Clean per-class loss cannot see a backdoor that preserves clean accuracy:
+
+- **Edge-case backdoors** succeed with 0.5–1% adversarial users and survive clipping, DP and Krum. Detecting them is NP-hard in general, and gradient-based methods are unlikely to find backdoors in regions of tiny measure ([ar5iv](https://ar5iv.labs.arxiv.org/html/2007.05084)).
+- **FLForensics** degrades against sparse or weak attacks, with about 30% FNR for random trigger positions ([arXiv 2407.07221](https://arxiv.org/html/2407.07221v1)).
+- **SafeFL's probe** is distilled from early global models, so it encodes the global consensus (inference). Its 0.00–0.03 FPR was measured on 10-class CIFAR-10 ([arXiv 2505.09110](https://arxiv.org/html/2505.09110v2)).
+
+The team's stealth backdoor is built to keep clean behaviour: it blends toward the honest mean and loses almost no success (71–83% undefended) (team data). An effect score would very likely rate it honest.
+
+#### How effect evidence should enter FedHEP-Guard
+
+This is inference, anchored in team data. Effect evidence should act as a *veto* on isolation, never as a standalone detector, and the veto should apply only where the data say honest isolations concentrate. The replay found that backdoor attackers were isolated by **both** signals in 75% of cases, while honest clients were isolated by **one** signal in 80–85% of cases, with mixed signs in about half (team data).
+
+That suggests a specific rule:
+
+- **Two-signal flags** proceed as now.
+- **A single-signal flag** proceeds only if the client's per-class effect is also anomalous: either its own-class gain is below what honest clients with similar class counts show, or its harm to off-classes exceeds their band.
+- **The comparison is history-relative,** BaFFLe-style: against the client's own recent effects, so a stable honest offset is absorbed.
+
+The server already knows each client's class set, since FedHEP uses class masks for the root-head signal (team code). The current probe is 200 images, about 2 per CIFAR-100 class. FedVal and FLShield imply roughly 1,000 (about 10 per class) before per-class estimates stop being dominated by noise ([FedVal](https://arxiv.org/pdf/2306.04040); [FLShield](https://arxiv.org/pdf/2308.05832)). Per-class losses should be averaged over the client's 5–20 classes and over rounds.
+
+The risk is explicit. The union screen exists because, on one stealth seed, only the critical-layer signal flagged the attackers (team data). A single-signal veto could reopen exactly that escape, so the success criterion must require the stealth backdoor to be held on every seed. No paper measures how much off-class harm an honest skewed client causes at CIFAR-100 and α ≈ 0.1. That baseline has to be measured before any threshold is set.
+
+### Personalization bounds damage, but the backdoor lives in what FedHEP shares
+
+#### Theory says unusual clients should collaborate less, not be removed
+
+**Ditto** gives each device its own model v_k, which solves min F_k(v_k) + (λ/2)‖v_k − w*‖². Under label poisoning, random updates and model replacement, it beat the strongest robust baseline by about **6 points** on benign-device accuracy (FEMNIST model replacement at 20%: **0.613 vs 0.314** for the global model) ([Ditto](https://arxiv.org/pdf/2012.04221v3)).
+
+Its point-estimation theory gives λ* = (σ²/n)·K / (K·τ² + (K_a/(K−1))·(τ_a² − τ²)). λ* falls as heterogeneity τ rises, as the number of adversaries K_a rises, and as their variance τ_a rises ([Ditto](https://arxiv.org/pdf/2012.04221v3)). **Allouah et al.** (NeurIPS 2024) reach the same shape. Their λ* is zero, meaning purely local learning, when a client's distance from the honest population exceeds a generalization term, and it shrinks as heterogeneity, the adversarial fraction f/n or the gradient bound G² grows ([arXiv 2409.20329](https://arxiv.org/html/2409.20329v1)).
+
+This is the pFL answer to 22 honest isolations at 50 clients: the client decides to collaborate less, and the server excludes no one. The Allouah bound uses a pseudo-dimension, which is vacuous for ResNet-9, so it gives the shape of the trade-off but no usable number for FedHEP (inference).
+
+**FedCAP** combines per-client customized aggregation with a Ditto-like anchor. On pathological CIFAR-10 with 30% malicious it stays at **84.00–84.95%** under six attacks, against a benign 85.60%. It does so with FPR 0 but **FNR 100% under LIE**: it never catches the LIE attackers, yet loses under 1% ([arXiv 2410.13083](https://arxiv.org/html/2410.13083v1)).
+
+The team's data match this pattern. Bounded ALIE and Min-Max barely hurt undefended FedHEP, while sign flip, label flip and noise collapse it (team data). A pFL-native design therefore does not need to catch bounded attackers, only to bound them.
+
+#### Partial sharing blocks naive backdoors, and pFL-aware attacks undo that
+
+**Qin et al.** (KDD 2023) found that partial-sharing pFL resists black-box backdoors and full-sharing pFL does not ([arXiv 2302.01677](https://arxiv.org/pdf/2302.01677)):
+
+- **Partial sharing** (FedRep, FedBN) keeps backdoor success below 20%. The shared extractor still learns the trigger features, but the private classifier never maps them to the target.
+- **Full sharing** does not resist. **Ditto** reaches BadNet success of 85.1% on ResNet-18.
+- **Simple-Tuning** (re-initialize the head and retrain it on local data) cut success by 56.6% on average but left 39–47% on ResNet-18.
+
+The team's per-head measurements fit this mechanism exactly. Backdoor success was highest in the shared root head, lower in the parent head and lowest in the local head: 29 / 15 / 8% (R2) up to 71 / 45 / 22% (R3, gate 12) (team data). FedHEP shares the trunk *and* the root and parent heads, so its personal head blocks only part of the path. Undefended backdoor success of 70–75% at 30 clients (team data) is what that predicts.
+
+pFL-aware attacks remove even the partial protection:
+
+- **BapFL** poisons only the encoder against noise-perturbed heads. It beat norm clipping, median, trimmed mean, fine-tuning and Simple-Tuning, and still reached 70.60% against Multi-Krum once PGD was added ([ar5iv](https://ar5iv.labs.arxiv.org/html/2307.15971)).
+- **PFedBA** (USENIX Security 2024) aligns the backdoor gradient with the main-task gradient. It reached **100%** on CIFAR-100 under FedAvg-FT and stayed above 70% against Neural Cleanse and NAD ([arXiv 2406.06207](https://arxiv.org/html/2406.06207v1)).
+- **Bad-PFL** builds triggers from target-class natural features. It reached **93.96% (FedBN) and 94.80% (FedRep) on CIFAR-100**. Client-side NAD, I-BAU and fine-tuning left it above 70%, and only Median (50.52 / 77.21% on CIFAR-10) and Sign (24.13 / 20.32%) aggregation lowered it noticeably ([arXiv 2501.12736](https://arxiv.org/abs/2501.12736)).
+
+BapFL success also rises as heterogeneity falls: 18.25% at α = 0.1 against 68.27% at α = 3 on CIFAR-10 ([ar5iv](https://ar5iv.labs.arxiv.org/html/2307.15971)). That points to FedHEP's most similar parents as the most exposed (inference).
+
+#### Robust clustered aggregation never excludes, but fails when attackers concentrate
+
+**Byzantine-robust IFCA** re-clusters every round by loss and applies a median or trimmed mean within each cluster. It never excludes or identifies anyone. Its condition for the trimmed mean is roughly 4α/p ≤ β ≤ ½ − ε, where α is the Byzantine fraction and p the smallest cluster's fraction. So the worst case is all attackers in the smallest cluster, and its experiments are linear regression only ([arXiv 2306.00638](https://arxiv.org/pdf/2306.00638)). Plain clustered FL fell to **17.24%** under model replacement in FedCAP's CIFAR-10 test ([arXiv 2410.13083](https://arxiv.org/html/2410.13083v1)). For FedHEP, robust aggregation within each parent bounds a minority-attacker parent without exclusion. It cannot defend a parent with an attacker majority, which is exactly what the Phase 4 concentrated case built (inference).
+
+#### What a pFL-native FedHEP-Guard could and could not do
+
+A candidate design (inference, untested) has four parts:
+
+1. **Keep isolation only for unbounded attacks.** Those attackers are caught by both signals around round 3 at gap ratios near 130 (team data).
+2. **Give each client a Ditto-style personal copy of the trunk** (or of its adapters or BatchNorm parameters), pulled toward the shared trunk by λ_k.
+3. **Set λ_k on each client's local validation split**, as Ditto does.
+4. **Keep head-agreement inference** as a prediction-time fallback. It already exists and costs 0.18 points with no attack (team data).
+
+Under this design an honest outlier is never removed; it collaborates less. A per-client trunk copy is cheap in memory: the model has 1.72M parameters (about 6.9 MB in fp32, about 340 MB for 50 clients) (team code count). Compute is the real cost, because Ditto trains both the personal and the shared model, roughly doubling local work (inference).
+
+Two limits follow from the evidence, and the design should be judged against them in advance.
+
+First, it is not a backdoor defense. Ditto itself left backdoors to future work, and full-sharing Ditto did not resist BadNet in Qin et al. ([arXiv 2302.01677](https://arxiv.org/pdf/2302.01677)). Every client-side defense tested against pFL-aware backdoors left more than 70% success. So screening of the shared layers, or Median/Sign-style aggregation of them, stays necessary.
+
+Second, it is not obvious how FedHEP's ensemble of root, parent and local heads should attach to a personal trunk. Before coding, the team has to decide which heads read the personal trunk and which read the shared one. That choice will decide whether the backdoor's path through the shared root head stays open.
+
+### Experiments ranked by what they decide
+
+Every comparison runs all of its arms on one runner: the GPU server for 20, 30 and 50 clients, the Acer for 15. The paired seeds are 42, 123 and 7, plus two more for any headline claim, with identical partitions, attacker IDs, placements and pre-drawn attack schedules across arms. A result is **confirmed** only if the paired difference has the same sign on every seed and a paired bootstrap 95% interval excludes zero. Criteria are fixed before the runs, and where logged scores suffice, offline replay comes first.
+
+Every run logs:
+
+- clean accuracy (mean, 10th percentile and minimum over honest clients);
+- per-head and final ASR (final, maximum and mean of the last 5 rounds);
+- detection precision, recall and F1 per attacker subgroup;
+- honest isolations per run;
+- round of isolation;
+- rewinds fired;
+- effective f per round;
+- time per round.
+
+| # | Hypothesis | Arms (one machine, paired seeds) | Primary metrics | Success criterion (fixed in advance) |
+|---|---|---|---|---|
+| 0 | The code-level claims hold: f = 0 makes the global step a plain mean; the 2-on/1-off schedule never isolates; one rewind fires per newly isolated decoy | unit tests only | test pass/fail | All three tests reproduce the claimed behaviour. Any that fails removes the corresponding hypothesis from #1–#2 |
+| 1 | Mixed and decoy attacks open gaps that single-attack runs hide | FedHEP, union screen, FedHEP-Guard, FedHEP+ whole update without regrouping, FLAME × M1–M6, A1, A2 × D2 and 30 clients α 0.5 | backdoor-subgroup ASR, worst-case accuracy over the suite, rewinds fired, effective f | Pass for a model if its backdoor-subgroup ASR in M1–M3 is within 5 points of its single-attack stealth ASR on every seed, and its M3 accuracy is within 2 points of its no-attack accuracy minus its single-attack loss. Refuted for FedHEP-Guard if any seed exceeds single-attack ASR by more than 10 points |
+| 2 | Honest isolations disarm the global step: flooring f restores robustness at 50 clients at little no-attack cost | union screen with f = global_f − \|excluded\| (current), f floored at ⌈global_f/2⌉, f reduced only for clients isolated on both signals × no attack, backdoor, stealth, M3 × 50 clients α 0.1 and 30 clients α 0.5 (GPU; extends the queued assumed-f sweep) | ASR, accuracy, effective f | Confirmed if the 50-client backdoor ASR falls from 19–31% to ≤ 10% on every seed with no-attack accuracy within 1 point. Refuted if ASR is unchanged, which would mean the escaped attackers are not trimmed anyway |
+| 3 | Rewind-baiting is real, and gating the rewind on two-signal isolations removes most of its 4.2-point no-attack cost | rewind on every isolation (current), rewind only on two-signal isolations, no rewind × no attack, plain and stealth backdoor, M3 × 30 clients α 0.5 | rewinds fired, accuracy, ASR | Confirmed if gated rewinds recover ≥ 3 of the 4.2 points with no attack and stealth ASR stays ≤ 2% on every seed. Refuted if any stealth seed exceeds 5% |
+| 4a | Honest skewed clients show positive own-class gain and bounded off-class harm on a 1,000-image probe, distinguishable from label-flip and sign-flip attackers | instrumented runs (no defense change) logging per-class probe loss for w + Δ_i every round × no attack, label flip, sign flip, stealth backdoor × 15 clients α 0.5 (Acer) and 50 clients α 0.1 (GPU) | distributions of own-gain and off-harm by class count; AUROC per attack | Proceed to #4b only if own-gain AUROC for honest vs label-flip attackers is ≥ 0.9 and the 5th percentile of honest own-gain is > 0 at 50 clients. The stealth backdoor's AUROC is reported, and an AUROC near 0.5 is the expected outcome |
+| 4b | A per-class effect veto on single-signal flags halves honest isolations without losing the stealth backdoor | union screen vs union screen + veto, replayed offline on #4a logs, then live × no attack, backdoor, stealth, ALIE, Min-Max × 15, 30, 50 clients | honest isolations, backdoor catches, ASR | Confirmed if honest isolations at 50 clients α 0.1 fall to ≤ 11 per run, stealth ASR stays ≤ 2% at 15 and 30 clients on every seed, and ALIE/Min-Max catches stay ≥ 95%. Any stealth seed above 5% refutes it |
+| 5a | Honest within-parent update alignment comes from the shared parent head and disappears across parents | no-attack runs logging residual cosines: within parent vs across parents vs within class-Jaccard-matched cross-parent pairs, on whole update, shared signal and root head × D2, 30 clients | median alignment z by pair type | Proceed to #5b only if the cross-parent honest median is ≤ 0.3 (within-parent is 1.0 in Phase 4b). If class-matched cross-parent pairs stay ≥ 0.8, label skew dominates and #5b needs class-set matching |
+| 5b | Stratified random overlapping pseudo-groups, decoded into soft EMA evidence, catch spread colluding backdoors without raising honest isolations | union screen; + pseudo-group evidence; v2 drill-down (negative control) × placement random, concentrated, spread × backdoor, stealth, M4, XFED × D2 and 30 clients | ASR, per-client precision/recall/F1, honest isolations | Confirmed if spread-placement stealth ASR is no higher than the union screen's on every seed and lower on average by ≥ 5 points, with no-attack honest isolations within +0.5 per run. XFED is expected to show no gain; a gain there would be suspicious |
+| 6 | Personalization cuts the cost of errors: a Ditto-style trunk plus isolation only for unbounded attacks beats FedHEP-Guard on honest-client accuracy without raising untargeted damage | FedHEP; FedHEP + Ditto trunk (λ_k from local validation); FedHEP-Guard; Ditto trunk + union screen limited to two-signal isolations × no attack, sign flip, label flip, noise, IPM ε = N, Min-Max, backdoor, stealth, BapFL-style A3 × 30 and 50 clients | honest accuracy (mean, 10th percentile, minimum), honest isolations, ASR per head | Confirmed if the 10th-percentile honest accuracy is ≥ FedHEP-Guard's under every untargeted attack on every seed and no-attack mean accuracy is ≥ FedHEP-Guard's + 1 point. Backdoor ASR is reported, not expected to pass. ASR ≤ 5% under A3 would contradict Qin et al., BapFL and Bad-PFL and must be re-checked before being believed |
+
+The order follows from what each experiment decides. #0–#3 test whether the current model's weaknesses lie in its bookkeeping (f, rewind, patience) rather than its detector. If so, the cheapest fixes come first, and #1 doubles as the evaluation suite for everything after it. #4 targets the main open problem, honest isolations at scale, with the only kind of new information the literature says can separate honest outliers, and it is gated on a measurement no paper has made. #5 is gated on a cheap diagnostic, because Phase 4 already showed that the alignment signal works and the confound breaks it. #6 is the largest build and, by the literature, the least likely to help with backdoors, so it comes last. The queued readmission, assumed-f, attack-strength and attack-suite sweeps feed #1–#3 directly and should be read before #1's arms are finalized.
+
+### Claims that remain unverified
+
+| Claim | Status | How to settle |
+|---|---|---|
+| DeepSight accepts or rejects whole clusters by the fraction of suspicious members (τ ≈ 1/3) | background knowledge, not fetched | read the NDSS 2022 paper |
+| FLDetector specifics (L-BFGS prediction, gap statistic, k = 2 split) and KDD 2022 venue | not re-fetched in these notes | primary PDF and DBLP |
+| 3DFed's decoy mechanism and quantitative results | repository README only | IEEE S&P 2023 paper |
+| "RHFL (2025)" content beyond JS divergence to edge servers | not located under that name in the new notes | Springer full text |
+| FedGT CIFAR-10 FedGT-n̂m value (18.62% in the table, 18.32% in the text); venue | internal inconsistency; venue unstated | the FedGT authors' final version |
+| Exact bucketing condition on δ·s and bucketed Krum/CM/RFA numbers | truncated fetch | ICLR 2022 full text |
+| Venues: Meta-Stackelberg, Decoding FL (NDSS?), FLShield (IEEE S&P 2024), BaFFLe (ICDCS 2021), LoMar (TDSC 2022), Bad-PFL (ICLR 2025), FedCAP (ACSAC 2024), BoBa | stated secondhand or not shown in fetched text | DBLP |
+| PFedBA's defended CIFAR-100 numbers | appendix not retrieved | full paper appendix |
+| SafeFL's full-knowledge adaptive attack outcome against its own detector | results section truncated | full text |
+| FLTracer's "advanced adaptive attacks" section | truncated | full text |
+| Fed-ADR overhead (20× claimed, about 3.8× in its table); RIFLE false-positive figures; FLAME's 100% main accuracy on IoT-Traffic; swapped single-shot table in the non-cooperative-backdoor paper | internal inconsistencies in the sources | treat the numbers with care; check code where available |
+| IACR ePrint 2025/510 (adaptive adversaries) | unreachable | ask for the link |
+| Team code: f = 0 reduces ARC + NNM + trimmed mean to a plain mean, and the 50-client backdoor runs reach f = 0 while attackers are active | code reading; timing not checked in logs | experiment #0 and the effective-f log in #2 |
+| Team code: v1's one-round exclusion did not change the median/MAD reference | code reading of `in_ref` | confirm in the Phase 4 configuration |
+| Inference: v1's attackers looked more normal because the backdoor's absence from the global model removed the honest counter-gradient | team hypothesis, untested | a v1 arm that excludes attackers from aggregation but keeps them in the model-update path |
+| Inference: v2 fails at 20–30 clients because random placement dilutes parent means | mechanism from bucketing/SHARE theory | log per-parent attacker fraction with group z |
+| Inference: staggered decoys force one rewind each and lower f for stealth attackers | code reading only | experiments #1 and #3 |
+| Inference: honest within-parent alignment comes from the shared parent head, not label skew | team hypothesis | experiment #5a |
+| Inference: a per-class effect veto restricted to single-signal flags keeps backdoor catches | rests on the 75% / 80–85% signal split in replay | experiment #4b |
+| Inference: honest skewed clients have positive own-class gain on a 1,000-image CIFAR-100 probe | no paper measures it | experiment #4a |
+| Inference: a Ditto-style trunk protects honest outliers under untargeted attacks without isolating them | evidence from flat pFL on smaller tasks | experiment #6 |
+
+### Conclusion
+
+Seen together, the four questions say FedHEP-Guard has reached the end of what a cross-sectional geometric screen can do. The remaining gains lie in what the screen is combined with, not in how it is tuned. The team's shuffle and self-reference diagnostics settle why: the backdoor attackers it catches are caught for being persistently different, and so are the honest clients it wrongly removes. A detector that discounts persistence loses the attackers, and one that rewards it loses honest clients. Only evidence of a different kind, such as what an update does per class, whether offsets coordinate across unrelated clients, or a client's own judgment of how much to collaborate, can separate the two. Each of those has a documented blind spot against backdoors that preserve clean behaviour. The defensible goal is therefore a layered one: geometry and influence bounding for damage, effect evidence for honest outliers, and none of them trusted alone on the stealth backdoor.
+
+The less expected implication is that FedHEP-Guard's most exploitable weaknesses may sit in its bookkeeping, not its detector. These are an assumed f that falls with every exclusion, a rewind that fires on every isolation, and a patience counter that resets after one clean round. Each turns the defense's own decisions, including its honest false positives, into a lever for an attacker who plans across rounds. No paper in this review evaluates that class of attack against any defense. That makes the mixed and decoy suite both the cheapest next experiment and a contribution the literature lacks.

@@ -1692,3 +1692,21 @@ P41 held, P43 held, P42 refuted (the replay on GPU logs had predicted 3.2 and 15
 ![Benchmark ranking](figures/bench/ranking.png)
 
 The offline replay was redrawn with 231 runs (the 15-client α 0.1 benchmark runs added; 227 reproduced exactly); no number in report 8.2 moves by more than 3 points.
+
+## 2026-11-27 (evening) · Literature review Part 4; the global step becomes a plain mean at 50 clients; sweep gpu_c12
+
+**Literature review Part 4** (`docs/LITERATURE_REVIEW.md`): group-level flags passed to clients, several attack types at once and defense-aware attacks, judging clients by the effect of their update, personalization as a defense. Its conclusion: every setting of the geometric screen tried so far (gates, self-reference, smoothing, shuffling) trades honest isolations against backdoor catches along one curve, because persistence is what catches backdoor attackers and what isolates honest outliers; a different kind of evidence is needed (per-class effect on a probe, alignment across unrelated clients, or personalization that makes a wrong flag cheap).
+
+**Shuffle check** (offline, 231 GPU runs): dealing each round's scores to the clients at random drops attacker catches to 1–5% (backdoor 65 / 54 / 83 / 57% → 2 / 1 / 3 / 5% at 15 / 20 / 30 / 50 clients; poisoning 93–100% → 2–3%). The shuffle is a diagnostic of persistence, not a defense.
+
+**The shrinking assumed attacker count** (code: `f = global_f − len(excluded)` in `fedhep_plus_server.py`; logs): union screen, 50 clients, α 0.1, backdoor.
+
+| Run | f reaches 0 in round | attackers isolated by then | honest isolated by then | attackers isolated at the end | backdoor |
+|---|---|---|---|---|---|
+| GPU `gg50_a01__backdoor10__r3wc_s42` | 10 | 5 | 10 | 5 | 28.3% |
+| GPU `gg50_a01__backdoor10__r3wc_s7` | 6 | 6 | 5 | 9 | 18.8% |
+| Acer `x14_n50a01__backdoor10__r3wc_s123` | 12 | 3 | 8 | 4 | 30.8% |
+| Acer `x14_n50a01__backdoor10__r3wc_s42` | 7 | 2 | 9 | 5 | 28.7% |
+| Acer `x14_n50a01__backdoor10__r3wc_s7` | 6 | 6 | 5 | 7 | 19.3% |
+
+From then on the global step is a plain mean with 4–8 attackers still in. **New sweep** `gpu_c12_fixed_f.yaml` (36 runs): union screen and FedHEP-Guard with `plus.global_f_fixed: true`, 50 clients α 0.1 and 0.5, no attack, backdoor, stealth backdoor. Predictions P62–P63.
