@@ -40,7 +40,8 @@ def test_bad_perturbation_is_rejected():
         CoordinatedAttack("min_max", perturbation="diagonal")
 
 
-@pytest.mark.parametrize("over", [{"attack.kind": "ipm", "attack.ipm_epsilon": 6.0, "attack.knowledge": "omniscient"},
+@pytest.mark.parametrize("over", [{"attack.kind": "ipm", "attack.ipm_epsilon": 6.0,
+                                   "attack.knowledge": "omniscient"},
                                   {"attack.kind": "min_max", "attack.perturbation": "unit",
                                    "attack.knowledge": "omniscient"}])
 def test_new_attacks_run_end_to_end_on_a_fedhep_server(tmp_path, over):

@@ -39,8 +39,8 @@ class RunConfig:
 class AttackConfig:
     kind: str | None = None              # None, "label_flip", "sign_flip", "gradient_ascent", "random_noise",
                                          # "backdoor", "alie", "min_max", "ipm", "min_sum", "fang_trim",
-                                         # "poisonedfl", "xfed", "stealth_backdoor" (FedHEP servers; the last is the
-                                         # backdoor blended toward the honest mean; rfl.attacks.adaptive)
+                                         # "poisonedfl", "xfed", "stealth_backdoor" (FedHEP servers; the last is
+                                         # the backdoor blended toward the honest mean; rfl.attacks.adaptive)
     knowledge: str = "colluders"       # coordinated attacks: colluders | omniscient
     alie_z: float = 1.0
     perturbation: str = "std"            # Min-Max direction: "std" (inverse std), "unit" (inverse unit vector of
@@ -93,10 +93,10 @@ class PlusConfig:
     evidence_decay: float = 0.7
     regroup: bool = False                # regroup clients by weight-update similarity (else random groups)
     readmit: bool = False                # keep scoring isolated clients; readmit when evidence > -evidence_cut/2
-    sentence: int = 0                    # > 0: an isolated client comes back after this many rounds, evidence reset
-                                         # (literature review Part 2, experiment 4); not with readmit or rewind
+    sentence: int = 0                    # > 0: an isolated client comes back after this many rounds, evidence
+                                         # reset (literature review Part 2, experiment 4); not with readmit/rewind
     max_strikes: int = 2                 # with sentence: the isolation that makes this many is permanent
-    probation_patience: int = 0          # with sentence: patience for a client that came back (0: isolation_patience)
+    probation_patience: int = 0          # with sentence: patience for a returned client (0: isolation_patience)
     max_excluded: float = 1.0            # never leave out more than this fraction of clients in a round
     population: str = "kept"             # yardstick for z: "kept" clients or "all" not banned (isolated too)
     drill_down: bool = False             # Phase 4: flag parents whose mean update is out of line, then check

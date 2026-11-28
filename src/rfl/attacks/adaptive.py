@@ -9,8 +9,8 @@ Min-Sum: as Min-Max, but the attacker's summed squared distance to the observed 
 smallest such sum among them (official NDSS21 code). Fang's trimmed-mean attack (USENIX Security 2020), written for
 update deltas: each attacker samples, per coordinate, just past the honest extreme opposite to the honest direction
 (full knowledge, b = 2), or from mu -/+ [3, 4] sigma of its colluders' updates (partial knowledge).
-History attacks (HistoryAttack): PoisonedFL (Xie et al., CVPR 2025) sends c |g| * s, with g the last global update and
-s a random sign vector fixed for the whole run; XFED (2026, its uv variant) moves each attacker's own update by
+History attacks (HistoryAttack): PoisonedFL (Xie et al., CVPR 2025) sends c |g| * s, with g the last global update
+and s a random sign vector fixed for the whole run; XFED (2026, its uv variant) moves each attacker's own update by
 mu against its direction, mu = median + 4 MAD of the norms of the last 8 global updates.
 Statistics use colluders' clean updates by default; omniscient mode uses honest
 updates. Neither attack promises evasion of this defense's cosine/EMA threshold.
@@ -75,8 +75,8 @@ def crafted_update(observed: torch.Tensor, kind: str, strength: float = 1.0, per
 
 
 def fang_trim(observed: torch.Tensor, full: bool, gen: torch.Generator, b: float = 2.0) -> torch.Tensor:
-    """One attacker's delta for Fang's trimmed-mean attack. full: just past the honest extreme opposite to the honest
-    direction (factor b); else from mu -/+ [3, 4] sigma of the colluders' own updates."""
+    """One attacker's delta for Fang's trimmed-mean attack. full: just past the honest extreme opposite to the
+    honest direction (factor b); else from mu -/+ [3, 4] sigma of the colluders' own updates."""
     mean = observed.mean(0)
     up = mean > 0                                   # the honest step would raise these coordinates
     u = torch.rand(mean.shape, generator=gen).to(mean.device)
@@ -122,8 +122,8 @@ class CoordinatedAttack(ByzantineAttack):
 
 class HistoryAttack(ByzantineAttack):
     """PoisonedFL and XFED: they need no honest updates, only the global model's history, which they read from the
-    start of each round. Round 1 has no history, so the attackers upload their clean update. PoisonedFL's c stays at
-    its starting value: the paper lowers it only after a failed sign-alignment test over 50 rounds, more than a
+    start of each round. Round 1 has no history, so the attackers upload their clean update. PoisonedFL's c stays
+    at its starting value: the paper lowers it only after a failed sign-alignment test over 50 rounds, more than a
     30-round run holds; the attackers' own share of the global update is not removed from g."""
 
     def __init__(self, kind: str, seed: int = 0, c: float = 8.0) -> None:

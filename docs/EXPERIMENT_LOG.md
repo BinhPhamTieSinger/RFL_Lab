@@ -1710,3 +1710,22 @@ The offline replay was redrawn with 231 runs (the 15-client α 0.1 benchmark run
 | Acer `x14_n50a01__backdoor10__r3wc_s7` | 6 | 6 | 5 | 7 | 19.3% |
 
 From then on the global step is a plain mean with 4–8 attackers still in. **New sweep** `gpu_c12_fixed_f.yaml` (36 runs): union screen and FedHEP-Guard with `plus.global_f_fixed: true`, 50 clients α 0.1 and 0.5, no attack, backdoor, stealth backdoor. Predictions P62–P63.
+
+## 2026-11-28 · Acer c16 readmission (interim, 37 of 60 runs): a sentence brings honest clients back (+1.6 to +2.3 points where they were isolated); only a 1-round probation keeps a returning backdoor out; sleepers beat readmission
+
+**Runs:** `acer_c16_readmission.yaml`, XPU, 15 clients, α 0.5, 3 attackers, 30 rounds, seeds 42 / 123 / 7; done: no attack, plain backdoor and sleeper backdoor (from round 10) for the four models, except the 1-round-probation sleeper (1 of 3 running). Script `scripts/plot_c16.py`.
+
+| Model | No attack: honest isolated at the end (per seed) | No attack: accuracy minus permanent isolation, same seed | Plain backdoor (seeds 42 / 123 / 7) | Sleeper backdoor |
+|---|---|---|---|---|
+| r3wc (permanent) | 8 / 0 / 5 | 47.6 / 45.1 / 45.0% | 0.5 / 0.5 / 1.3% | 0.3 / 5.5 / 69.1% |
+| r3wc_ra (3b) | 5 / 1 / 6 | +3.2 / −1.1 / +1.6 | 1.7 / 9.5 / 54.0% | 53.3 / 69.2 / 76.1% |
+| r3wc_s5 | 0 / 0 / 0 | +2.3 / −0.9 / +1.6 | 0.5 / 2.0 / 72.1% | 47.2 / 67.8 / 75.7% |
+| r3wc_s5p1 | 5 / 0 / 5 | +0.9 / +0.3 / +1.9 | 0.5 / 1.4 / 0.6% | running |
+
+- 5-round sentence, no attack: every honest client isolated (6 / 1 / 1) came back and was not isolated again.
+- 5-round sentence, plain backdoor: the 3 attackers came back on every seed (isolated in rounds 3–4, back 5 rounds later); on seed 7 they got the backdoor in (72.1%).
+- 1-round probation: every returning attacker isolated again on its first bad round; returned honest clients too: 10 of the 11 honest clients isolated on seeds 42 and 7 were isolated again, several in their first round back (seed 7, client 13: z −7.6 on return).
+- Sleeper: permanent isolation caught the attackers in rounds 7–12 (seed 42; one before the attack began), 14–15 (seed 123) and 26 (seed 7).
+- Predictions: P51 held, P53 refuted for the probation variant (held for the plain sentence), P55 held; P52, P54, P56 pending.
+
+![Readmission](figures/acer_readmission.png)

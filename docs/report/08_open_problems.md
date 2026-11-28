@@ -157,6 +157,20 @@ No rule removes honest isolations without losing some backdoor catches: with the
 
 **A presence test on smoothed scores does not replace the gap gate** (offline replay, 220 GPU runs). A two-component Gaussian mixture on each round's EMA-smoothed scores, open when the two means are at least one component's standard deviation apart and the smaller component has 2 or more clients (PoisonedFL's detector rule), opens in 98–100% of no-attack rounds, against 31–69% for the gap gate of 8. It catches more backdoor attackers (98 / 96 / 83 / 70% at 15 / 20 / 30 / 50 clients, against 68 / 54 / 81 / 57%) but isolates about twice as many honest clients with no attack (6.8 / 6.7 / 16.5 / 31.8 against 3.0 / 3.7 / 10.8 / 23.6). Smoothing makes the persistent honest offsets stand out as clearly as attackers do, so any gate on smoothed scores sees "two groups" in every round. The gap gate itself is open in a third to two thirds of no-attack rounds.
 
+**Readmission, live (Acer, `acer_c16_readmission.yaml`, 37 of 60 runs, 2026-11-28; interim).** 15 clients, α 0.5, union screen; seeds 42 / 123 / 7.
+
+| | No attack: honest isolated at the end | No attack: accuracy, against permanent isolation on the same seed | Plain backdoor | Sleeper backdoor (from round 10) |
+|---|---|---|---|---|
+| Permanent isolation (control) | 4.3 (8, 0, 5) | 45.9% | 0.5 / 0.5 / 1.3% | 0.3 / 5.5 / **69.1%** |
+| Readmission when evidence recovers (3b) | 4.0 (5, 1, 6) | +3.2 / −1.1 / +1.6 | 1.7 / 9.5 / **54.0%** | **53 / 69 / 76%** |
+| 5-round sentence | **0.0** (0, 0, 0) | **+2.3 / −0.9 / +1.6** | 0.5 / 2.0 / **72.1%** | **47 / 68 / 76%** |
+| 5-round sentence, 1-round probation | 3.3 (5, 0, 5) | +0.9 / +0.3 / +1.9 | 0.5 / 1.4 / 0.6% | running |
+
+- **A sentence gives the honest clients back and their accuracy with them.** With a 5-round sentence every wrongly isolated honest client was back at the end and stayed (none isolated a second time), and accuracy rose by 1.6–2.3 points on the two seeds where permanent isolation had isolated honest clients (the third seed isolated none either way).
+- **But a returning attacker gets its backdoor in.** On seed 7 the three attackers came back after their sentence and the backdoor reached 72%. A 1-round probation stops that (0.5–1.4%, every attacker isolated again on its first bad round) but also isolates the returned honest clients again (3.3 per run): the honest clients are as persistently unusual after their sentence as before, as the diagnostic above predicted.
+- **The sleeper backdoor is a problem for every rule, including permanent isolation** (seed 7: attackers isolated only in round 26, 69%). Attackers that behave for 10 rounds start from a model that has moved on, and their attack is caught late; readmission makes it worse (47–76%).
+- The two on-off backdoors and the 50-client runs are still to come. Chart: `figures/acer_readmission.png`.
+
 **Why the backdoor gets through at 50 clients: the global step stops being robust** (team code and logs, 2026-11-27). The global step assumes f = `global_f` − (clients isolated so far) attackers. At 50 clients, `global_f` = 10, so ARC + NNM + trimmed mean turns into a plain mean once 10 clients are isolated. Honest isolations get there fast: in the five union-screen runs at 50 clients, α 0.1, under the backdoor (GPU and Acer), f reached 0 in rounds 6–12 with only 2–6 of the 10 attackers isolated (5–10 honest clients isolated by then). The remaining attackers then train into a plain mean, and the backdoor ends at 19–31%. The code already has the switch (`plus.global_f_fixed`); `gpu_c12_fixed_f.yaml` tests it (P62–P63). Found by the literature review Part 4's code reading, checked on the logs.
 
 The smoothed low-side score separates best of all (0.99 at D2), which points to the next signal to build: a per-client score accumulated over rounds before any gate is applied, as FLDetector and FLTracer do (`LITERATURE_REVIEW.md`).
