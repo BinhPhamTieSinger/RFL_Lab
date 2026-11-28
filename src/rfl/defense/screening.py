@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import math
 import statistics
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
 
 import torch
@@ -53,6 +53,9 @@ class ScreenOptions:
     sentence: int = 0                  # > 0: isolated clients come back after this many rounds (EvidenceTracker)
     max_strikes: int = 2
     probation_patience: int = 0
+    sentence_single: bool = False      # with sentence: only single-signal isolations serve one; two-signal
+                                       # ones are permanent (union signals only, checked in the FedHEP+ server)
+    isolation_window: int = 0          # > 0: isolation_patience bad rounds within the last this many, not in a row
     max_excluded: float = 1.0
     population: str = "kept"            # "kept" (clients not isolated) | "all" (every client not banned)
     drill_down: bool = False            # Phase 4: check parents, then their members more strictly
@@ -80,6 +83,10 @@ class ScreenOptions:
             raise ValueError("Patience must be positive")
         if self.sentence < 0 or self.max_strikes < 1 or self.probation_patience < 0:
             raise ValueError("sentence and probation_patience must be nonnegative, max_strikes positive")
+        if self.isolation_window and self.isolation_window < self.isolation_patience:
+            raise ValueError("isolation_window must be 0 or at least isolation_patience")
+        if self.sentence_single and not self.sentence:
+            raise ValueError("sentence_single needs a sentence")
         if self.sentence and self.readmit:
             raise ValueError("sentence and readmit are two different readmission rules; use one")
         if self.signal not in ("root_head", "weights", "critical", "sign_align", "probe_logits", "head_gap",
@@ -329,17 +336,21 @@ def one_sided(z: Mapping[int, float], two_sided: bool) -> dict[int, float]:
 
 
 class EvidenceTracker:
-    """EMA evidence per client; isolation after `patience` bad rounds in a row.
+    """EMA evidence per client; isolation after `patience` bad rounds in a row, or, with `window` > 0, after
+    `patience` bad rounds among the client's last `window` scored rounds (a clean round no longer resets the count:
+    report 8.2, an attacker 2 rounds on and 1 off never makes 3 in a row).
 
     Readmission, two kinds: `readmit` scores isolated clients and lets them back once their evidence recovers
     (Phase 3b). `sentence` > 0 instead lets an isolated client back after that many rounds whatever its scores,
     with its evidence reset; the isolation that brings it to `max_strikes` is permanent, and `probation_patience`
-    (if set) replaces `patience` for clients that have come back."""
+    (if set) replaces `patience` for clients that have come back. `update(z, permanent)`: a client isolated while
+    in `permanent` is isolated for good, whatever its strikes."""
 
     def __init__(self, decay: float, cut: float, readmit: bool = False, patience: int = 1, sentence: int = 0,
-                 max_strikes: int = 2, probation_patience: int = 0) -> None:
+                 max_strikes: int = 2, probation_patience: int = 0, window: int = 0) -> None:
         self.decay, self.cut, self.readmit = decay, cut, readmit
-        self.patience = patience
+        self.patience, self.window = patience, window
+        self.recent: dict[int, list[bool]] = {}   # with window: bad (z < -cut) or not, last `window` rounds
         self.sentence, self.max_strikes, self.probation_patience = sentence, max_strikes, probation_patience
         self.streak: dict[int, int] = {}
         self.evidence: dict[int, float] = {}
@@ -358,18 +369,22 @@ class EvidenceTracker:
                 and self.round - self.since[c] >= self.sentence}
         for c in back:
             self.isolated.discard(c)
-            self.evidence[c], self.streak[c] = 0.0, 0
+            self.evidence[c], self.streak[c], self.recent[c] = 0.0, 0, []
         self.returned |= back
         return back
 
-    def update(self, z: Mapping[int, float]) -> None:
+    def update(self, z: Mapping[int, float], permanent: Set[int] = frozenset()) -> None:
         for c, v in z.items():
             self.evidence[c] = self.decay * self.evidence.get(c, 0.0) + (1.0 - self.decay) * v
             self.streak[c] = self.streak.get(c, 0) + 1 if v < -self.cut else 0
+            if self.window:
+                self.recent[c] = (self.recent.get(c, []) + [v < -self.cut])[-self.window:]
+            bad = sum(self.recent[c]) if self.window else self.streak[c]
             patience = self.probation_patience if self.probation_patience and c in self.returned else self.patience
-            if self.evidence[c] < -self.cut and (patience == 1 or self.streak[c] >= patience):
+            if self.evidence[c] < -self.cut and (patience == 1 or bad >= patience):
                 if self.sentence and c not in self.isolated:
-                    self.since[c], self.strikes[c] = self.round, self.strikes.get(c, 0) + 1
+                    self.since[c] = self.round
+                    self.strikes[c] = self.max_strikes if c in permanent else self.strikes.get(c, 0) + 1
                 self.isolated.add(c)
             elif self.readmit and c in self.isolated and self.evidence[c] > -self.cut / 2:
                 self.isolated.discard(c)

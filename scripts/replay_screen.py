@@ -64,13 +64,16 @@ def rounds(m: dict) -> list[dict]:
 
 
 def replay(m: dict, *, two_sided: bool = True, high_gate: float = GATE, cut: float = E_CUT,
-           signals: tuple[str, ...] = ("w", "c"), low_gate: float = GATE, rows: list | None = None) -> dict[int, int]:
+           signals: tuple[str, ...] = ("w", "c"), low_gate: float = GATE, rows: list | None = None,
+           window: int = 0) -> dict[int, int]:
     """{client: isolation round} under a variant of the screen. The real rule: two_sided, high_gate = low_gate =
     GATE. two_sided False with high_gate G: the high side acts only when the gap ratio reaches G. low_gate L: the
-    low side acts when the gap ratio reaches L (0: always, as in FedHEP+). rows: precomputed (or altered) rounds()."""
+    low side acts when the gap ratio reaches L (0: always, as in FedHEP+). rows: precomputed (or altered) rounds().
+    window W > 0: PATIENCE bad rounds within the client's last W scored rounds instead of in a row."""
     hi = GATE if two_sided and high_gate <= GATE else high_gate
     ev: dict[int, float] = {}
     streak: dict[int, int] = {}
+    recent: dict[int, list[bool]] = defaultdict(list)
     iso: dict[int, int] = {}
     for r in rows if rows is not None else rounds(m):
         sig = {"w": (r["zw"], r["gw"]), "c": (r["zc"], r["gc"])}
@@ -87,7 +90,8 @@ def replay(m: dict, *, two_sided: bool = True, high_gate: float = GATE, cut: flo
                     v = min(v, -x)
             ev[c] = DECAY * ev.get(c, 0.0) + (1 - DECAY) * v
             streak[c] = streak.get(c, 0) + 1 if v < -cut else 0
-            if ev[c] < -cut and streak[c] >= PATIENCE:
+            recent[c] = (recent[c] + [v < -cut])[-window:] if window else []
+            if ev[c] < -cut and (sum(recent[c]) if window else streak[c]) >= PATIENCE:
                 iso[c] = r["round"]
     return iso
 

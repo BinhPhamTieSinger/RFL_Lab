@@ -1,0 +1,400 @@
+{
+ "two_signal_share": {
+  "15": {
+   "poison attackers": {
+    "two_signal": 189,
+    "isolated": 198
+   },
+   "honest": {
+    "two_signal": 30,
+    "isolated": 260
+   },
+   "backdoor attackers": {
+    "two_signal": 35,
+    "isolated": 73
+   }
+  },
+  "20": {
+   "poison attackers": {
+    "two_signal": 55,
+    "isolated": 56
+   },
+   "honest": {
+    "two_signal": 5,
+    "isolated": 51
+   },
+   "backdoor attackers": {
+    "two_signal": 10,
+    "isolated": 13
+   }
+  },
+  "30": {
+   "poison attackers": {
+    "two_signal": 351,
+    "isolated": 360
+   },
+   "honest": {
+    "two_signal": 78,
+    "isolated": 648
+   },
+   "backdoor attackers": {
+    "two_signal": 78,
+    "isolated": 104
+   }
+  },
+  "50": {
+   "poison attackers": {
+    "two_signal": 200,
+    "isolated": 200
+   },
+   "honest": {
+    "two_signal": 213,
+    "isolated": 530
+   },
+   "backdoor attackers": {
+    "two_signal": 8,
+    "isolated": 34
+   }
+  }
+ },
+ "rules": {
+  "Acer, 15 clients: backdoor3": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 11,
+    "caught": 9,
+    "attackers": 9
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 11,
+    "caught": 9,
+    "attackers": 9
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 12,
+    "caught": 9,
+    "attackers": 9
+   },
+   "both": {
+    "runs": 3,
+    "honest": 12,
+    "caught": 9,
+    "attackers": 9
+   }
+  },
+  "Acer, 15 clients: clean": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 13,
+    "caught": 0,
+    "attackers": 0
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 14,
+    "caught": 0,
+    "attackers": 0
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 13,
+    "caught": 0,
+    "attackers": 0
+   },
+   "both": {
+    "runs": 3,
+    "honest": 14,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "Acer, 15 clients: onoff21": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 3,
+    "attackers": 9
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 4,
+    "attackers": 9
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 6,
+    "caught": 4,
+    "attackers": 9
+   },
+   "both": {
+    "runs": 3,
+    "honest": 8,
+    "caught": 8,
+    "attackers": 9
+   }
+  },
+  "Acer, 15 clients: onoff3": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 0,
+    "caught": 7,
+    "attackers": 9
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 0,
+    "caught": 7,
+    "attackers": 9
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 6,
+    "attackers": 9
+   },
+   "both": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 6,
+    "attackers": 9
+   }
+  },
+  "Acer, 15 clients: sleeper3": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 9,
+    "attackers": 9
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 9,
+    "attackers": 9
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 5,
+    "caught": 9,
+    "attackers": 9
+   },
+   "both": {
+    "runs": 3,
+    "honest": 6,
+    "caught": 9,
+    "attackers": 9
+   }
+  },
+  "GPU, 30 cl., \u03b1 0.5: backdoor, stealth": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 12,
+    "honest": 132,
+    "caught": 72,
+    "attackers": 72
+   },
+   "3 bad rounds in any 5": {
+    "runs": 12,
+    "honest": 140,
+    "caught": 72,
+    "attackers": 72
+   },
+   "gate 6, high side 20": {
+    "runs": 12,
+    "honest": 137,
+    "caught": 69,
+    "attackers": 72
+   },
+   "both": {
+    "runs": 12,
+    "honest": 146,
+    "caught": 69,
+    "attackers": 72
+   }
+  },
+  "GPU, 30 cl., \u03b1 0.5: no attack": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 44,
+    "caught": 0,
+    "attackers": 0
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 46,
+    "caught": 0,
+    "attackers": 0
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 43,
+    "caught": 0,
+    "attackers": 0
+   },
+   "both": {
+    "runs": 3,
+    "honest": 44,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "GPU, 50 cl., \u03b1 0.1: backdoor, stealth": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 6,
+    "honest": 102,
+    "caught": 34,
+    "attackers": 60
+   },
+   "3 bad rounds in any 5": {
+    "runs": 6,
+    "honest": 104,
+    "caught": 37,
+    "attackers": 60
+   },
+   "gate 6, high side 20": {
+    "runs": 6,
+    "honest": 76,
+    "caught": 31,
+    "attackers": 60
+   },
+   "both": {
+    "runs": 6,
+    "honest": 81,
+    "caught": 32,
+    "attackers": 60
+   }
+  },
+  "GPU, 50 cl., \u03b1 0.1: no attack": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 66,
+    "caught": 0,
+    "attackers": 0
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 68,
+    "caught": 0,
+    "attackers": 0
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 53,
+    "caught": 0,
+    "attackers": 0
+   },
+   "both": {
+    "runs": 3,
+    "honest": 58,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "GPU, D1: backdoor, stealth": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 11,
+    "honest": 48,
+    "caught": 33,
+    "attackers": 36
+   },
+   "3 bad rounds in any 5": {
+    "runs": 11,
+    "honest": 49,
+    "caught": 36,
+    "attackers": 36
+   },
+   "gate 6, high side 20": {
+    "runs": 11,
+    "honest": 45,
+    "caught": 36,
+    "attackers": 36
+   },
+   "both": {
+    "runs": 11,
+    "honest": 48,
+    "caught": 36,
+    "attackers": 36
+   }
+  },
+  "GPU, D1: no attack": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 13,
+    "caught": 0,
+    "attackers": 0
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 14,
+    "caught": 0,
+    "attackers": 0
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 11,
+    "caught": 0,
+    "attackers": 0
+   },
+   "both": {
+    "runs": 3,
+    "honest": 11,
+    "caught": 0,
+    "attackers": 0
+   }
+  },
+  "GPU, D2: backdoor, stealth": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 6,
+    "honest": 13,
+    "caught": 13,
+    "attackers": 24
+   },
+   "3 bad rounds in any 5": {
+    "runs": 6,
+    "honest": 15,
+    "caught": 14,
+    "attackers": 24
+   },
+   "gate 6, high side 20": {
+    "runs": 6,
+    "honest": 15,
+    "caught": 23,
+    "attackers": 24
+   },
+   "both": {
+    "runs": 6,
+    "honest": 16,
+    "caught": 23,
+    "attackers": 24
+   }
+  },
+  "GPU, D2: no attack": {
+   "screen now (3 in a row, gate 8)": {
+    "runs": 3,
+    "honest": 11,
+    "caught": 0,
+    "attackers": 0
+   },
+   "3 bad rounds in any 5": {
+    "runs": 3,
+    "honest": 12,
+    "caught": 0,
+    "attackers": 0
+   },
+   "gate 6, high side 20": {
+    "runs": 3,
+    "honest": 9,
+    "caught": 0,
+    "attackers": 0
+   },
+   "both": {
+    "runs": 3,
+    "honest": 9,
+    "caught": 0,
+    "attackers": 0
+   }
+  }
+ }
+}

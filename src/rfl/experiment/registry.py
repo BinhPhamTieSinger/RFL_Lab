@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 
 import torch
 
@@ -10,6 +11,7 @@ from rfl.aggregation.multikrum import MultiKrum
 from rfl.attacks.adaptive import CoordinatedAttack, HistoryAttack, StealthBackdoorAttack
 from rfl.attacks.backdoor import BackdoorAttack
 from rfl.attacks.byzantine import ByzantineAttack, select_attackers, select_attackers_fixed
+from rfl.attacks.mixed import MixedAttack
 from rfl.client.ditto import DittoTrainer
 from rfl.client.fedhep import FedHEPTrainer
 from rfl.client.fedprox import FedProxTrainer
@@ -19,7 +21,7 @@ from rfl.client.sgd import LocalRule, SGDTrainer
 from rfl.core.interfaces import Aggregator, Attack, FederatedServer
 from rfl.core.types import ClientData
 from rfl.defense.screening import ScreenOptions
-from rfl.experiment.config import ExperimentConfig
+from rfl.experiment.config import AttackConfig, ExperimentConfig
 from rfl.grouping.similarity import SimilarityGrouping, concentrate, spread
 from rfl.models.resnet9 import MultiHeadResNet9, ResNet9
 from rfl.server.defended_fedhep_server import DefendedFedHEPServer
@@ -76,23 +78,34 @@ def build_fedrep(cfg: ExperimentConfig, model: torch.nn.Module, clients: Sequenc
 def _attack(cfg: ExperimentConfig, num_clients: int) -> tuple[Attack | None, frozenset[int]]:
     a = cfg.attack
     if a.kind in ("alie", "min_max", "ipm", "min_sum", "fang_trim", "poisonedfl", "xfed",
-                  "stealth_backdoor") and cfg.method not in (
+                  "stealth_backdoor", "mixed") and cfg.method not in (
             "fedhep", "fedhep_defended", "fedhep_plus", "fedhep_robust"):
         raise ValueError("Coordinated attacks currently require a FedHEP server")
     if a.kind is None:
         return None, frozenset()
-    attack: Attack = (BackdoorAttack(a.backdoor_target, a.backdoor_fraction, a.scale, cfg.run.seed)
-                      if a.kind == "backdoor" else
-                      StealthBackdoorAttack(a.backdoor_target, a.backdoor_fraction, cfg.run.seed)
-                      if a.kind == "stealth_backdoor" else
-                      CoordinatedAttack(a.kind, a.ipm_epsilon if a.kind == "ipm" else a.alie_z, a.knowledge,
-                                        a.perturbation, cfg.run.seed)
-                      if a.kind in ("alie", "min_max", "ipm", "min_sum", "fang_trim") else
-                      HistoryAttack(a.kind, cfg.run.seed) if a.kind in ("poisonedfl", "xfed") else
-                      ByzantineAttack(a.kind))
+    if a.kind == "mixed":
+        if not a.mix or a.count is not None:
+            raise ValueError("attack.kind mixed takes its attackers from attack.mix (leave attack.count unset)")
+        parts = [(replace(a, **{k: v for k, v in p.items() if k not in ("count", "start_round")}),
+                  int(p["count"]), int(p.get("start_round", 0))) for p in a.mix]
+        if any(p.kind in ("mixed", None) for p, _, _ in parts):
+            raise ValueError("each part of attack.mix needs its own kind (not mixed)")
+        attackers = select_attackers_fixed(num_clients, sum(n for _, n, _ in parts), cfg.run.seed)
+        return MixedAttack([(_one_attack(p, cfg.run.seed), n, s) for p, n, s in parts], attackers), attackers
     attackers = (select_attackers_fixed(num_clients, a.count, cfg.run.seed) if a.count is not None
                  else select_attackers(num_clients, a.rate, cfg.run.seed))
-    return attack, attackers
+    return _one_attack(a, cfg.run.seed), attackers
+
+
+def _one_attack(a: AttackConfig, seed: int) -> Attack:
+    stealth = a.kind == "stealth_backdoor"
+    return (BackdoorAttack(a.backdoor_target, a.backdoor_fraction, a.scale, seed) if a.kind == "backdoor" else
+            StealthBackdoorAttack(a.backdoor_target, a.backdoor_fraction, seed) if stealth else
+            CoordinatedAttack(a.kind, a.ipm_epsilon if a.kind == "ipm" else a.alie_z, a.knowledge,
+                              a.perturbation, seed)
+            if a.kind in ("alie", "min_max", "ipm", "min_sum", "fang_trim") else
+            HistoryAttack(a.kind, seed) if a.kind in ("poisonedfl", "xfed") else
+            ByzantineAttack(a.kind))
 
 
 def _fedhep_parts(cfg: ExperimentConfig, model: torch.nn.Module, clients: Sequence[ClientData]
@@ -140,13 +153,15 @@ def build_fedhep_plus(cfg: ExperimentConfig, model: torch.nn.Module, clients: Se
                            critical_k=p.critical_k, sign_topk=p.sign_topk,
                            peer_share=p.peer_share, shadow_reference=p.shadow_reference,
                            high_gate=p.high_gate, sentence=p.sentence, max_strikes=p.max_strikes,
-                           probation_patience=p.probation_patience)
+                           probation_patience=p.probation_patience, sentence_single=p.sentence_single,
+                           isolation_window=p.isolation_window)
     probe = None
     if p.signal in ("probe_logits", "head_gap"):
         probe = _probe_set(cfg, clients, p.probe_size)
     return FedHEPPlusServer(hep, clients, trainer, grouping, screen, regroup=p.regroup, attack=attack,
                             attackers=attackers, global_rule=p.global_rule, global_f=p.global_f, probe=probe,
-                            global_f_fixed=p.global_f_fixed, rewind=p.rewind, rewind_window=p.rewind_window)
+                            global_f_fixed=p.global_f_fixed, rewind=p.rewind, rewind_window=p.rewind_window,
+                            rewind_agree=p.rewind_agree, global_f_floor=p.global_f_floor)
 
 
 def _probe_set(cfg: ExperimentConfig, clients: Sequence[ClientData], size: int) -> torch.Tensor:

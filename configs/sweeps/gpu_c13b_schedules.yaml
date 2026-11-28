@@ -1,0 +1,157 @@
+# GPU server: the timed attacks that beat every isolation rule on the Acer (report 8.2), at four settings: backdoor 2 rounds on, 1 off; backdoor from round 10.
+# Controls r3wc, guard, r3wc_g6h20 in the same sweep; fixes guard_agree, r3wc_w5g6h20, guard_v2 (P72). Written by scripts/make_followups.py. 144 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__backdoor3_burst21:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__backdoor3_sleeper10:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.start_round: 10
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__backdoor4_burst21:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__backdoor4_sleeper10:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.start_round: 10
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg30_a05__backdoor6_burst21:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__backdoor6_sleeper10:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.start_round: 10
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg50_a01__backdoor10_burst21:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: backdoor
+    attack.on_rounds: 2
+    attack.off_rounds: 1
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+  gg50_a01__backdoor10_sleeper10:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: backdoor
+    attack.start_round: 10
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+- r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  guard:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+  r3wc_g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+  guard_agree:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+    plus.rewind_agree: true
+  r3wc_w5g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.isolation_window: 5
+  guard_v2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.rewind: trunk_root
+    plus.isolation_window: 5
+    plus.rewind_agree: true
+    plus.global_f_floor: 0.5

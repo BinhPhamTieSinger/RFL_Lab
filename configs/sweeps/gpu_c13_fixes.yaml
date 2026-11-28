@@ -1,0 +1,190 @@
+# GPU server: fixes for the failures found so far (report 8.2; predictions P70-P72). D1, D2, 30 clients alpha 0.5, 50 clients alpha 0.1; no attack, sign flip, backdoor, stealth backdoor, Min-Max.
+# guard_agree (rewind only for two-signal isolations), r3wc_w5g6h20 (3 bad rounds in any 5, gate 6, high side 20), guard_v2 (both, and f never below half the starting count). Controls: the benchmark's r3wc, guard, r3wc_g6h20, guard_g6h20 (same run names). Written by scripts/make_followups.py. 180 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg15_a05__clean:
+    data.num_clients: 15
+    data.alpha: 0.5
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__sign3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__backdoor3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__stealth3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: stealth_backdoor
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg15_a05__minmax3:
+    data.num_clients: 15
+    data.alpha: 0.5
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 3
+    robust.assumed_attackers: 3
+    plus.global_f: 3
+  gg20_a02__clean:
+    data.num_clients: 20
+    data.alpha: 0.2
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__sign4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: sign_flip
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__backdoor4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: backdoor
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__stealth4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: stealth_backdoor
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg20_a02__minmax4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 4
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+  gg30_a05__clean:
+    data.num_clients: 30
+    data.alpha: 0.5
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__sign6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: sign_flip
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__backdoor6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: backdoor
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__stealth6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: stealth_backdoor
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg30_a05__minmax6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 6
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+  gg50_a01__clean:
+    data.num_clients: 50
+    data.alpha: 0.1
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+  gg50_a01__sign10:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: sign_flip
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+  gg50_a01__backdoor10:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: backdoor
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+  gg50_a01__stealth10:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: stealth_backdoor
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+  gg50_a01__minmax10:
+    data.num_clients: 50
+    data.alpha: 0.1
+    attack.kind: min_max
+    attack.knowledge: omniscient
+    attack.count: 10
+    robust.assumed_attackers: 10
+    plus.global_f: 10
+- guard_agree:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+    plus.rewind_agree: true
+  r3wc_w5g6h20:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.isolation_window: 5
+  guard_v2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.rewind: trunk_root
+    plus.isolation_window: 5
+    plus.rewind_agree: true
+    plus.global_f_floor: 0.5

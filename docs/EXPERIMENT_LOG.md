@@ -1759,3 +1759,37 @@ No attack, accuracy per seed (honest clients isolated at the end):
 - **Predictions:** P52 refuted, P54 held, P56 refuted (its "never isolated" clause failed on seed 42; its success clause held, 2 of 3 seeds at 20% or more).
 
 ![Readmission](figures/acer_readmission.png)
+
+## 2026-11-28 · Fixes for every failure found so far, and the mixed-attack suite: code, offline replay, sweeps queued (no live result yet)
+
+**Asked:** build every experiment that targets a failure found earlier. **No improvement has been established live yet**: the candidates so far each fixed one failure and opened another (high-side gate: fewer honest isolations, but the stealth backdoor through; low-side gate: stealth caught, honest isolations back; sentence: honest clients back, attackers too).
+
+**New code** (all off by default; tests `tests/test_screen_fixes.py`, `tests/test_mixed_attack.py`):
+
+| Failure (where found) | Fix | Key |
+|---|---|---|
+| A clean round resets the 3-round streak: 2-on-1-off backdoor never isolated on 2 of 3 seeds (Acer c16) | 3 bad rounds in any 5 | `plus.isolation_window: 5` |
+| Every isolation, honest too, fires the rewind (−4.2 points at 30 clients, no attack) | rewind only for two-signal isolations (both signals' gated z < −1.5 in one of the last 5 rounds) | `plus.rewind_agree` |
+| A sentence lets attackers back (Acer c16) | sentence only for single-signal isolations | `plus.sentence_single` |
+| f reaches 0 at 50 clients by rounds 6–12 | f never below half its starting count | `plus.global_f_floor: 0.5` |
+| Only one attack type per run so far | attacker subgroups with their own attack and first round | `attack.kind: mixed`, `attack.mix` |
+
+**Offline replay** (`scripts/replay_fixes.py`; union-screen logs, 225 GPU and 15 Acer runs; real-run trajectory, so optimistic once before):
+- 2-on-1-off backdoor (Acer, 9 attackers): screen now 3 caught, window 4, gate 6 / 20 4, both 8.
+- D2 backdoor and stealth: 54% caught now, 96% with gate 6 / 20 (with or without the window).
+- Honest isolations with no attack: the window adds 0.3–0.7 per run; gate 6 / 20 lowers them at D1, D2 and 50 clients (22.0 → 17.7) in the replay, though live at 15 clients it raised them (P42).
+- Two-signal share of isolations: honest 10–12% at 15–30 clients, 40% at 50; backdoor attackers 48% at 15 clients, 75–77% at 20–30, 24% at 50; model-poisoning attackers 95–100%. So `rewind_agree` should keep most backdoor rewinds only at 20–30 clients, and `sentence_single` should still readmit about half the backdoor attackers at 15 clients (P68 predicts that failure).
+- Why the timed attackers escape the gate: on `x16_a05__onoff21__r3wc_s7` the three attackers scored −1.8 to −3.3 in rounds 9–16, below every honest client, but the gap ratio was 3–5, under the gate of 8.
+
+**Sweeps** (predictions P64–P75, written before any run):
+
+| File | Machine | Runs | Arms |
+|---|---|---|---|
+| `acer_c17_fixes.yaml` (`x17_a05__`) | Acer | 72 | window, gate 6 / 20, both, single-signal sentence × on-off 2/1, sleeper, on-off 4/6, backdoor, stealth, no attack |
+| `acer_c17b_fixes_n50.yaml` | Acer | 9 | window, window + gates, single-signal sentence, 50 clients, α 0.1, no attack |
+| `gpu_c12_fixed_f.yaml` | GPU | 72 (was 36) | adds the f floor |
+| `gpu_c13_fixes.yaml` | GPU | 180 | `guard_agree`, `r3wc_w5g6h20`, `guard_v2` (every fix) × D1, D2, 30 α 0.5, 50 α 0.1 × no attack, sign flip, backdoor, stealth, Min-Max |
+| `gpu_c13b_schedules.yaml` | GPU | 144 | controls and fixes × the same settings × backdoor 2/1 and sleeper |
+| `gpu_c14_mixed.yaml` | GPU | 144 | FedHEP, FedHEP+ (whole update), FLAME, union screen, FedHEP-Guard, `guard_v2` × D2, 30 α 0.5 × M1 stealth + sign flip, M2 stealth + ALIE z 1.5, M3 stealth + staggered sign-flip decoys, M6 backdoor + XFED |
+
+![Offline replay of the fixes](figures/replay_fixes.png)

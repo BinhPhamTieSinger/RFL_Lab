@@ -40,7 +40,8 @@ class AttackConfig:
     kind: str | None = None              # None, "label_flip", "sign_flip", "gradient_ascent", "random_noise",
                                          # "backdoor", "alie", "min_max", "ipm", "min_sum", "fang_trim",
                                          # "poisonedfl", "xfed", "stealth_backdoor" (FedHEP servers; the last is
-                                         # the backdoor blended toward the honest mean; rfl.attacks.adaptive)
+                                         # the backdoor blended toward the honest mean; rfl.attacks.adaptive),
+                                         # "mixed" (several subgroups, see `mix`; FedHEP servers)
     knowledge: str = "colluders"       # coordinated attacks: colluders | omniscient
     alie_z: float = 1.0
     perturbation: str = "std"            # Min-Max direction: "std" (inverse std), "unit" (inverse unit vector of
@@ -57,6 +58,9 @@ class AttackConfig:
     backdoor_target: int = 0
     backdoor_fraction: float = 0.5       # share of an attacker's training images stamped and relabelled
     scale: float = 1.0                   # backdoor upload boost; > 1 is model replacement
+    mix: tuple = ()                      # kind "mixed": attacker subgroups, each a dict of attack keys with its
+                                         # own "kind", "count" and optional "start_round" (rfl.attacks.mixed);
+                                         # the run's attacker count is the sum of the counts
 
 
 @dataclass(frozen=True)
@@ -97,6 +101,11 @@ class PlusConfig:
                                          # reset (literature review Part 2, experiment 4); not with readmit/rewind
     max_strikes: int = 2                 # with sentence: the isolation that makes this many is permanent
     probation_patience: int = 0          # with sentence: patience for a returned client (0: isolation_patience)
+    sentence_single: bool = False        # with sentence and a union signal: only clients flagged by one signal
+                                         # serve a sentence; two-signal clients (both signals below
+                                         # -evidence_cut in one of their last 5 rounds) are isolated for good
+    isolation_window: int = 0            # > 0: isolate after isolation_patience bad rounds within the client's
+                                         # last isolation_window rounds, not in a row (8.2: on-off attacks)
     max_excluded: float = 1.0            # never leave out more than this fraction of clients in a round
     population: str = "kept"             # yardstick for z: "kept" clients or "all" not banned (isolated too)
     drill_down: bool = False             # Phase 4: flag parents whose mean update is out of line, then check
@@ -113,10 +122,12 @@ class PlusConfig:
     global_rule: str = "sccf"          # Global step over kept clients: "sccf" (trust-weighted mean) | "arc_nnm_tm"
     global_f: int = 3                  # f for arc_nnm_tm before screening; reduced by the clients excluded
     global_f_fixed: bool = False       # keep f at global_f after exclusions (ALIE puzzle, candidate c)
+    global_f_floor: float = 0.0        # f never falls below ceil(global_f_floor * global_f) after exclusions
     rewind: str = "none"               # H8: when a client is isolated, rewind the shared model to before its first
                                        # suspicious round: "none" | "trunk" | "trunk_root" (trunk and root head) |
                                        # "all" (every shared coordinate, personal heads included)
     rewind_window: int = 10            # Global models kept for the rewind (one per round)
+    rewind_agree: bool = False         # union signals: rewind only for newly isolated two-signal clients (8.2)
 
 
 

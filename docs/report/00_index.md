@@ -82,8 +82,11 @@ Paths starting `figures/` are in `docs/figures/`; `report/figures/` is `docs/rep
 | The peer reference | `figures/phase7_peer_paired.png`, `figures/phase7_peer_outcomes.png` | 7.5 |
 | The shared signal | `report/figures/diagrams/18_shared_signal.png`, `figures/phase8_shared.png`, `figures/phase8_seed7.png` | 7.6 |
 | **Open problems** | | |
-| Why are honest clients isolated? | `figures/phase6_gap_gate_tradeoff.png`, `figures/phase6_group_isolations.png` | 8.2 |
-| What is being tested now? | the scale test of the shared signal | 8.3 |
+| Why are honest clients isolated? | `figures/phase6_gap_gate_tradeoff.png`, `figures/phase6_group_isolations.png`, `figures/honest_null.png`, `figures/replay_rules.png` | 8.2 |
+| The gates live on the Acer | `figures/acer_gates.png` | 8.2 |
+| Can isolated clients come back (readmission, timed backdoors)? | `figures/acer_readmission.png` | 8.2 |
+| The fixes for these failures, replayed offline | `figures/replay_fixes.png` | 8.2 |
+| What is being tested now? | the fixes (Acer `x17_`, GPU `gpu_c13`, `gpu_c13b`), the mixed attacks (`gpu_c14`), the scale test of the shared signal | 8.2–8.4 |
 
 ## Conventions
 

@@ -1,0 +1,35 @@
+# Acer (XPU), fixes for the failures of acer_c16 (report 8.2; predictions P64-P68). 15 clients, alpha 0.5, 3 attackers.
+# The union screen's patience counts bad rounds in a row, so a backdoor 2 rounds on and 1 off was never isolated on 2
+# seeds (69 / 77%), and the gap gate of 8 stayed shut while sleeper and on-off attackers sat at the bottom of the
+# scores; a 5-round sentence brought attackers back. Models (controls: x16_a05__*__r3wc, x14_a05__stealth3__r3wc):
+#   r3wc_w5        isolation after 3 bad rounds in any 5 (plus.isolation_window: 5), otherwise the union screen
+#   r3wc_g6h20     low-side gate 6, high side 20 (as acer_c15), control for the next model
+#   r3wc_w5g6h20   both
+#   r3wc_ss        5-round sentence for clients flagged by one signal only; two-signal clients isolated for good
+# Conditions: the two on-off backdoors and the sleeper first, then plain and stealth backdoor and no attack.
+# 6 conditions x 4 models x 3 seeds = 72 runs, about 24 hours; resumable. 50 clients: acer_c17b_fixes_n50.yaml.
+seeds: [42, 123, 7]
+common:
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+  - x17_a05__onoff21: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                       attack.count: 3, attack.on_rounds: 2, attack.off_rounds: 1}
+    x17_a05__sleeper3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                        attack.count: 3, attack.start_round: 10}
+    x17_a05__onoff3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                      attack.count: 3, attack.on_rounds: 4, attack.off_rounds: 6}
+    x17_a05__backdoor3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: backdoor,
+                         attack.count: 3}
+    x17_a05__stealth3: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3, attack.kind: stealth_backdoor,
+                        attack.count: 3}
+    x17_a05__clean: {data.num_clients: 15, data.alpha: 0.5, plus.global_f: 3}
+  - r3wc_w5: &r3wc {config: configs/cifar100_fedhep_defended.yaml, method: fedhep_plus, plus.reference: median,
+                    plus.regroup: true, plus.two_sided: true, plus.isolation_patience: 3,
+                    plus.exclusion_patience: 3, plus.global_rule: arc_nnm_tm, plus.gap_gate: 8,
+                    plus.signal: weights_critical, plus.isolation_window: 5}
+    r3wc_g6h20: {<<: *r3wc, plus.isolation_window: 0, plus.gap_gate: 6, plus.high_gate: 20}
+    r3wc_w5g6h20: {<<: *r3wc, plus.gap_gate: 6, plus.high_gate: 20}
+    r3wc_ss: {<<: *r3wc, plus.isolation_window: 0, plus.sentence: 5, plus.max_strikes: 2,
+              plus.sentence_single: true}

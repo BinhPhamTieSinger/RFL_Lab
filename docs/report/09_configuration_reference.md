@@ -68,11 +68,16 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 
 | Key | Symbol | Default | Meaning |
 |---|---|---|---|
-| `kind` | — | `null` | `null` (no attack), `sign_flip`, `gradient_ascent`, `random_noise`, `label_flip`, `backdoor`, `alie`, `min_max`, `stealth_backdoor`. The last three need a FedHEP-family method. Formulas in [chapter 1.4](01_federated_learning.md) |
+| `kind` | — | `null` | `null` (no attack), `sign_flip`, `gradient_ascent`, `random_noise`, `label_flip`, `backdoor`, `alie`, `min_max`, `ipm`, `min_sum`, `fang_trim`, `poisonedfl`, `xfed`, `stealth_backdoor`, `mixed`. Every kind from `alie` on needs a FedHEP-family method. Formulas in [chapter 1.4](01_federated_learning.md); `ipm` to `xfed` in `src/rfl/attacks/adaptive.py` (literature review Part 3) |
 | `count` | $m$ | `null` | exactly this many attackers, chosen at random by the seed (overrides `rate`) |
 | `rate` | $q$ | 0.0 | the authors' rule: each client is an attacker with probability $q$ |
 | `knowledge` | — | `colluders` | ALIE and Min-Max statistics from the attackers' own updates (`colluders`) or from the honest updates (`omniscient`) |
 | `alie_z` | $z$ | 1.0 | ALIE's step; set to $\Phi^{-1}((n-s)/n)$, i.e. 0.43 at D1 and 0.39 at D2 |
+| `perturbation` | $p$ | `std` | Min-Max and Min-Sum direction: inverse standard deviation (`std`), inverse unit vector of the mean (`unit`) or inverse sign of the mean (`sign`) |
+| `ipm_epsilon` | $\epsilon$ | 0.5 | IPM: the attackers upload $-\epsilon$ times the observed mean update |
+| `start_round` | — | 0 | attackers train honestly before this round (sleeper) |
+| `on_rounds`, `off_rounds` | — | 0, 0 | from `start_round`, attack `on_rounds` rounds, then train honestly `off_rounds` rounds, and repeat; counted from round 0, so 2 on and 1 off is honest in rounds 2, 5, 8, … (0 = always on) |
+| `mix` | — | `[]` | with `kind: mixed`: the attacker subgroups, each a mapping with its own `kind`, `count`, optional `start_round` and any other attack key (for example `alie_z`). Attackers, sorted by id, are dealt to the subgroups in order; leave `count` unset, the total is the sum. Backdoor success uses the first subgroup with a trigger |
 | `stop_round` | — | 0 | attackers train honestly after this round (0 = never); durability tests |
 | `placement` | — | `random` | groups at the start: `random`, `concentrated` (all attackers in parent 0) or `spread` (one per parent) |
 | `backdoor_target` | — | 0 | the class the trigger maps to |
@@ -124,6 +129,11 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 | `isolation_patience` | — | 1 | ... and $z_i < -1.5$ in this many consecutive rounds (R2 onward: 3) |
 | `readmit` | — | false | isolated clients are re-scored and return when $E_i > -0.75$ (Phase 3b, rejected: brought back attackers, 7.1a) |
 | `max_excluded` | — | 1.0 | at most this fraction left out per round, the lowest evidence first (Phase 3b cap, rejected at 0.34: let attackers back in, 7.1b) |
+| `isolation_window` | $W$ | 0 | above 0: isolated after `isolation_patience` bad rounds among the client's last $W$ scored rounds instead of in a row, so a clean round no longer resets the count (8.2; under test: 5) |
+| `sentence` | $S$ | 0 | above 0: an isolated client comes back after $S$ rounds with its evidence reset (literature review Part 2; tested: 5, 8.2). Not with `readmit` or a rewind |
+| `max_strikes` | — | 2 | with `sentence`: the isolation that makes this many is permanent |
+| `probation_patience` | — | 0 | with `sentence`: the patience for a client that came back (0 = `isolation_patience`; tested: 1) |
+| `sentence_single` | — | false | with `sentence` and a union signal: only clients flagged by one signal serve a sentence; a **two-signal** client (both signals' gated $z < -1.5$ in one of its last 5 scored rounds) is isolated for good (under test, 8.2) |
 | `regroup` | — | false | re-form groups by weight-update similarity (FedHEP+ onward: true) |
 
 **Global step:**
@@ -132,7 +142,8 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 |---|---|---|---|
 | `global_rule` | — | `sccf` | `sccf` (trust-weighted, as Defended FedHEP) or `arc_nnm_tm` (L0, R2 onward) |
 | `global_f` | $f_0$ | 3 | attackers L0 assumes before screening; reduced by the clients excluded |
-| `global_f_fixed` | — | false | keep $f = f_0$ after exclusions (tested, rejected) |
+| `global_f_fixed` | — | false | keep $f = f_0$ after exclusions (tested on ALIE, rejected; retested at 50 clients, 8.2) |
+| `global_f_floor` | $\phi$ | 0.0 | $f = \max(f_0 - \lvert\text{excluded}\rvert, \lceil \phi f_0 \rceil)$: the assumed count never falls below this share of $f_0$ (under test: 0.5) |
 
 **Rewind:**
 
@@ -140,6 +151,7 @@ An unknown key is an error, so a typo cannot silently fall back to a default.
 |---|---|---|
 | `rewind` | `none` | on isolation, restore `trunk`, `trunk_root` (FedHEP-Guard) or `all` shared coordinates to the Global model from before the first suspicious round |
 | `rewind_window` | 10 | Global models kept for rewinding |
+| `rewind_agree` | false | union signals only: rewind only when a newly isolated client is two-signal (see `sentence_single`); single-signal isolations are isolated without a rewind (under test, 8.2) |
 
 **Drill-down (Phase 4, off by default):**
 
@@ -222,7 +234,10 @@ axes:
 | `x11_` | shared signal: union screen with the whole update minus the personal heads (Phase 8) | Acer | 7.6 |
 | `x12__` | FedHEP-Guard with the shared signal, 100 rounds, both backdoors (Phase 8) | Acer | 7.6 |
 | `x13_` | shared union screen against the union screen at 30 and 50 clients (Phase 8 at scale) | Acer | 8.3 |
-| `x14_` | union screen with the high-side gate (`plus.high_gate: 20`) and its controls | Acer | 8.2 (running) |
+| `x14_` | union screen with the high-side gate (`plus.high_gate: 20`) and its controls | Acer | 8.2 |
+| `x15_` | union screen with the low-side gate of 6 and the high side at 20 | Acer | 8.2 |
+| `x16_` | readmission: Phase 3b, a 5-round sentence, with and without probation; sleeper and on-off backdoors | Acer | 8.2 |
+| `x17_` | fixes: 3 bad rounds in any 5, gate 6 / 20, both, and the single-signal sentence | Acer | 8.2 (queued) |
 | `gg15_`, `gg30_`, `gg50_` | large grid (10, 20 and 30% attackers, 8 models) | GPU | 6.13 |
 | `gg<n>_a<α>__<condition>__<model>` | the benchmark (`bench_*.yaml`); shares the grid's names, so the grid's 20%-attacker runs are its cells | GPU | 6.1 |
 | `gs_` | stealth backdoor beyond D1 | GPU | pending |

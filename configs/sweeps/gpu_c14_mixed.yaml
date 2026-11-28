@@ -1,0 +1,159 @@
+# GPU server: mixed attacker populations (literature review Part 4; predictions P73-P74). D2 and 30 clients alpha 0.5; M1 stealth backdoor + sign flip, M2 stealth backdoor + ALIE z 1.5,
+# M3 stealth backdoor + sign-flip decoys starting at rounds 3 (and 8), M6 backdoor + XFED. Single-attack references: the benchmark. Written by scripts/make_followups.py. 144 runs.
+seeds:
+- 42
+- 123
+- 7
+common:
+  run.deterministic: true
+  run.rounds: 30
+  fedhep.exit_guard: true
+  fedhep.head_agreement: true
+axes:
+- gg20_a02__m1_4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: mixed
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 2
+    - kind: sign_flip
+      count: 2
+  gg20_a02__m2_4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: mixed
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 2
+    - kind: alie
+      knowledge: colluders
+      alie_z: 1.5
+      count: 2
+  gg20_a02__m3_4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: mixed
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 3
+    - kind: sign_flip
+      count: 1
+      start_round: 3
+  gg20_a02__m6_4:
+    data.num_clients: 20
+    data.alpha: 0.2
+    attack.kind: mixed
+    robust.assumed_attackers: 4
+    plus.global_f: 4
+    attack.mix:
+    - kind: backdoor
+      count: 2
+    - kind: xfed
+      count: 2
+  gg30_a05__m1_6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: mixed
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 3
+    - kind: sign_flip
+      count: 3
+  gg30_a05__m2_6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: mixed
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 3
+    - kind: alie
+      knowledge: colluders
+      alie_z: 1.5
+      count: 3
+  gg30_a05__m3_6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: mixed
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+    attack.mix:
+    - kind: stealth_backdoor
+      count: 4
+    - kind: sign_flip
+      count: 1
+      start_round: 3
+    - kind: sign_flip
+      count: 1
+      start_round: 8
+  gg30_a05__m6_6:
+    data.num_clients: 30
+    data.alpha: 0.5
+    attack.kind: mixed
+    robust.assumed_attackers: 6
+    plus.global_f: 6
+    attack.mix:
+    - kind: backdoor
+      count: 3
+    - kind: xfed
+      count: 3
+- fedhep:
+    config: configs/cifar100_fedhep.yaml
+  plus_w:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.signal: weights
+  flame:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_robust
+    robust.rule: flame
+  r3wc:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+  guard:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 8
+    plus.signal: weights_critical
+    plus.rewind: trunk_root
+  guard_v2:
+    config: configs/cifar100_fedhep_defended.yaml
+    method: fedhep_plus
+    plus.reference: median
+    plus.regroup: true
+    plus.two_sided: true
+    plus.isolation_patience: 3
+    plus.exclusion_patience: 3
+    plus.global_rule: arc_nnm_tm
+    plus.gap_gate: 6
+    plus.signal: weights_critical
+    plus.high_gate: 20
+    plus.rewind: trunk_root
+    plus.isolation_window: 5
+    plus.rewind_agree: true
+    plus.global_f_floor: 0.5

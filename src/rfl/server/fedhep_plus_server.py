@@ -12,6 +12,7 @@ Per round:
 """
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import replace
 
@@ -40,17 +41,22 @@ from rfl.grouping.similarity import Regroup, SimilarityGrouping
 from rfl.models.resnet9 import MultiHeadResNet9
 from rfl.server.defended_fedhep_server import DefendedFedHEPServer
 
+AGREE_ROUNDS = 5   # two-signal: both signals below -evidence_cut in one of a client's last 5 scored rounds (8.2)
+
 
 class FedHEPPlusServer(DefendedFedHEPServer):
     def __init__(self, model: MultiHeadResNet9, clients: Sequence[ClientData], trainer: FedHEPTrainer,
                  grouping: SimilarityGrouping, screen: ScreenOptions, regroup: bool = False,
                  attack: Attack | None = None, attackers: frozenset[int] = frozenset(),
                  global_rule: str = "sccf", global_f: int = 3, probe: torch.Tensor | None = None,
-                 global_f_fixed: bool = False, rewind: str = "none", rewind_window: int = 10) -> None:
+                 global_f_fixed: bool = False, rewind: str = "none", rewind_window: int = 10,
+                 rewind_agree: bool = False, global_f_floor: float = 0.0) -> None:
         super().__init__(model, clients, trainer, grouping, attack=attack, attackers=attackers)
         if rewind not in ("none", "trunk", "trunk_root", "all"):
             raise ValueError(f"unknown rewind {rewind!r}")
         self.global_f_fixed = global_f_fixed
+        self.global_f_floor = global_f_floor   # share of global_f kept as the least f however many are excluded
+        self.rewind_agree = rewind_agree       # rewind only for clients flagged by both signals (two-signal)
         self.rewind, self.rewind_window = rewind, rewind_window
         self.rewind_mask = self._rewind_mask(rewind)   # which coordinates a rewind restores
         self.stored: dict[int, torch.Tensor] = {}      # round -> Global model at the start of that round
@@ -67,11 +73,25 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         if screen.sentence and rewind != "none":
             raise ValueError("sentence (readmission) is not combined with the rewind: a rewind after a second "
                              "isolation would reach back past the client's return")
+        union = screen.signal in ("weights_critical", "shared_critical")
+        if rewind_agree and (rewind == "none" or not union):
+            raise ValueError("rewind_agree needs a rewind and a union signal (weights_critical, shared_critical)")
+        if screen.sentence_single and not union:
+            raise ValueError("sentence_single needs a union signal (weights_critical, shared_critical)")
+        if not 0.0 <= global_f_floor <= 1.0:
+            raise ValueError("global_f_floor is a share of global_f, in [0, 1]")
         self.evidence = EvidenceTracker(screen.evidence_decay, screen.evidence_cut, screen.readmit,
                                         screen.isolation_patience, screen.sentence, screen.max_strikes,
-                                        screen.probation_patience)
+                                        screen.probation_patience, screen.isolation_window)
+        # union signals: per client, whether both signals' z (after the gate) fell below -evidence_cut, for its
+        # last AGREE_ROUNDS scored rounds; one such round makes it "two-signal" (rewind_agree, sentence_single)
+        self.both_recent: dict[int, list[bool]] = {}
         self.exclusion_streak: dict[int, int] = {}
         self.banned: set[int] = set()  # non-finite uploads: out for good, even with readmission
+
+    def two_signal(self) -> set[int]:
+        """Clients flagged by both signals in at least one of their last AGREE_ROUNDS scored rounds."""
+        return {c for c, v in self.both_recent.items() if any(v)}
 
     def _rewind_mask(self, rewind: str) -> torch.Tensor | None:
         """Coordinates a rewind restores: the trunk (no head), the trunk and the shared root head, or all."""
@@ -151,6 +171,10 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                 for c, v in parts["critical"][3].items():
                     if v < z[c]:
                         z[c], z_logged[c] = v, parts["critical"][2][c]
+                cut = -self.screen.evidence_cut
+                for c in scored:
+                    both = parts[first][3].get(c, 0.0) < cut and parts["critical"][3].get(c, 0.0) < cut
+                    self.both_recent[c] = (self.both_recent.get(c, []) + [both])[-AGREE_ROUNDS:]
             else:
                 raw_scores, score_stats, z_logged, z = self._signal_z(self.screen.signal, to_global, updates,
                                                                       scored, in_ref)
@@ -163,7 +187,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                     align_z = self._align(updates, scored, isolated, in_ref, flagged_groups)
                     for c, a in align_z.items():
                         z_evidence[c] = min(z[c], -a)
-            self.evidence.update(z_evidence)
+            self.evidence.update(z_evidence, self.two_signal() if self.screen.sentence_single else frozenset())
         for c, v in z.items():
             self.exclusion_streak[c] = self.exclusion_streak.get(c, 0) + 1 if v < -self.screen.z_cut else 0
         left_out = {c for c, v in z.items() if v < -self.screen.z_cut
@@ -195,16 +219,18 @@ class FedHEPPlusServer(DefendedFedHEPServer):
         global_trust: dict[int, float] = {}
         rewind_target = None
         new_isolated = set(self.evidence.isolated) - before
-        if self.rewind != "none" and new_isolated:
+        trigger = new_isolated & self.two_signal() if self.rewind_agree else new_isolated
+        if self.rewind != "none" and trigger:
             # H8: the newly isolated clients' updates since their first suspicious round are in the shared model.
             # Go back to the stored model from before the earliest of those rounds instead of aggregating.
-            rewind_target = max(min(self.stored), min(self._first_suspicious(c, round_idx) for c in new_isolated))
+            rewind_target = max(min(self.stored), min(self._first_suspicious(c, round_idx) for c in trigger))
             self._rewind_to(rewind_target)
             self.rewound.append({"round": round_idx, "target": rewind_target})
             kept = []
         if kept and self.global_rule == "arc_nnm_tm":
             # Layer L0 under the screen: the attackers still assumed present are those not yet excluded.
-            f = self.global_f if self.global_f_fixed else self.global_f - len(excluded)
+            f = self.global_f if self.global_f_fixed else max(self.global_f - len(excluded),
+                                                               math.ceil(self.global_f_floor * self.global_f))
             f = max(0, min(f, (len(kept) - 1) // 2))
             step = arc_nnm_trimmed_mean_rule(torch.stack([to_global[c] - start for c in kept]), f).update
             self.global_vec = start + step
@@ -225,7 +251,7 @@ class FedHEPPlusServer(DefendedFedHEPServer):
                                  "flagged_groups": sorted(flagged_groups), "align_z": align_z,
                                  "evidence": dict(self.evidence.evidence), "global_trust": global_trust,
                                  "regroup": event.value, "groups": dict(self.grouping.assignment),
-                                 "rewind_target": rewind_target})
+                                 "rewind_target": rewind_target, "two_signal": sorted(self.two_signal())})
 
     def _signal_z(self, signal: str, to_global: dict[int, torch.Tensor], updates: list[torch.Tensor],
                   scored: list[int], in_ref: torch.Tensor
