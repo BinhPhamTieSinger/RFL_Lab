@@ -4,7 +4,8 @@
 
 Runs: acer_c16_readmission.yaml (x16_a05__*), 15 clients, alpha 0.5, 3 attackers, FedHEP-Guard's screen with
 permanent isolation (r3wc), Phase 3b readmission (r3wc_ra), a 5-round sentence (r3wc_s5) and the same with a
-1-round probation patience (r3wc_s5p1). Writes docs/figures/acer_readmission.png and docs/results/acer_c16.json."""
+1-round probation patience (r3wc_s5p1). acer_c16b_readmission_n50.yaml (x16_n50a01__*) at 50 clients, alpha 0.1, no attack, against the union screen of
+acer_c13 (x13_n50a01__clean__r3wc). Writes docs/figures/acer_readmission.png and docs/results/acer_c16.json."""
 from __future__ import annotations
 
 import importlib.util
@@ -53,8 +54,16 @@ def main() -> None:
                     if m.get("final"):
                         rows.append(run(m))
             res[f"{cond}/{mdl}"] = rows
+    for name, pattern in (("n50/r3wc", "x13_n50a01__clean__r3wc_s{}"), ("n50/r3wc_s5", "x16_n50a01__clean__r3wc_s5_s{}"),
+                          ("n50/r3wc_s5p1", "x16_n50a01__clean__r3wc_s5p1_s{}")):
+        rows = []
+        for s in SEEDS:
+            p = out / pattern.format(s) / "metrics.json"
+            if p.exists():
+                rows.append(run(json.loads(p.read_text())))
+        res[name] = rows
     (ROOT / "docs" / "results" / "acer_c16.json").write_text(json.dumps(res, indent=1))
-    fig, axes = plt.subplots(1, 3, figsize=(17, 4.6), gridspec_kw={"width_ratios": [1, 1, 2.6]})
+    fig, axes = plt.subplots(1, 4, figsize=(20, 4.6), gridspec_kw={"width_ratios": [1, 1, 2.6, 1.1]})
     w = 0.8 / len(MODELS)
     colors = [pr.SLOT[0], pr.SLOT[3], pr.SLOT[1], pr.SLOT[2]]
     for ax, field, title in ((axes[0], "honest_end", "honest clients isolated at the end, no attack"),
@@ -72,7 +81,7 @@ def main() -> None:
         ax.set_title(title, fontsize=9.5)
     axes[1].set_ylim(40, 50)
     handles, labels = axes[0].get_legend_handles_labels()
-    axes[2].legend(handles, labels, fontsize=7.5, loc="upper right")
+    axes[2].legend(handles, labels, fontsize=7.5, loc="upper center", ncol=2)
     ax = axes[2]
     attacked = CONDITIONS[1:]
     for j, (mdl, _name) in enumerate(MODELS):
@@ -86,10 +95,24 @@ def main() -> None:
             for r in rows:
                 ax.scatter(x, r["asr"], color=pr.INK, s=10, zorder=3)
     ax.set_xticks(range(len(attacked)), [t for _, t in attacked], fontsize=8)
-    ax.set_ylim(0, 100)
+    ax.set_ylim(0, 118)
+    ax.set_yticks(range(0, 101, 20))
     ax.set_title("backdoor success (%), dots = seeds", fontsize=9.5)
-    fig.suptitle("Acer c16, readmission at 15 clients: a 5-round sentence brings the honest clients back, but only a "
-                 "1-round probation keeps a returning backdoor attacker out; a sleeper backdoor beats readmission",
+    ax = axes[3]
+    for j, (key, name) in enumerate((("n50/r3wc", "permanent\n(acer_c13)"), ("n50/r3wc_s5", "sentence"),
+                                     ("n50/r3wc_s5p1", "sentence,\nprobation"))):
+        rows = res[key]
+        if not rows:
+            continue
+        acc = statistics.fmean(r["acc"] for r in rows)
+        hon = statistics.fmean(r["honest_end"] for r in rows)
+        ax.bar(j, acc, 0.7, color=colors[[0, 2, 3][j]])
+        ax.text(j, acc + 0.1, f"{acc:.1f}%\n{hon:.1f} isolated", ha="center", va="bottom", fontsize=7)
+        ax.set_xticks(range(3), ["permanent", "sentence", "sentence,\nprobation"], fontsize=7.5)
+    ax.set_ylim(44, 53)
+    ax.set_title("50 clients, α 0.1, no attack: accuracy (%)\nand honest clients isolated at the end", fontsize=9.5)
+    fig.suptitle("Acer c16, readmission: a 5-round sentence brings honest clients back and adds 1-2 points, but no "
+                 "rule keeps out a sleeper or a 2-on-1-off backdoor; of the readmission rules only probation keeps out a plain one",
                  fontsize=10.5, x=0.01, ha="left")
     fig.tight_layout()
     pr.save(fig, "acer_readmission.png")

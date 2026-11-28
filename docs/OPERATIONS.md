@@ -199,7 +199,7 @@ bash scripts/runner_sync.sh acer --update   # only once c14 and its control have
 python scripts/sweep.py configs/sweeps/acer_c14_control.yaml && python scripts/sweep.py configs/sweeps/acer_c15_low_gate.yaml
 ```
 
-After c15, readmission (`acer_c16_readmission.yaml`, 60 runs, about 20 hours, then `acer_c16b_readmission_n50.yaml`, 6 runs, about 5 hours; predictions P51–P56; new code since 2026-11-26, so update first).
+After c15, readmission (`acer_c16_readmission.yaml`, 60 runs, about 20 hours, then `acer_c16b_readmission_n50.yaml`, 6 runs, about 5 hours; predictions P51–P56; new code since 2026-11-26, so update first). Done 2026-11-28 (66 runs, report 8.2); the Acer is idle until the next sweep is chosen.
 ```bash
 bash scripts/runner_sync.sh acer --update   # only once c15 has finished
 python scripts/sweep.py configs/sweeps/acer_c16_readmission.yaml && python scripts/sweep.py configs/sweeps/acer_c16b_readmission_n50.yaml

@@ -1717,7 +1717,7 @@ From then on the global step is a plain mean with 4–8 attackers still in. **Ne
 
 | Model | No attack: honest isolated at the end (per seed) | No attack: accuracy minus permanent isolation, same seed | Plain backdoor (seeds 42 / 123 / 7) | Sleeper backdoor |
 |---|---|---|---|---|
-| r3wc (permanent) | 8 / 0 / 5 | 47.6 / 45.1 / 45.0% | 0.5 / 0.5 / 1.3% | 0.3 / 5.5 / 69.1% |
+| r3wc (permanent) | 8 / 0 / 5 | 45.2 / 47.6 / 45.0% (corrected 2026-11-28: first written in the wrong seed order as 47.6 / 45.1 / 45.0) | 0.5 / 0.5 / 1.3% | 0.3 / 5.5 / 69.1% |
 | r3wc_ra (3b) | 5 / 1 / 6 | +3.2 / −1.1 / +1.6 | 1.7 / 9.5 / 54.0% | 53.3 / 69.2 / 76.1% |
 | r3wc_s5 | 0 / 0 / 0 | +2.3 / −0.9 / +1.6 | 0.5 / 2.0 / 72.1% | 47.2 / 67.8 / 75.7% |
 | r3wc_s5p1 | 5 / 0 / 5 | +0.9 / +0.3 / +1.9 | 0.5 / 1.4 / 0.6% | running |
@@ -1727,5 +1727,35 @@ From then on the global step is a plain mean with 4–8 attackers still in. **Ne
 - 1-round probation: every returning attacker isolated again on its first bad round; returned honest clients too: 10 of the 11 honest clients isolated on seeds 42 and 7 were isolated again, several in their first round back (seed 7, client 13: z −7.6 on return).
 - Sleeper: permanent isolation caught the attackers in rounds 7–12 (seed 42; one before the attack began), 14–15 (seed 123) and 26 (seed 7).
 - Predictions: P51 held, P53 refuted for the probation variant (held for the plain sentence), P55 held; P52, P54, P56 pending.
+
+![Readmission](figures/acer_readmission.png)
+
+## 2026-11-28 · Acer c16 readmission, complete (66 runs): no rule, permanent or readmitting, keeps out a 2-on-1-off or a sleeper backdoor; a sentence adds about 1 point with no attack
+
+**Runs:** `acer_c16_readmission.yaml` (60) and `acer_c16b_readmission_n50.yaml` (6), XPU, 30 rounds, seeds 42 / 123 / 7. 15 clients, α 0.5, 3 attackers; 50 clients, α 0.1, no attack, against `x13_n50a01__clean__r3wc` (acer_c13). Script `scripts/plot_c16.py` (now with the on-off conditions and a 50-client panel); numbers in `docs/results/acer_c16.json`. Model behind every number: the union screen (`r3wc`) with the isolation rule named in the row.
+
+Backdoor success, seeds 42 / 123 / 7 (attackers isolated at the end, per seed):
+
+| Model | Plain | Sleeper (from round 10) | On-off, 4 on, 6 off | On-off, 2 on, 1 off |
+|---|---|---|---|---|
+| r3wc (permanent) | 0.5 / 0.5 / 1.3% (3, 3, 3) | 0.3 / 5.5 / 69.1% (3, 3, 3) | 0.4 / 0.5 / 33.4% (3, 3, 1) | 0.7 / 68.8 / 77.4% (3, 0, 0) |
+| r3wc_ra (3b) | 1.7 / 9.5 / 54.0% (2, 2, 3) | 53.3 / 69.2 / 76.1% (0, 0, 3) | 2.8 / 0.4 / 17.0% (0, 1, 0) | 41.2 / 64.2 / 78.2% (0, 2, 0) |
+| r3wc_s5 | 0.5 / 2.0 / 72.1% (3, 3, 3) | 47.2 / 67.8 / 75.7% (3, 1, 2) | 0.5 / 42.6 / 7.1% (3, 0, 2) | 61.4 / 69.1 / 77.5% (0, 0, 0) |
+| r3wc_s5p1 | 0.5 / 1.4 / 0.6% (3, 3, 3) | 0.6 / 54.1 / 73.3% (3, 3, 3) | 0.5 / 2.6 / 59.6% (3, 3, 0) | 31.6 / 67.0 / 77.6% (1, 1, 0) |
+
+No attack, accuracy per seed (honest clients isolated at the end):
+
+| Model | 15 clients, α 0.5 | 50 clients, α 0.1 |
+|---|---|---|
+| r3wc (permanent) | 45.2 / 47.6 / 45.0%, mean 45.9 (8, 0, 5) | 48.5 / 47.9 / 48.9%, mean 48.4 (21, 24, 22) |
+| r3wc_ra (3b) | 48.4 / 46.6 / 46.6%, mean 47.2 (5, 1, 6) | not run |
+| r3wc_s5 | 47.5 / 46.7 / 46.6%, mean 47.0 (0, 0, 0) | 49.2 / 49.9 / 50.2%, mean 49.8 (19, 23, 18; ever 27, 26, 21) |
+| r3wc_s5p1 | 46.1 / 48.0 / 47.0%, mean 47.0 (5, 0, 5) | 49.4 / 49.3 / 49.9%, mean 49.5 (29, 17, 24; ever 31, 21, 25) |
+
+- **Timing beats the screen with or without readmission.** The 2-on-1-off backdoor isolated no attacker on seeds 123 and 7 under permanent isolation (68.8 / 77.4%), and every readmission rule did worse or the same. The sleeper got 69% on seed 7 under permanent isolation (caught in round 26).
+- **The 2-on-1-off schedule (counted from round 0) clears in rounds 2, 5, 8, …** Under permanent isolation on seed 42, the attackers were isolated in rounds 6, 8 and 11 because their clean-round scores stayed below the cut: attacker 0's critical-layer z was −6.1 in clean round 5, attacker 9's whole-update z −1.6 in round 8, attacker 11's −3.5 in round 11. On seed 123 the clean-round scores were mostly above the cut (round 5: −0.7 / −1.1 / −2.2 whole, −1.3 / 0.7 / 0.4 critical). Cause of the difference not known; not tested.
+- **50 clients, no attack: a sentence adds about 1 point** (+1.4 plain, +1.1 with probation; all three seeds higher with each) but ends with about as many honest clients isolated (20.0 and 23.3 against 22.3): most returned clients are isolated again and reach the 2-strike limit.
+- **Caveats:** 3 seeds per arm; seed-to-seed spread about 1 point. The 50-client control is from an earlier Acer sweep with the same configuration and seeds, run before the readmission code was added.
+- **Predictions:** P52 refuted, P54 held, P56 refuted (its "never isolated" clause failed on seed 42; its success clause held, 2 of 3 seeds at 20% or more).
 
 ![Readmission](figures/acer_readmission.png)
